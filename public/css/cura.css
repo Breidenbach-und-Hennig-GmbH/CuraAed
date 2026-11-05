@@ -588,6 +588,14 @@ kbd { font: 12px/1.6 inherit; font-family: inherit; color: var(--cu-grau); backg
 .tel-plaud-knopf { flex: 1 1 220px; min-height: 44px; margin: 0; }
 .tel-plaud-wechsel { min-height: 44px; margin: 0; }
 .tel-plaud [hidden] { display: none !important; }
+.tel-plaud-direkt { width: 100%; min-height: 48px; margin: 4px 0; }
+.plaud-auswahl textarea { width: 100%; box-sizing: border-box; min-height: 180px; font-size: 16px; }
+.plaud-auswahl select { width: 100%; min-height: 44px; margin: 8px 0; }
+.plaud-gespraeche { display: grid; gap: 8px; }
+.plaud-gespraech { width: 100%; min-height: 60px; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+.plaud-gespraech strong, .plaud-gespraech span { display: block; }
+.plaud-anmelden { display: inline-block; min-height: 44px; padding: 12px; }
+.plaud-rueckkehr { padding: 20px; }
 .tel-plaud-status { margin-top: 6px; }
 .tel-plaud-abschrift { margin-top: 6px; font-size: 13px; }
 .tel-plaud-abschrift > div { max-height: 220px; overflow: auto; padding: 6px; background: #fff; border-radius: 6px; }

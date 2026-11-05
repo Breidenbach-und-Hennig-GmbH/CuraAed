@@ -12,6 +12,7 @@ WEG and rental property management (German UI). It is a single Node.js/Express s
 - Accounting basics: chart of accounts (`Sachkonten`) incl. import, personal accounts and target values
 - Change history, privacy-consent tracking
 - Users with roles: `admin`, `mitarbeiter` (read/write), `leser` (read-only)
+- Personal Plaud connection: select synchronized recordings and review existing summaries directly in the call intake form
 - Optional: AI summaries of recorded calls via Mistral (`MISTRAL_API_KEY`)
 
 ## Quick start (local)
