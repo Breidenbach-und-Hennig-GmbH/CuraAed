@@ -8,7 +8,7 @@ const vm = require('node:vm');
 const { JSDOM } = require('jsdom');
 
 const tick = () => new Promise((resolve) => setImmediate(resolve));
-function aufbau(t, { eingerichtet = true, status, upload } = {}) {
+function aufbau(t, { eingerichtet = true, status, upload, kontakt } = {}) {
   const dom = new JSDOM('<textarea></textarea>', { runScripts: 'outside-only' });
   t.after(() => dom.window.close());
   const w = dom.window;
@@ -24,7 +24,7 @@ function aufbau(t, { eingerichtet = true, status, upload } = {}) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js', name + '.js'), 'utf8'), dom.getInternalVMContext());
   }
   const bemerkung = w.document.querySelector('textarea');
-  const plaud = w.plaudBlock(bemerkung, () => 'Haus 4010');
+  const plaud = w.plaudBlock(bemerkung, () => 'Haus 4010', kontakt);
   w.document.body.append(plaud.block);
   const datei = plaud.block.querySelector('input[type=file]');
   let files = [];
@@ -59,7 +59,7 @@ test('Plaud: fehlende KI wird ohne Hover erklärt; Text bleibt direkt nutzbar', 
   u.waehlen('aufnahme.m4a');
   u.haupt.click();
   assert.equal(u.anfragen.length, 0);
-  assert.match(u.status.textContent, /Administration/);
+  assert.match(u.status.textContent, /Mitarbeiterrechte reichen aus/);
   u.waehlen('plaud.md');
   assert.equal(u.haupt.textContent, 'Text übernehmen');
   u.bemerkung.value = 'Vorhandene Notiz';
@@ -155,4 +155,68 @@ test('Plaud: Text wird standardmäßig übernommen; KI-Kürzen ist optional', as
   u.haupt.click();
   await tick();
   assert.equal(u.anfragen[0].form.get('modus'), 'zusammenfassen');
+});
+
+test('Plaud: eingefügter Text wird ohne Datei, KI-Schlüssel oder Upload übernommen', async (t) => {
+  const u = aufbau(t, { eingerichtet: false });
+  await tick();
+  const text = u.plaud.block.querySelector('#tel_plaud_text');
+  text.value = 'Anliegen: Heizung kalt.\nRückruf am Freitag.';
+  u.bemerkung.value = 'Bestehender Vermerk';
+  let geaendert = 0;
+  u.bemerkung.addEventListener('input', () => geaendert++);
+  u.plaud.block.querySelector('.tel-plaud-uebernehmen').click();
+  assert.equal(u.bemerkung.value, 'Bestehender Vermerk\n\nAnliegen: Heizung kalt.\nRückruf am Freitag.');
+  assert.equal(text.value, '');
+  assert.equal(geaendert, 1);
+  assert.equal(u.anfragen.length, 0);
+  assert.equal(u.plaud.werte().aufnahme, 'text');
+  assert.equal(u.plaud.block.querySelector('.tel-plaud-datei-option').open, false);
+  assert.match(u.status.textContent, /übernommen/);
+});
+
+test('Plaud: zu langer eingefügter Text bleibt erhalten und verändert die Bemerkung nicht', (t) => {
+  const u = aufbau(t);
+  const text = u.plaud.block.querySelector('#tel_plaud_text');
+  u.bemerkung.value = 'Vorhanden';
+  text.value = 'x'.repeat(4000);
+  u.plaud.block.querySelector('.tel-plaud-uebernehmen').click();
+  assert.equal(u.bemerkung.value, 'Vorhanden');
+  assert.equal(text.value.length, 4000);
+  assert.match(u.status.textContent, /Es wurde nichts verändert/);
+  assert.equal(u.anfragen.length, 0);
+});
+
+test('Plaud: Text-Ergänzung erhält den bestehenden Audio-Zustimmungsnachweis', (t) => {
+  const u = aufbau(t, { kontakt: { aufnahme: 'audio', aufnahme_zustimmung: 1 } });
+  u.plaud.block.querySelector('#tel_plaud_text').value = 'Zusätzliche Vereinbarung';
+  u.plaud.block.querySelector('.tel-plaud-uebernehmen').click();
+  assert.equal(u.plaud.werte().aufnahme, 'audio');
+  assert.equal(u.plaud.werte().aufnahme_zustimmung, 1);
+});
+
+test('Plaud: eingefügter Text kann optional über die vorhandene KI-Schnittstelle gekürzt werden', async (t) => {
+  const u = aufbau(t, { upload: () => ({ zusammenfassung: 'Kurznotiz', quelle: 'text' }) });
+  await tick();
+  const text = u.plaud.block.querySelector('#tel_plaud_text');
+  text.value = 'Eine längere Abschrift aus Plaud.';
+  const ki = u.plaud.block.querySelector('.tel-plaud-text-ki');
+  assert.equal(ki.hidden, false);
+  ki.click();
+  await tick();
+  assert.equal(u.anfragen.length, 1);
+  assert.equal(u.anfragen[0].form.get('datei').name, 'plaud-text.txt');
+  assert.equal(u.anfragen[0].form.get('modus'), 'zusammenfassen');
+  assert.equal(u.bemerkung.value, 'Kurznotiz');
+  assert.equal(text.value, '');
+});
+
+test('Plaud: fehlende KI blendet nur das Kürzen aus, direkte Übernahme bleibt verfügbar', async (t) => {
+  const u = aufbau(t, { eingerichtet: false });
+  await tick();
+  assert.equal(u.plaud.block.querySelector('.tel-plaud-text-ki').hidden, true);
+  assert.equal(u.plaud.block.querySelector('.tel-plaud-uebernehmen').disabled, false);
+  u.plaud.block.querySelector('.tel-plaud-uebernehmen').click();
+  assert.match(u.status.textContent, /zuerst die Zusammenfassung/);
+  assert.equal(u.bemerkung.value, '');
 });

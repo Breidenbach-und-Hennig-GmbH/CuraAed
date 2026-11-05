@@ -14,13 +14,13 @@ const TEXT = /\.(txt|md|srt|vtt)$/i;
 const MAX_TEXT = 200000;
 
 function schluessel() {
-  const k = process.env.MISTRAL_API_KEY;
-  if (!k) throw new V.ValidationError('Die KI-Zusammenfassung ist noch nicht eingerichtet: Schlüssel MISTRAL_API_KEY fehlt in der Projekt-Konfiguration.', 503);
+  const k = String(process.env.MISTRAL_API_KEY || '').trim();
+  if (!k) throw new V.ValidationError('Die KI-Verarbeitung ist für diese App noch nicht eingerichtet. Das liegt nicht an deinen Mitarbeiterrechten. Eine fertige Plaud-Zusammenfassung kannst du direkt einfügen und übernehmen.', 503);
   return k;
 }
 
 function eingerichtet() {
-  return !!process.env.MISTRAL_API_KEY;
+  return !!String(process.env.MISTRAL_API_KEY || '').trim();
 }
 
 async function anfrage(pfad, optionen, ms) {

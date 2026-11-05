@@ -1365,6 +1365,10 @@ function plaudBlock(bemerkung, kontext, k) {
   const dateiname = el('div', { class: 'tel-plaud-dateiname', hidden: 'hidden' });
   const hinweis = el('div', { class: 'tel-plaud-hinweis small', 'aria-live': 'polite' });
   const status = el('div', { class: 'tel-plaud-status small', 'aria-live': 'polite' });
+  const eingefuegt = el('textarea', { id: 'tel_plaud_text', rows: '4', maxlength: '200000',
+    placeholder: 'Zusammenfassung aus Plaud hier einfügen …', 'aria-describedby': 'tel_plaud_anleitung' });
+  const uebernehmen = el('button', { type: 'button', class: 'tel-plaud-uebernehmen btn-primary', text: 'In Bemerkung übernehmen' });
+  const textKi = el('button', { type: 'button', class: 'tel-plaud-text-ki', text: 'Eingefügten Text mit KI kürzen', hidden: 'hidden' });
   const abschrift = el('details', { class: 'tel-plaud-abschrift', hidden: 'hidden' }, [el('summary', { text: 'Abschrift anzeigen (wird nicht gespeichert)' }), el('div', { class: 'hp-umbruch' })]);
   const hauptknopf = el('button', { type: 'button', class: 'tel-plaud-knopf btn-primary', text: 'Plaud-Datei auswählen' });
   const wechseln = el('button', { type: 'button', class: 'tel-plaud-wechsel', text: 'Andere Datei', hidden: 'hidden' });
@@ -1373,44 +1377,69 @@ function plaudBlock(bemerkung, kontext, k) {
   let kiBereit = null;
   let laeuft = false;
   const istAudio = () => datei.files[0] && !/\.(txt|md|srt|vtt)$/i.test(datei.files[0].name);
+  function notizEinfuegen(text, quelle) {
+    const neu = String(text || '').trim();
+    if (!neu) { status.textContent = 'Bitte zuerst die Zusammenfassung aus Plaud einfügen.'; eingefuegt.focus(); return false; }
+    const alt = bemerkung.value.trim();
+    const gesamt = alt ? alt + '\n\n' + neu : neu;
+    const limit = bemerkung.maxLength > 0 ? bemerkung.maxLength : 4000;
+    if (gesamt.length > limit) {
+      status.textContent = `Die Bemerkung wäre ${gesamt.length} Zeichen lang (maximal ${limit}). Bitte den eingefügten Text oder die vorhandene Bemerkung kürzen. Es wurde nichts verändert.`;
+      return false;
+    }
+    bemerkung.value = gesamt;
+    bemerkung.dispatchEvent(new Event('input', { bubbles: true }));
+    // Beim Ergänzen einer bestehenden Audionotiz deren Zustimmungsnachweis erhalten.
+    if (quelle === 'audio' || herkunft.aufnahme !== 'audio') herkunft = { aufnahme: quelle, aufnahme_zustimmung: quelle === 'audio' ? 1 : 0 };
+    bemerkung.focus();
+    return true;
+  }
   function anzeigen() {
     const d = datei.files[0];
     hauptknopf.disabled = wechseln.disabled = datei.disabled = zustimmung.disabled = kuerzen.disabled = laeuft;
+    uebernehmen.disabled = textKi.disabled = eingefuegt.disabled = laeuft;
+    textKi.hidden = kiBereit !== true;
     hauptknopf.textContent = laeuft ? 'Wird verarbeitet …' : !d ? 'Plaud-Datei auswählen' : istAudio() || kuerzen.checked ? 'Zusammenfassen' : 'Text übernehmen';
     wechseln.hidden = dateiname.hidden = !d;
     dateiname.textContent = d ? d.name : '';
     zustZeile.hidden = !istAudio();
     textZeile.hidden = !d || istAudio() || kiBereit !== true;
     hinweis.textContent = kiBereit === false
-      ? 'Die automatische Zusammenfassung ist noch nicht eingerichtet. Du kannst in Plaud einen Text exportieren und ihn hier direkt übernehmen.'
-      : kiBereit === null ? 'Plaud-Text lässt sich direkt übernehmen. Für Audio wird die KI-Verfügbarkeit geprüft.'
-        : 'Aufnahme oder Text aus Plaud auswählen. Die fertige Notiz erscheint im Feld Bemerkung.';
+      ? 'Die KI-Verarbeitung ist für diese App noch nicht eingerichtet. Alle Mitarbeiter können fertige Plaud-Zusammenfassungen trotzdem direkt einfügen und übernehmen.'
+      : kiBereit === null ? 'Plaud-Text lässt sich sofort übernehmen. Die KI-Verfügbarkeit für Audio wird geprüft.'
+        : 'Plaud-Text direkt übernehmen oder bei Bedarf mit KI kürzen. Audiodateien können ebenfalls verarbeitet werden.';
   }
-  const senden = async () => {
+  const senden = async (ausText = false) => {
     if (laeuft) return;
-    const d = datei.files[0];
+    if (ausText && !eingefuegt.value.trim()) { status.textContent = 'Bitte zuerst Plaud-Text einfügen.'; eingefuegt.focus(); return; }
+    const d = ausText ? new File([eingefuegt.value], 'plaud-text.txt', { type: 'text/plain' }) : datei.files[0];
+    const audio = !ausText && istAudio();
     if (!d) { datei.click(); return; }
     if (!/\.(mp3|m4a|wav|ogg|opus|webm|aac|flac|mp4|amr|txt|md|srt|vtt)$/i.test(d.name)) { status.textContent = 'Bitte eine Audiodatei oder einen Plaud-Text (TXT, MD, SRT, VTT) auswählen.'; return; }
     if (d.size > 95 * 1024 * 1024) { status.textContent = 'Die Datei ist größer als 95 MB. Bitte eine kleinere Aufnahme oder einen Text-Export auswählen.'; return; }
-    const modus = istAudio() || kuerzen.checked ? 'zusammenfassen' : 'uebernehmen';
-    if (modus === 'zusammenfassen' && kiBereit === false) { status.textContent = 'Bitte einen Plaud-Text auswählen oder die automatische Zusammenfassung durch die Administration einrichten lassen.'; return; }
-    if (istAudio() && !zustimmung.checked) { status.textContent = 'Bitte zuerst die Zustimmung aller Gesprächspartner zur Aufzeichnung bestätigen.'; zustimmung.focus(); return; }
+    const modus = ausText || audio || kuerzen.checked ? 'zusammenfassen' : 'uebernehmen';
+    if (modus === 'zusammenfassen' && kiBereit === false) { status.textContent = 'Die KI-Verarbeitung ist für diese App noch nicht eingerichtet. Deine Mitarbeiterrechte reichen aus. Kopiere die fertige Zusammenfassung in Plaud und füge sie oben ein.'; return; }
+    if (audio && !zustimmung.checked) { status.textContent = 'Bitte zuerst die Zustimmung aller Gesprächspartner zur Aufzeichnung bestätigen.'; zustimmung.focus(); return; }
     const fd = new FormData();
     fd.append('datei', d); fd.append('modus', modus); fd.append('zustimmung', zustimmung.checked ? '1' : '0'); fd.append('kontext', kontext());
     laeuft = true;
     anzeigen();
-    status.textContent = modus === 'uebernehmen' ? 'Text wird übernommen …' : istAudio()
+    status.textContent = modus === 'uebernehmen' ? 'Text wird übernommen …' : audio
       ? 'Aufnahme wird abgeschrieben und zusammengefasst … Bei langen Gesprächen kann das einige Minuten dauern.' : 'Text wird zusammengefasst …';
     try {
       const r = await API.upload('/gespraech/zusammenfassen', fd);
-      bemerkung.value = bemerkung.value.trim() ? bemerkung.value.trim() + '\n\n' + r.zusammenfassung : r.zusammenfassung;
-      bemerkung.dispatchEvent(new Event('input', { bubbles: true }));
-      herkunft = { aufnahme: r.quelle, aufnahme_zustimmung: r.quelle === 'audio' ? 1 : 0 };
+      if (!notizEinfuegen(r.zusammenfassung, r.quelle)) {
+        // Ergebnis zum manuellen Kürzen erhalten; nichts still abschneiden.
+        if (eingefuegt.value.trim() && eingefuegt.value.trim() !== String(r.zusammenfassung).trim()) {
+          eingefuegt.value += '\n\n' + r.zusammenfassung;
+        } else eingefuegt.value = r.zusammenfassung;
+        return;
+      }
       abschrift.hidden = !r.abschrift;
       abschrift.lastChild.textContent = r.abschrift || '';
       status.textContent = 'Fertig. Bemerkung prüfen und den Telefoneingang mit „Ok“ speichern.' + (r.quelle === 'audio' ? ' Die Audiodatei wurde nicht gespeichert.' : '');
-      datei.value = '';
-      zustimmung.checked = kuerzen.checked = false;
+      if (ausText) eingefuegt.value = '';
+      else { datei.value = ''; zustimmung.checked = kuerzen.checked = false; }
     } catch (e) { status.textContent = (e && e.message ? e.message : 'Die Verarbeitung ist fehlgeschlagen.') + ' Bitte erneut versuchen oder eine andere Datei auswählen.'; }
     finally { laeuft = false; anzeigen(); }
   };
@@ -1418,7 +1447,15 @@ function plaudBlock(bemerkung, kontext, k) {
     kiBereit = !!s.eingerichtet;
     anzeigen();
   }).catch(() => { hinweis.textContent = 'Die KI-Verfügbarkeit konnte nicht geprüft werden. Du kannst die Verarbeitung erneut versuchen oder Plaud-Text direkt übernehmen.'; });
-  hauptknopf.addEventListener('click', senden);
+  hauptknopf.addEventListener('click', () => senden());
+  textKi.addEventListener('click', () => senden(true));
+  uebernehmen.addEventListener('click', () => {
+    if (laeuft) return;
+    if (notizEinfuegen(eingefuegt.value, 'text')) {
+      eingefuegt.value = '';
+      status.textContent = 'Plaud-Zusammenfassung übernommen. Bemerkung prüfen und mit „Ok“ speichern.';
+    }
+  });
   wechseln.addEventListener('click', () => datei.click());
   kuerzen.addEventListener('change', anzeigen);
   datei.addEventListener('change', () => {
@@ -1430,8 +1467,15 @@ function plaudBlock(bemerkung, kontext, k) {
   });
   const block = el('div', { class: 'tel-plaud' }, [
     el('div', { class: 'tel-plaud-titel', text: 'Notiz aus Plaud' }),
-    hinweis, datei, dateiname, zustZeile, textZeile,
-    el('div', { class: 'tel-plaud-knoepfe' }, [hauptknopf, wechseln]),
+    el('p', { id: 'tel_plaud_anleitung', class: 'small', text: 'In Plaud die Zusammenfassung kopieren. Hier ins Textfeld einfügen und übernehmen – ohne Datei-Download.' }),
+    el('label', { for: 'tel_plaud_text', text: 'Zusammenfassung oder Abschrift aus Plaud' }), eingefuegt,
+    el('div', { class: 'tel-plaud-knoepfe' }, [uebernehmen, textKi]),
+    hinweis,
+    el('details', { class: 'tel-plaud-datei-option' }, [
+      el('summary', { text: 'Stattdessen eine Audio- oder Textdatei verwenden' }),
+      datei, dateiname, zustZeile, textZeile,
+      el('div', { class: 'tel-plaud-knoepfe' }, [hauptknopf, wechseln]),
+    ]),
     status, abschrift,
   ]);
   anzeigen();

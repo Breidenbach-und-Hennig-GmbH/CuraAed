@@ -43,9 +43,14 @@ test('Plaud → Zusammenfassung: Audio/Text, Zustimmung, ohne Schlüssel, Rechte
     assert.equal((await (await echt(base + '/api/gespraech/status', { headers: { cookie } })).json()).eingerichtet, false);
     const ohne = await hoch('anruf.mp3', 'ID3audio', { zustimmung: '1' });
     assert.equal(ohne.status, 503, 'ohne Schlüssel: verständlicher Hinweis');
-    assert.match(ohne.json.fehler, /MISTRAL_API_KEY/);
+    assert.match(ohne.json.fehler, /nicht an deinen Mitarbeiterrechten/);
     const uebernahme = await hoch('plaud-zusammenfassung.txt', 'Zusammenfassung aus Plaud\n- Heizung kalt', { modus: 'uebernehmen' });
     assert.equal(uebernahme.json.zusammenfassung, 'Zusammenfassung aus Plaud\n- Heizung kalt', 'Text übernehmen geht ohne KI');
+    assert.equal(aufrufe.length, 0);
+
+    process.env.MISTRAL_API_KEY = '   ';
+    assert.equal((await (await echt(base + '/api/gespraech/status', { headers: { cookie } })).json()).eingerichtet, false);
+    assert.equal((await hoch('anruf.mp3', 'x', { zustimmung: '1' })).status, 503);
     assert.equal(aufrufe.length, 0);
 
     process.env.MISTRAL_API_KEY = 'test-schluessel';
