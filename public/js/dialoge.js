@@ -1467,6 +1467,13 @@ function plaudBlock(bemerkung, kontext, k) {
   });
   const block = el('div', { class: 'tel-plaud' }, [
     el('div', { class: 'tel-plaud-titel', text: 'Notiz aus Plaud' }),
+    el('button', { type: 'button', class: 'tel-plaud-direkt btn-primary', text: 'Gespräch aus Plaud auswählen', onclick: () => plaudDirektAuswaehlen((text) => {
+      if (!notizEinfuegen(text, 'text')) return false;
+      status.textContent = 'Plaud-Zusammenfassung übernommen. Bemerkung prüfen und mit „Ok“ speichern.';
+      return true;
+    }) }),
+    el('p', { class: 'small', text: 'Einmal dein Plaud-Konto verbinden. Danach Gespräche direkt auswählen – ohne Kopieren oder Datei-Upload.' }),
+    el('details', { class: 'tel-plaud-datei-option' }, [el('summary', { text: 'Text manuell einfügen oder Datei verwenden' }),
     el('p', { id: 'tel_plaud_anleitung', class: 'small', text: 'In Plaud die Zusammenfassung kopieren. Hier ins Textfeld einfügen und übernehmen – ohne Datei-Download.' }),
     el('label', { for: 'tel_plaud_text', text: 'Zusammenfassung oder Abschrift aus Plaud' }), eingefuegt,
     el('div', { class: 'tel-plaud-knoepfe' }, [uebernehmen, textKi]),
@@ -1475,6 +1482,7 @@ function plaudBlock(bemerkung, kontext, k) {
       el('summary', { text: 'Stattdessen eine Audio- oder Textdatei verwenden' }),
       datei, dateiname, zustZeile, textZeile,
       el('div', { class: 'tel-plaud-knoepfe' }, [hauptknopf, wechseln]),
+    ]),
     ]),
     status, abschrift,
   ]);

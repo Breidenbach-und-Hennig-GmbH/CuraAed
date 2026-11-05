@@ -38,7 +38,7 @@ const benutzerSvc = require('../services/benutzer');
 // Kleiner Async-Wrapper, der Fehler an den Error-Handler weiterreicht.
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-function baueApi(db, uploadDir) {
+function baueApi(db, uploadDir, options = {}) {
   const router = express.Router();
 
   // ---- Datei-Upload (multer) -------------------------------------------
@@ -113,6 +113,7 @@ function baueApi(db, uploadDir) {
 
   // Alle folgenden Routen erfordern eine Anmeldung.
   router.use(auth.erfordereLogin);
+  router.use('/plaud', require('./plaud').bauePlaudRouter(db, options.plaud));
 
   // ===================== Metadaten (für UI-Dropdowns) ===================
   const V = require('../lib/validation');

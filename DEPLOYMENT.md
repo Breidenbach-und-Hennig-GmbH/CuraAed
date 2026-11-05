@@ -76,11 +76,46 @@ Set `MISTRAL_API_KEY` (and optionally `MISTRAL_ZUSAMMENFASSUNG_MODELL`). Outboun
 
 ### Plaud in the call intake form
 
-The simplest workflow needs no AI key in this app: copy the finished summary in
-Plaud, paste it into "Notiz aus Plaud", then select "In Bemerkung übernehmen".
-The text is added to the current note locally; saving the call remains a separate
-explicit action. Existing note text is preserved and the 4,000-character limit is
-checked before insertion.
+The primary workflow is now "Gespräch aus Plaud auswählen": connect a personal
+Plaud account, select a synchronized conversation, review an existing summary,
+then transfer it into the current note. Each `mitarbeiter` or `admin` connects
+their own account. No AI key is needed to read existing Plaud summaries.
+The original form stays open while authentication takes place in a separate tab.
+After authentication, return to the original tab and select "Verbindung prüfen".
+Saving the call remains a separate explicit action. Existing note text is
+preserved and the 4,000-character limit is checked before insertion.
+
+The connection uses Plaud's official remote MCP endpoint and OAuth with PKCE.
+Plaud Cloud Sync must be enabled and the summary must already exist in Plaud.
+The MCP service currently exposes personal recordings; shared Teamworks files
+are not supported. It cannot generate missing summaries. Text/file import is
+still available under the secondary manual-import section.
+
+**Data processing:** Plaud documents its hosted MCP service as running in the
+USA. The connection dialog discloses this before registration/authorization.
+An EU Mistral configuration does not change the location of the Plaud MCP service.
+See [Plaud MCP documentation](https://docs.plaud.ai/plaud-mcp-cli/mcp) and
+[Plaud's MCP help](https://support.plaud.ai/hc/en-us/articles/57751078986265-Plaud-MCP).
+
+Configure `APP_PUBLIC_URL` to the public HTTPS origin, for example
+`https://curaaed.onrender.com`. On Render the built-in `RENDER_EXTERNAL_URL` is
+used automatically if `APP_PUBLIC_URL` is unset. Set the explicit URL when using
+a custom domain. The OAuth callback is `<origin>/api/plaud/callback`; no other
+Plaud API key or manually registered OAuth client is required. Registration is
+performed with Plaud when the employee explicitly starts the connection.
+
+OAuth access and refresh tokens are encrypted per user using AES-256-GCM.
+By default, `.plaud-token-key` is created beside `DB_PATH`, so that directory
+**must be persistent**. Back up the key securely together with the database.
+Alternatively, set a stable, random 32-byte base64 `PLAUD_TOKEN_KEY` in the host's
+secret store and retain it in protected backups. Losing or changing the key
+requires employees to remove and reconnect their Plaud accounts. The key and
+tokens are never exposed to the browser. "Verbindung entfernen" deletes local
+credentials only; an employee can also revoke the grant in their Plaud account.
+
+The integration has automated OAuth, HTTP/MCP, permissions, account-isolation
+and UI tests using mock provider responses. A full live OAuth connection with
+an authorized Plaud account still needs to be verified after deployment.
 
 For audio transcription or additional AI summarization, configure one central
 `MISTRAL_API_KEY` on the app host. On Render, open the web service's Environment

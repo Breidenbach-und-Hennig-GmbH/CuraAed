@@ -87,7 +87,7 @@ test('Plaud: Audio benötigt Zustimmung und wird anschließend einmal verarbeite
   assert.equal(u.anfragen[0].form.get('modus'), 'zusammenfassen');
   assert.equal(u.bemerkung.value, 'Heizung prüfen');
   assert.equal(u.plaud.werte().aufnahme, 'audio');
-  assert.equal(u.plaud.block.querySelector('details').hidden, false);
+  assert.equal(u.plaud.block.querySelector('.tel-plaud-abschrift').hidden, false);
   assert.equal(u.zust.checked, false);
 });
 

@@ -32,6 +32,19 @@ CREATE TABLE IF NOT EXISTS sitzungen (
   ablauf_am   TEXT NOT NULL
 );
 
+-- Persönliche Plaud-Verbindungen: Tokens und Clientdaten nur verschlüsselt.
+CREATE TABLE IF NOT EXISTS plaud_verbindungen (
+  benutzer_id INTEGER PRIMARY KEY REFERENCES benutzer(id) ON DELETE CASCADE,
+  daten TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS plaud_anmeldungen (
+  state_hash TEXT PRIMARY KEY,
+  benutzer_id INTEGER NOT NULL REFERENCES benutzer(id) ON DELETE CASCADE,
+  session_hash TEXT NOT NULL,
+  ablauf INTEGER NOT NULL,
+  daten TEXT NOT NULL
+);
+
 -- ---------------------------------------------------------------------------
 -- Objekte (Häuser). WEG vs. Miete unterscheidbar.
 -- ---------------------------------------------------------------------------
