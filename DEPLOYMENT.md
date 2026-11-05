@@ -73,3 +73,23 @@ Back up the DB file **and** `UPLOAD_DIR` together.
 ## Optional: AI summaries
 
 Set `MISTRAL_API_KEY` (and optionally `MISTRAL_ZUSAMMENFASSUNG_MODELL`). Outbound HTTPS to `api.mistral.ai` must be allowed. Without the key, only this feature is disabled.
+
+### Plaud in the call intake form
+
+The simplest workflow needs no AI key in this app: copy the finished summary in
+Plaud, paste it into "Notiz aus Plaud", then select "In Bemerkung übernehmen".
+The text is added to the current note locally; saving the call remains a separate
+explicit action. Existing note text is preserved and the 4,000-character limit is
+checked before insertion.
+
+For audio transcription or additional AI summarization, configure one central
+`MISTRAL_API_KEY` on the app host. On Render, open the web service's Environment
+settings, add that secret and apply it with a deploy/restart. Do not enter keys
+into the application's notes or commit them to GitHub. An absent key is a host
+configuration issue, not an employee permission issue.
+
+Every signed-in `mitarbeiter` and `admin` can use the processing endpoint with
+this shared server configuration. No employee-specific AI key is required.
+The `leser` role remains read-only. A configured key's validity and provider
+quota must still be checked with the provider; the status endpoint only reports
+whether a nonblank key is configured.

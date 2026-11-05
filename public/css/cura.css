@@ -579,6 +579,10 @@ kbd { font: 12px/1.6 inherit; font-family: inherit; color: var(--cu-grau); backg
 .tel-plaud-titel { display: block; font-weight: 600; margin-bottom: 6px; }
 .tel-plaud-dateiname { margin-top: 8px; font-weight: 600; overflow-wrap: anywhere; }
 .tel-plaud-hinweis { line-height: 1.5; }
+.tel-plaud textarea { display: block; width: 100%; box-sizing: border-box; min-height: 110px; margin-top: 6px; font-size: 16px; }
+.tel-plaud-uebernehmen, .tel-plaud-text-ki { min-height: 44px; margin: 0; flex: 1 1 220px; }
+.tel-plaud-datei-option { margin-top: 12px; }
+.tel-plaud-datei-option > summary { min-height: 44px; display: list-item; cursor: pointer; padding: 10px 0; }
 .tel-plaud .tel-haken { margin-top: 8px; min-height: 44px; }
 .tel-plaud-knoepfe { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .tel-plaud-knopf { flex: 1 1 220px; min-height: 44px; margin: 0; }
