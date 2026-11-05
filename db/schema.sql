@@ -1,0 +1,474 @@
+-- Hausverwaltung – Datenbankschema (Stufe 1)
+-- WEG-/Mietverwaltung: Objekte, Einheiten, zentrale Adressdatenbank,
+-- rollenbasierte Zuordnungen (zeitlich nachvollziehbar) und Dokumentenarchiv.
+
+PRAGMA foreign_keys = ON;
+
+-- ---------------------------------------------------------------------------
+-- Benutzer (interne Mitarbeiter). Kundenzugänge werden in einer späteren
+-- Ausbaustufe ergänzt; das Rollenmodell ist bereits darauf vorbereitet.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS benutzer (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  benutzername  TEXT NOT NULL UNIQUE,
+  passwort_hash TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  email         TEXT,
+  -- interne Rollen: admin | mitarbeiter | leser
+  -- vorbereitet (Stufe „Kundenzugang"): eigentuemer | mieter
+  rolle         TEXT NOT NULL DEFAULT 'mitarbeiter',
+  -- optionale Verknüpfung eines Kundenkontos mit einer Adresse (spätere Stufe)
+  adresse_id    INTEGER REFERENCES adressen(id) ON DELETE SET NULL,
+  aktiv         INTEGER NOT NULL DEFAULT 1,
+  erstellt_am   TEXT NOT NULL DEFAULT (datetime('now')),
+  geaendert_am  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Serverseitige Sitzungen (HttpOnly-Cookie-Token). Überlebt Neustarts.
+CREATE TABLE IF NOT EXISTS sitzungen (
+  token       TEXT PRIMARY KEY,
+  benutzer_id INTEGER NOT NULL REFERENCES benutzer(id) ON DELETE CASCADE,
+  erstellt_am TEXT NOT NULL DEFAULT (datetime('now')),
+  ablauf_am   TEXT NOT NULL
+);
+
+-- ---------------------------------------------------------------------------
+-- Objekte (Häuser). WEG vs. Miete unterscheidbar.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS objekte (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  bezeichnung   TEXT NOT NULL,
+  objekttyp     TEXT NOT NULL DEFAULT 'WEG',   -- WEG | MIETE
+  strasse       TEXT,
+  plz           TEXT,
+  ort           TEXT,
+  land          TEXT DEFAULT 'Deutschland',
+  nummer        TEXT,                           -- Objekt-Nr. (eindeutig, z. B. 1001)
+  baujahr       TEXT,
+  notizen       TEXT,                           -- „Info" zum Objekt
+  -- Objektmaske nach HausPerfekt
+  objekt_art    TEXT,                           -- Objekt-Typ im Klartext, z. B. „Mehrfamilienhaus eines Eigentümers"
+  buero_kst     TEXT,                           -- gehört zu Büro-KST
+  sachbearbeiter_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  gruppe1 TEXT, gruppe2 TEXT, gruppe3 TEXT, gruppe4 TEXT, gruppe5 TEXT,
+  heizungsart   TEXT,
+  warmwasser    TEXT,
+  garagenart    TEXT,
+  muellgefaesse TEXT,
+  anzahl_gebaeude  INTEGER,
+  anzahl_eingaenge INTEGER,
+  verkauf       INTEGER NOT NULL DEFAULT 1,     -- Verkauf (Eigentümerwechsel) möglich: Ja/Nein
+  vermietung    INTEGER NOT NULL DEFAULT 1,     -- Vermietung: Ja/Nein
+  archiviert    INTEGER NOT NULL DEFAULT 0,
+  erstellt_am   TEXT NOT NULL DEFAULT (datetime('now')),
+  geaendert_am  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ---------------------------------------------------------------------------
+-- Verteilerschlüssel je Objekt (Vschl.) mit Anteilen je Einheit.
+-- gesamt = Gesamtanteil (z. B. 1000 MEA); die Summe der Einheitenanteile wird
+-- dagegen geprüft.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS verteilerschluessel (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  objekt_id   INTEGER NOT NULL REFERENCES objekte(id) ON DELETE CASCADE,
+  kuerzel     TEXT NOT NULL,                    -- z. B. 200, 500, SWA
+  bezeichnung TEXT NOT NULL,
+  gesamt      REAL,
+  bemerkung   TEXT,
+  erstellt_am TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (objekt_id, kuerzel)
+);
+CREATE TABLE IF NOT EXISTS einheit_verteilung (
+  schluessel_id INTEGER NOT NULL REFERENCES verteilerschluessel(id) ON DELETE CASCADE,
+  einheit_id    INTEGER NOT NULL REFERENCES einheiten(id) ON DELETE CASCADE,
+  anteil        REAL NOT NULL,
+  PRIMARY KEY (schluessel_id, einheit_id)
+);
+
+-- ---------------------------------------------------------------------------
+-- Bankkonten des Objekts (Hausgeld-, Rücklagen-, Mietkonto …).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS objekt_bank (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  objekt_id    INTEGER NOT NULL REFERENCES objekte(id) ON DELETE CASCADE,
+  kontoart     TEXT NOT NULL DEFAULT 'hausgeld', -- hausgeld | ruecklage | miete | kaution | sonstiges
+  kontoinhaber TEXT NOT NULL,
+  iban         TEXT NOT NULL,
+  bic          TEXT,
+  bankname     TEXT,
+  standard     INTEGER NOT NULL DEFAULT 0,
+  bemerkung    TEXT,
+  erstellt_am  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_objbank_objekt ON objekt_bank(objekt_id);
+
+-- ---------------------------------------------------------------------------
+-- Einheiten je Objekt (Wohnungen, Stellplätze, Gewerbe, ...).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS einheiten (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  objekt_id     INTEGER NOT NULL REFERENCES objekte(id) ON DELETE CASCADE,
+  nummer        TEXT,                           -- Einheit-Nr. (eindeutig, z. B. 1001-01)
+  bezeichnung   TEXT NOT NULL,                  -- z. B. "WE 1", "Stellplatz 3"
+  einheitstyp   TEXT NOT NULL DEFAULT 'wohnung',-- wohnung | stellplatz | gewerbe | keller | sonstiges
+  lage          TEXT,                           -- z. B. "2. OG links"
+  flaeche_qm    REAL,
+  zimmer        REAL,
+  mea           TEXT,                           -- Miteigentumsanteil (WEG)
+  notizen       TEXT,
+  archiviert    INTEGER NOT NULL DEFAULT 0,
+  erstellt_am   TEXT NOT NULL DEFAULT (datetime('now')),
+  geaendert_am  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_einheiten_objekt ON einheiten(objekt_id);
+
+-- ---------------------------------------------------------------------------
+-- Zentrale Adressdatenbank (Person ODER Firma). Einmal anlegen, mehrfach
+-- verknüpfen. Rollen werden NICHT hier gespeichert, sondern als eigene
+-- Beziehung (rollen_zuordnungen), damit Mehrfachrollen möglich sind.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS adressen (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  nummer        TEXT,                           -- Adress-Nr. (eindeutig, z. B. 10001)
+  adresstyp     TEXT NOT NULL DEFAULT 'person', -- person | firma
+  anrede        TEXT,                           -- Herr | Frau | Divers | (leer)
+  vorname       TEXT,
+  nachname      TEXT,
+  firmenname    TEXT,
+  zusatz        TEXT,                           -- 2. Namenszeile (z. B. Ehepartner, „Außenstelle …“, „c/o …“)
+  ansprechpartner TEXT,                         -- bei Firmen
+  strasse       TEXT,
+  plz           TEXT,
+  ort           TEXT,
+  land          TEXT DEFAULT 'Deutschland',
+  email         TEXT,
+  telefon       TEXT,
+  mobil         TEXT,
+  notizen       TEXT,
+  geburtstag    TEXT,                           -- ISO-Datum
+  lkto_nr       TEXT,                           -- Personenkonto-Nr. (FIBU)
+  datenschutz_datum TEXT,                       -- Datum der Datenschutz-Einwilligung
+  datenschutz_zustimmung TEXT,                  -- Zustimmung zur Datenweitergabe: ja | nein | NULL (nicht erfasst)
+  ampel         TEXT,                           -- Mitarbeiter-Einschätzung: gruen | gelb | rot | NULL
+  ampel_notiz   TEXT,
+  ampel_datum   TEXT,
+  ampel_von     INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  versand_standard TEXT NOT NULL DEFAULT 'post',  -- Portooptimierung: post | email | beides
+  archiviert    INTEGER NOT NULL DEFAULT 0,
+  erstellt_am   TEXT NOT NULL DEFAULT (datetime('now')),
+  geaendert_am  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Kommunikation je Adresse (mehrere Telefonnummern, E-Mail-Adressen/Webseiten,
+-- Ansprechpartner). Die Spalten telefon/mobil/email in adressen werden daraus
+-- als „Standardwerte" für Suche und Listen abgeleitet (services/kommunikation.js).
+CREATE TABLE IF NOT EXISTS adress_telefone (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  adresse_id  INTEGER NOT NULL REFERENCES adressen(id) ON DELETE CASCADE,
+  art         TEXT NOT NULL DEFAULT 'Telefon',  -- Telefon | Funktelefon | Fax | Geschäftlich | Privat | Sonstiges
+  nummer      TEXT NOT NULL,
+  bemerkung   TEXT,
+  kurzwahl    TEXT,
+  erstellt_am TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_tel_adresse ON adress_telefone(adresse_id);
+
+CREATE TABLE IF NOT EXISTS adress_emails (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  adresse_id  INTEGER NOT NULL REFERENCES adressen(id) ON DELETE CASCADE,
+  adresse     TEXT NOT NULL,                    -- E-Mail-Adresse oder Webseite
+  bemerkung   TEXT,
+  ist_email   INTEGER NOT NULL DEFAULT 1,       -- 1 = E-Mail, 0 = Webseite
+  standard    INTEGER NOT NULL DEFAULT 0,
+  hpmobile    INTEGER NOT NULL DEFAULT 0,
+  erstellt_am TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_mail_adresse ON adress_emails(adresse_id);
+
+CREATE TABLE IF NOT EXISTS adress_ansprechpartner (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  adresse_id  INTEGER NOT NULL REFERENCES adressen(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  funktion    TEXT,
+  telefon     TEXT,
+  email       TEXT,
+  erstellt_am TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_ap_adresse ON adress_ansprechpartner(adresse_id);
+
+-- ---------------------------------------------------------------------------
+-- Rollen-/Funktionszuordnung: verknüpft eine Adresse mit einem Objekt ODER
+-- einer Einheit unter einer Funktionsrolle, mit optionalem Gültigkeitszeitraum.
+-- Eigentümer-/Mieterwechsel werden über gueltig_von/gueltig_bis abgebildet,
+-- ohne Historie zu löschen.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS rollen_zuordnungen (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  adresse_id    INTEGER NOT NULL REFERENCES adressen(id) ON DELETE CASCADE,
+  objekt_id     INTEGER REFERENCES objekte(id) ON DELETE CASCADE,
+  einheit_id    INTEGER REFERENCES einheiten(id) ON DELETE CASCADE,
+  -- rolle: eigentuemer | mieter | handwerker | beirat | verwalter_kontakt |
+  --        hausmeister | sonstiges
+  rolle         TEXT NOT NULL,
+  gueltig_von   TEXT,                           -- ISO-Datum oder NULL (unbefristet)
+  gueltig_bis   TEXT,                           -- ISO-Datum oder NULL (offen)
+  anteil        TEXT,                           -- optional (z. B. Eigentumsanteil)
+  notizen       TEXT,
+  erstellt_am   TEXT NOT NULL DEFAULT (datetime('now')),
+  -- Zuordnung muss sich auf Objekt ODER Einheit beziehen (mindestens eines)
+  CHECK (objekt_id IS NOT NULL OR einheit_id IS NOT NULL),
+  -- Datumslogik: Ende nicht vor Beginn
+  CHECK (gueltig_bis IS NULL OR gueltig_von IS NULL OR gueltig_bis >= gueltig_von)
+);
+CREATE INDEX IF NOT EXISTS idx_zuord_adresse ON rollen_zuordnungen(adresse_id);
+CREATE INDEX IF NOT EXISTS idx_zuord_objekt  ON rollen_zuordnungen(objekt_id);
+CREATE INDEX IF NOT EXISTS idx_zuord_einheit ON rollen_zuordnungen(einheit_id);
+
+-- ---------------------------------------------------------------------------
+-- Zentrales Archiv. Ein Eintrag (Dokument) wird über archiv_verknuepfungen
+-- beliebig vielen Objekten, Einheiten und Adressen zugeordnet (auch keinem –
+-- dann liegt er als „nicht zugeordnet" im Eingang). Feld quelle ist für
+-- spätere iPad-Formulare (Stufe 2), E-Mails (Stufe 3) und Rechnungen (Stufe 4).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS dokumente (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  titel           TEXT NOT NULL,
+  kategorie       TEXT NOT NULL DEFAULT 'sonstiges',
+  -- kategorie: protokoll | vertrag | abrechnung | rechnung | korrespondenz |
+  --            begehung | uebergabe | plan | foto | sonstiges
+  beschreibung    TEXT,
+  dokument_datum  TEXT,            -- Datum des Dokuments (ISO), nicht Upload-Datum
+  original_name   TEXT NOT NULL,
+  speicher_name   TEXT NOT NULL,   -- Name auf der Platte (data/uploads/)
+  mime_type       TEXT,
+  groesse         INTEGER,
+  -- quelle: upload (manuell) | formular (Stufe 2) | email (Stufe 3) | rechnung (Stufe 4)
+  quelle          TEXT NOT NULL DEFAULT 'upload',
+  hochgeladen_von INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  erstellt_am     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Zuordnung eines Archiv-Eintrags zu genau EINEM Ziel je Zeile.
+CREATE TABLE IF NOT EXISTS archiv_verknuepfungen (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  dokument_id  INTEGER NOT NULL REFERENCES dokumente(id) ON DELETE CASCADE,
+  objekt_id    INTEGER REFERENCES objekte(id) ON DELETE CASCADE,
+  einheit_id   INTEGER REFERENCES einheiten(id) ON DELETE CASCADE,
+  adresse_id   INTEGER REFERENCES adressen(id) ON DELETE CASCADE,
+  erstellt_am  TEXT NOT NULL DEFAULT (datetime('now')),
+  CHECK ((objekt_id IS NOT NULL) + (einheit_id IS NOT NULL) + (adresse_id IS NOT NULL) = 1)
+);
+CREATE INDEX IF NOT EXISTS idx_av_dokument ON archiv_verknuepfungen(dokument_id);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_av_objekt  ON archiv_verknuepfungen(dokument_id, objekt_id)  WHERE objekt_id  IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_av_einheit ON archiv_verknuepfungen(dokument_id, einheit_id) WHERE einheit_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_av_adresse ON archiv_verknuepfungen(dokument_id, adresse_id) WHERE adresse_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_av_objekt  ON archiv_verknuepfungen(objekt_id);
+CREATE INDEX IF NOT EXISTS idx_av_einheit ON archiv_verknuepfungen(einheit_id);
+CREATE INDEX IF NOT EXISTS idx_av_adresse ON archiv_verknuepfungen(adresse_id);
+
+-- Eindeutige Nummern (Groß-/Kleinschreibung egal) werden in db/migrate.js
+-- angelegt, weil ältere Datenbanken die Spalten erst per ALTER TABLE erhalten.
+
+-- ---------------------------------------------------------------------------
+-- Kontaktprotokoll („Telefoneingänge"): jeder Anruf, jede E-Mail, jedes
+-- persönliche Gespräch zu einer Adresse.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS kontakte (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  adresse_id   INTEGER NOT NULL REFERENCES adressen(id) ON DELETE CASCADE,
+  art          TEXT NOT NULL DEFAULT 'anruf',   -- anruf | email | gespraech | brief | notiz | sonstiges
+  richtung     TEXT,                            -- eingehend | ausgehend | NULL
+  zeitpunkt    TEXT NOT NULL,                   -- ISO 'YYYY-MM-DDTHH:MM'
+  betreff      TEXT NOT NULL,
+  notiz        TEXT,
+  erfasst_von  INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  intern       INTEGER NOT NULL DEFAULT 0,      -- ZIS: interner Eintrag
+  minuten      INTEGER,                         -- ZIS: Zeitaufwand in Minuten
+  objekt_id    INTEGER REFERENCES objekte(id) ON DELETE SET NULL,
+  einheit_id   INTEGER REFERENCES einheiten(id) ON DELETE SET NULL,
+  -- Maske „Telefoneingang erfassen" (Strg+E)
+  eingang      INTEGER NOT NULL DEFAULT 0,      -- 1 = über die Telefoneingangs-Maske erfasst
+  anrufer_adresse_id INTEGER REFERENCES adressen(id) ON DELETE SET NULL,
+  anrufer_name TEXT,
+  rueckruf_tel TEXT,
+  pfkt_code    TEXT,
+  erledigt     INTEGER NOT NULL DEFAULT 1,
+  rueckruf_sb_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  team         TEXT,
+  zis          INTEGER NOT NULL DEFAULT 1,      -- im Z.I.S. anzeigen
+  aufnahme     TEXT,                            -- Bemerkung aus Plaud: audio | text | NULL
+  aufnahme_zustimmung INTEGER NOT NULL DEFAULT 0, -- Gesprächspartner hat der Aufzeichnung zugestimmt (§ 201 StGB)
+  erstellt_am  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_kontakte_adresse ON kontakte(adresse_id, zeitpunkt);
+
+-- ---------------------------------------------------------------------------
+-- Wiedervorlagen zu einer Adresse. quelle: manuell | handwerkerauftrag (später)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS wiedervorlagen (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  adresse_id    INTEGER NOT NULL REFERENCES adressen(id) ON DELETE CASCADE,
+  faellig_am    TEXT NOT NULL,                  -- ISO-Datum
+  betreff       TEXT NOT NULL,
+  notiz         TEXT,
+  zustaendig_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  erledigt      INTEGER NOT NULL DEFAULT 0,
+  erledigt_am   TEXT,
+  quelle        TEXT NOT NULL DEFAULT 'manuell',
+  erstellt_von  INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  erstellt_am   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_wv_adresse ON wiedervorlagen(adresse_id, erledigt, faellig_am);
+
+-- ---------------------------------------------------------------------------
+-- Portooptimierung: abweichender Versandweg je Dokumentart (sonst Standard).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS adress_versand (
+  adresse_id  INTEGER NOT NULL REFERENCES adressen(id) ON DELETE CASCADE,
+  dokumentart TEXT NOT NULL,
+  kanal       TEXT NOT NULL,                    -- post | email | beides
+  PRIMARY KEY (adresse_id, dokumentart)
+);
+
+-- ---------------------------------------------------------------------------
+-- Bankverbindungen je Adresse (Grundlage für spätere SEPA-Lastschriften/
+-- Auszahlungen). Genau eine kann Standard sein.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS adress_bank (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  adresse_id      INTEGER NOT NULL REFERENCES adressen(id) ON DELETE CASCADE,
+  kontoinhaber    TEXT NOT NULL,
+  iban            TEXT NOT NULL,                -- ohne Leerzeichen, Großbuchstaben
+  bic             TEXT,
+  bankname        TEXT,
+  standard        INTEGER NOT NULL DEFAULT 0,
+  mandatsreferenz TEXT,                         -- SEPA-Lastschriftmandat
+  mandat_datum    TEXT,                         -- Datum der Unterschrift (ISO)
+  mandat_aktiv    INTEGER NOT NULL DEFAULT 0,
+  bemerkung       TEXT,
+  erstellt_am     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_bank_adresse ON adress_bank(adresse_id);
+
+-- ---------------------------------------------------------------------------
+-- Eigentümerversammlungen (ETV) – Übersicht nach Vorbild Vulcavo „Versammlungen".
+-- art: praesenz | hybrid | online; status: vorbereitung | eingeladen | durchgefuehrt
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS versammlungen (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  objekt_id    INTEGER NOT NULL REFERENCES objekte(id) ON DELETE RESTRICT,
+  nummer       INTEGER,                         -- laufende Nr. der Versammlung im Objekt (optional)
+  name         TEXT NOT NULL,                   -- z. B. „ETV 2026"
+  datum        TEXT NOT NULL,                   -- ISO-Datum
+  uhrzeit      TEXT,                            -- HH:MM
+  art          TEXT NOT NULL DEFAULT 'praesenz',
+  ort          TEXT,
+  status       TEXT NOT NULL DEFAULT 'vorbereitung',
+  notizen      TEXT,
+  archiviert   INTEGER NOT NULL DEFAULT 0,
+  erstellt_von INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  erstellt_am  TEXT NOT NULL DEFAULT (datetime('now')),
+  geaendert_am TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_versammlungen_objekt ON versammlungen(objekt_id, datum);
+
+-- ---------------------------------------------------------------------------
+-- Änderungshistorie (Adressen): wer hat wann was geändert. Nur anhängen –
+-- es gibt bewusst keine API zum Ändern oder Löschen von Einträgen.
+-- quelle: intern (Mitarbeiter) | portal (Kundenportal) | system
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS aenderungen (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  zeitpunkt     TEXT NOT NULL DEFAULT (datetime('now')),   -- UTC
+  adresse_id    INTEGER NOT NULL,                          -- bleibt auch nach Löschen lesbar
+  bereich       TEXT NOT NULL,                             -- adresse | telefon | email | ansprechpartner | bank | personenfunktion | versand | ampel
+  datensatz_id  INTEGER,
+  aktion        TEXT NOT NULL,                             -- angelegt | geaendert | geloescht
+  feld          TEXT,
+  alt           TEXT,
+  neu           TEXT,
+  benutzer_id   INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  benutzer_name TEXT,                                      -- Name zum Zeitpunkt der Änderung
+  quelle        TEXT NOT NULL DEFAULT 'intern'
+);
+CREATE INDEX IF NOT EXISTS idx_aenderungen_adresse ON aenderungen(adresse_id, zeitpunkt);
+
+-- ---------------------------------------------------------------------------
+-- FIBU je Objekt (HausPerfekt „Objekt FIBU", Strg+F/Strg+S im Objekt).
+-- rechnungsart: eue (Einnahmen-Überschuss – bei WEG immer) | bilanz
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS fibu_objekt (
+  objekt_id     INTEGER PRIMARY KEY REFERENCES objekte(id) ON DELETE CASCADE,
+  rechnungsart  TEXT NOT NULL DEFAULT 'eue',
+  erstes_bj     INTEGER NOT NULL,
+  aktuelles_bj  INTEGER NOT NULL,
+  ust_option    INTEGER NOT NULL DEFAULT 0,       -- Umsatzsteuer-Option (§ 9 UStG)
+  notiz         TEXT,
+  geaendert_am  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- Kontenrahmen Objekt: Sachkonten 1000–9999 je Objekt
+CREATE TABLE IF NOT EXISTS sachkonten (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  objekt_id      INTEGER NOT NULL REFERENCES objekte(id) ON DELETE CASCADE,
+  nummer         INTEGER NOT NULL,
+  art            TEXT NOT NULL DEFAULT 'S',        -- S = Sachkonto
+  bezeichnung    TEXT NOT NULL,
+  referenz_konto INTEGER,
+  aktiv          INTEGER NOT NULL DEFAULT 1,
+  notiz          TEXT,
+  vs_eg          TEXT,                             -- Verteilerschlüssel Eigentümer (aus HausPerfekt)
+  vs_mi          TEXT,                             -- Verteilerschlüssel Mieter
+  hp_attribute   TEXT,                             -- weitere Abrechnungsangaben aus HausPerfekt (JSON)
+  erstellt_am    TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (objekt_id, nummer)
+);
+-- Werte je Buchungsjahr (Wirtschaftsplan-Ansatz)
+CREATE TABLE IF NOT EXISTS sachkonto_werte (
+  sachkonto_id INTEGER NOT NULL REFERENCES sachkonten(id) ON DELETE CASCADE,
+  jahr         INTEGER NOT NULL,
+  wp_ansatz    REAL,
+  PRIMARY KEY (sachkonto_id, jahr)
+);
+
+-- ---------------------------------------------------------------------------
+-- Personenkonten (HausPerfekt „Personenkonto zur Wohnung", Strg+P in der Wohnung):
+-- je Personenfunktion (Eigentümer/Mieter einer Einheit) genau ein Konto.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS personenkonten (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  objekt_id     INTEGER NOT NULL REFERENCES objekte(id) ON DELETE CASCADE,
+  zuordnung_id  INTEGER NOT NULL UNIQUE REFERENCES rollen_zuordnungen(id) ON DELETE RESTRICT,
+  nummer        TEXT NOT NULL,                    -- PKto-Nr., z. B. 100201
+  ref_nr        TEXT,
+  sachbearbeiter_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  bemerkung     TEXT,                             -- Wichtige Informationen
+  erstellt_am   TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (objekt_id, nummer)
+);
+-- Sollwerte (W.Soll): monatlicher Sollstellungsbetrag ab Datum (Hausgeld als Gesamtbetrag)
+CREATE TABLE IF NOT EXISTS pkto_sollwerte (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  personenkonto_id INTEGER NOT NULL REFERENCES personenkonten(id) ON DELETE CASCADE,
+  gilt_ab          TEXT NOT NULL,
+  bezeichnung      TEXT NOT NULL,
+  netto            REAL NOT NULL,
+  betrag           REAL NOT NULL,                 -- Sollstellungsbetrag (brutto)
+  erstellt_am      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_pkto_soll ON pkto_sollwerte(personenkonto_id, gilt_ab);
+
+-- ---------------------------------------------------------------------------
+-- Personenfunktions-Codes wie in HausPerfekt (001 Eigentümer eigengenutzt,
+-- 002 Eigentümer fremdvermietet, …). Die letzte Ziffer bildet die 1. Stelle
+-- der PKto-Nr. (Personenfunktion + Wechsler + Einheitsnummer).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS pfkt_codes (
+  code        TEXT PRIMARY KEY,                  -- dreistellig, z. B. 001 (auch 00M, $LE, SEV …)
+  bezeichnung TEXT NOT NULL,
+  rolle       TEXT NOT NULL,                     -- eigentuemer | mieter | handwerker | …
+  kennz       TEXT                               -- HausPerfekt Mieter/Eigentümer: E | M | L | A
+);
+INSERT OR IGNORE INTO pfkt_codes (code, bezeichnung, rolle) VALUES
+  ('001', 'Eigentümer eigengenutzt', 'eigentuemer'),
+  ('002', 'Eigentümer fremdvermietet', 'eigentuemer');

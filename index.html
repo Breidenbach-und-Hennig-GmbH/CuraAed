@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="ai4-preview-revision" content="0" />
+    <title>Hausverwaltung – Dienst</title>
+    <script src="/.ai4-preview-bootstrap.js" defer data-ai4-preview-bridge></script>
+    <style>
+      body { font-family: system-ui, sans-serif; background: #f4f6f8; color: #1c2530; display: flex; min-height: 100vh; align-items: center; justify-content: center; margin: 0; padding: 20px; }
+      .box { background: #fff; border: 1px solid #d5dbe1; border-radius: 12px; padding: 28px 32px; max-width: 480px; box-shadow: 0 2px 8px rgba(20,40,60,.08); }
+      h1 { margin: 0 0 8px; font-size: 20px; }
+      p { color: #5a6875; line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    <!-- Projekteigene Fallback-Seite. Die Anwendung wird vom Node-/Express-Server
+         aus /app/public ausgeliefert. Diese Seite erscheint nur, falls der
+         Node-Dienst (vorübergehend) nicht läuft. -->
+    <div class="box">
+      <h1>Hausverwaltung</h1>
+      <p>Der Anwendungsdienst startet gerade oder ist nicht erreichbar. Bitte in wenigen
+        Augenblicken neu laden. Läuft der Dienst, wird hier die Anmeldemaske angezeigt.</p>
+    </div>
+  </body>
+</html>
