@@ -1358,23 +1358,47 @@ function adressFelder(nrInput, nameInput, onWahl) {
 /** Plaud-Gerät: Aufnahme oder Text-Export hochladen → Zusammenfassung in die Bemerkung. */
 function plaudBlock(bemerkung, kontext, k) {
   let herkunft = k ? { aufnahme: k.aufnahme || null, aufnahme_zustimmung: k.aufnahme_zustimmung ? 1 : 0 } : { aufnahme: null, aufnahme_zustimmung: 0 };
-  const datei = el('input', { id: 'tel_plaud_datei', type: 'file', class: 'tel-plaud-datei',
-    accept: 'audio/*,.mp3,.m4a,.wav,.ogg,.opus,.webm,.aac,.flac,.amr,.txt,.md,.srt,.vtt' });
+  const datei = el('input', { id: 'tel_plaud_datei', type: 'file', hidden: 'hidden',
+    accept: 'audio/*,.mp3,.m4a,.wav,.ogg,.opus,.webm,.aac,.flac,.mp4,.amr,.txt,.md,.srt,.vtt', 'aria-label': 'Plaud-Aufnahme oder Text auswählen' });
   const zustimmung = el('input', { id: 'tel_plaud_zust', type: 'checkbox' });
+  const kuerzen = el('input', { type: 'checkbox' });
+  const dateiname = el('div', { class: 'tel-plaud-dateiname', hidden: 'hidden' });
+  const hinweis = el('div', { class: 'tel-plaud-hinweis small', 'aria-live': 'polite' });
   const status = el('div', { class: 'tel-plaud-status small', 'aria-live': 'polite' });
   const abschrift = el('details', { class: 'tel-plaud-abschrift', hidden: 'hidden' }, [el('summary', { text: 'Abschrift anzeigen (wird nicht gespeichert)' }), el('div', { class: 'hp-umbruch' })]);
-  const knopfKi = el('button', { type: 'button', class: 'tel-plaud-knopf', text: '🎙 Plaud-Aufnahme zusammenfassen' });
-  const knopfText = el('button', { type: 'button', class: 'tel-plaud-knopf', text: '📄 Plaud-Text übernehmen' });
+  const hauptknopf = el('button', { type: 'button', class: 'tel-plaud-knopf btn-primary', text: 'Plaud-Datei auswählen' });
+  const wechseln = el('button', { type: 'button', class: 'tel-plaud-wechsel', text: 'Andere Datei', hidden: 'hidden' });
+  const zustZeile = el('label', { class: 'tel-haken tel-plaud-zust', hidden: 'hidden' }, [zustimmung, ' Alle Gesprächspartner haben der Aufzeichnung zugestimmt.']);
+  const textZeile = el('label', { class: 'tel-haken', hidden: 'hidden' }, [kuerzen, ' Text zusätzlich mit KI kürzen']);
+  let kiBereit = null;
+  let laeuft = false;
   const istAudio = () => datei.files[0] && !/\.(txt|md|srt|vtt)$/i.test(datei.files[0].name);
-  const senden = async (modus) => {
+  function anzeigen() {
+    const d = datei.files[0];
+    hauptknopf.disabled = wechseln.disabled = datei.disabled = zustimmung.disabled = kuerzen.disabled = laeuft;
+    hauptknopf.textContent = laeuft ? 'Wird verarbeitet …' : !d ? 'Plaud-Datei auswählen' : istAudio() || kuerzen.checked ? 'Zusammenfassen' : 'Text übernehmen';
+    wechseln.hidden = dateiname.hidden = !d;
+    dateiname.textContent = d ? d.name : '';
+    zustZeile.hidden = !istAudio();
+    textZeile.hidden = !d || istAudio() || kiBereit !== true;
+    hinweis.textContent = kiBereit === false
+      ? 'Die automatische Zusammenfassung ist noch nicht eingerichtet. Du kannst in Plaud einen Text exportieren und ihn hier direkt übernehmen.'
+      : kiBereit === null ? 'Plaud-Text lässt sich direkt übernehmen. Für Audio wird die KI-Verfügbarkeit geprüft.'
+        : 'Aufnahme oder Text aus Plaud auswählen. Die fertige Notiz erscheint im Feld Bemerkung.';
+  }
+  const senden = async () => {
+    if (laeuft) return;
     const d = datei.files[0];
     if (!d) { datei.click(); return; }
-    if (modus === 'uebernehmen' && istAudio()) { toast('„Text übernehmen" geht nur mit einem Text-Export (txt, md, srt). Für Aufnahmen bitte „zusammenfassen".', 'error'); return; }
-    if (istAudio() && !zustimmung.checked) { toast('Bitte bestätigen, dass der Gesprächspartner der Aufzeichnung zugestimmt hat.', 'error'); zustimmung.focus(); return; }
-    if (d.size > 95 * 1024 * 1024) { toast('Die Datei ist größer als 95 MB.', 'error'); return; }
+    if (!/\.(mp3|m4a|wav|ogg|opus|webm|aac|flac|mp4|amr|txt|md|srt|vtt)$/i.test(d.name)) { status.textContent = 'Bitte eine Audiodatei oder einen Plaud-Text (TXT, MD, SRT, VTT) auswählen.'; return; }
+    if (d.size > 95 * 1024 * 1024) { status.textContent = 'Die Datei ist größer als 95 MB. Bitte eine kleinere Aufnahme oder einen Text-Export auswählen.'; return; }
+    const modus = istAudio() || kuerzen.checked ? 'zusammenfassen' : 'uebernehmen';
+    if (modus === 'zusammenfassen' && kiBereit === false) { status.textContent = 'Bitte einen Plaud-Text auswählen oder die automatische Zusammenfassung durch die Administration einrichten lassen.'; return; }
+    if (istAudio() && !zustimmung.checked) { status.textContent = 'Bitte zuerst die Zustimmung aller Gesprächspartner zur Aufzeichnung bestätigen.'; zustimmung.focus(); return; }
     const fd = new FormData();
     fd.append('datei', d); fd.append('modus', modus); fd.append('zustimmung', zustimmung.checked ? '1' : '0'); fd.append('kontext', kontext());
-    knopfKi.disabled = knopfText.disabled = true;
+    laeuft = true;
+    anzeigen();
     status.textContent = modus === 'uebernehmen' ? 'Text wird übernommen …' : istAudio()
       ? 'Aufnahme wird abgeschrieben und zusammengefasst … Bei langen Gesprächen kann das einige Minuten dauern.' : 'Text wird zusammengefasst …';
     try {
@@ -1384,30 +1408,33 @@ function plaudBlock(bemerkung, kontext, k) {
       herkunft = { aufnahme: r.quelle, aufnahme_zustimmung: r.quelle === 'audio' ? 1 : 0 };
       abschrift.hidden = !r.abschrift;
       abschrift.lastChild.textContent = r.abschrift || '';
-      status.textContent = 'Fertig – bitte die Bemerkung prüfen und mit Ok speichern.' + (r.quelle === 'audio' ? ' Die Audiodatei wurde nicht gespeichert.' : '');
+      status.textContent = 'Fertig. Bemerkung prüfen und den Telefoneingang mit „Ok“ speichern.' + (r.quelle === 'audio' ? ' Die Audiodatei wurde nicht gespeichert.' : '');
       datei.value = '';
-    } catch (e) { status.textContent = ''; fehler(e); }
-    knopfKi.disabled = !kiBereit; knopfText.disabled = false;
+      zustimmung.checked = kuerzen.checked = false;
+    } catch (e) { status.textContent = (e && e.message ? e.message : 'Die Verarbeitung ist fehlgeschlagen.') + ' Bitte erneut versuchen oder eine andere Datei auswählen.'; }
+    finally { laeuft = false; anzeigen(); }
   };
-  let kiBereit = true;
   API.get('/gespraech/status').then((s) => {
     kiBereit = !!s.eingerichtet;
-    knopfKi.disabled = !kiBereit;
-    if (!kiBereit) knopfKi.title = 'KI-Zusammenfassung noch nicht eingerichtet (Schlüssel MISTRAL_API_KEY in der Projekt-Konfiguration).';
-  }).catch(() => {});
-  knopfKi.addEventListener('click', () => senden('zusammenfassen'));
-  knopfText.addEventListener('click', () => senden('uebernehmen'));
-  const zustZeile = el('label', { class: 'tel-haken tel-plaud-zust', hidden: 'hidden' }, [zustimmung, ' Gesprächspartner hat der Aufzeichnung zugestimmt (§ 201 StGB)']);
+    anzeigen();
+  }).catch(() => { hinweis.textContent = 'Die KI-Verfügbarkeit konnte nicht geprüft werden. Du kannst die Verarbeitung erneut versuchen oder Plaud-Text direkt übernehmen.'; });
+  hauptknopf.addEventListener('click', senden);
+  wechseln.addEventListener('click', () => datei.click());
+  kuerzen.addEventListener('change', anzeigen);
   datei.addEventListener('change', () => {
-    zustZeile.hidden = !istAudio();
-    status.textContent = datei.files[0] ? 'Gewählt: ' + datei.files[0].name : '';
+    zustimmung.checked = kuerzen.checked = false;
+    abschrift.hidden = true;
+    abschrift.lastChild.textContent = '';
+    status.textContent = datei.files[0] ? istAudio() ? 'Zustimmung bestätigen und auf „Zusammenfassen“ tippen.' : '„Text übernehmen“ fügt den Plaud-Text direkt in die Bemerkung ein.' : '';
+    anzeigen();
   });
   const block = el('div', { class: 'tel-plaud' }, [
-    el('label', { for: 'tel_plaud_datei', class: 'tel-plaud-titel', text: 'Plaud: Aufnahme oder Text-Export auswählen' }),
-    datei, zustZeile,
-    el('div', { class: 'tel-plaud-knoepfe' }, [knopfKi, knopfText]),
+    el('div', { class: 'tel-plaud-titel', text: 'Notiz aus Plaud' }),
+    hinweis, datei, dateiname, zustZeile, textZeile,
+    el('div', { class: 'tel-plaud-knoepfe' }, [hauptknopf, wechseln]),
     status, abschrift,
   ]);
+  anzeigen();
   return { block, werte: () => herkunft };
 }
 
