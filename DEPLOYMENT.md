@@ -1,0 +1,75 @@
+# Deployment
+
+## Requirements
+
+- Node.js 20 LTS (≥ 18 works)
+- Persistent writable storage for the SQLite file and the upload directory
+- HTTPS termination in front of the app (required: the session cookie is `Secure`)
+- Build tools (`python3`, `make`, `g++`) only if no `sqlite3` prebuilt binary exists for your platform
+
+## Install & run
+
+```bash
+npm ci --omit=dev
+export NODE_ENV=production
+export DB_PATH=/var/lib/hausperfekt/hausverwaltung.db
+export UPLOAD_DIR=/var/lib/hausperfekt/uploads
+export ADMIN_PASSWORT=REPLACE_ME          # first start only
+node server.js
+```
+
+- The server listens on `0.0.0.0:${PORT:-8080}`.
+- On startup it applies the schema, runs migrations, removes expired sessions, and creates the first admin if no user exists.
+- There is no build step. `public/` is served as-is.
+- Health check: `GET /api/auth/me` → `200` with `{"benutzer":null}` when not logged in. `GET /` returns the SPA shell.
+
+See [.env.example](.env.example) for all variables.
+
+## Process management
+
+Run exactly **one** instance per database (SQLite, single serialized connection). Use systemd, a container restart policy, or PM2 in fork mode with 1 instance. **Never use cluster mode.**
+
+Example systemd unit:
+
+```ini
+[Service]
+WorkingDirectory=/opt/hausperfekt
+ExecStart=/usr/bin/node server.js
+EnvironmentFile=/etc/hausperfekt/env
+Restart=on-failure
+User=hausperfekt
+```
+
+## Container
+
+There is no Dockerfile in the export. A minimal approach:
+
+- Base image `node:20-slim`, then `npm ci --omit=dev`, copy the source, and `CMD ["node","server.js"]`
+- Mount a volume at e.g. `/data` and set `DB_PATH=/data/hausverwaltung.db`, `UPLOAD_DIR=/data/uploads`
+- Keep `replicas: 1` and use the `Recreate` strategy (no rolling overlap on the same DB file)
+- Prefer local/block storage. SQLite on network file systems (NFS/SMB) can have locking problems.
+
+## Reverse proxy
+
+- Terminate TLS and forward to `127.0.0.1:8080`.
+- Allow request bodies of **≥ 100 MB** (the largest upload is 95 MB). Example for nginx: `client_max_body_size 100m;`
+- Raise read timeouts for `/api/gespraech/zusammenfassen`: AI transcription can take minutes (the app allows up to 15 min). Example for nginx: `proxy_read_timeout 900s;`
+- Recommended: add rate limiting on `/api/auth/login`.
+
+## Backups
+
+Back up the DB file **and** `UPLOAD_DIR` together.
+
+- Consistent online DB copy: `sqlite3 "$DB_PATH" "VACUUM INTO '/backup/hv-$(date +%F).db'"` (or the `.backup` command)
+- Do not copy the DB file while it is being written without one of these methods
+- Migrations write `sicherung-vor-migration-<timestamp>.db` next to the DB. Prune these over time.
+
+## Updates
+
+1. Back up DB + uploads.
+2. Deploy the new code, then run `npm ci --omit=dev`.
+3. Restart. Migrations run automatically and idempotently on start. Check the logs for `[MIGRATION]` / `[FATAL]`.
+
+## Optional: AI summaries
+
+Set `MISTRAL_API_KEY` (and optionally `MISTRAL_ZUSAMMENFASSUNG_MODELL`). Outbound HTTPS to `api.mistral.ai` must be allowed. Without the key, only this feature is disabled.

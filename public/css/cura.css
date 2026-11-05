@@ -1,0 +1,585 @@
+/* CuraAedificii – modernes Erscheinungsbild (violette Navigation, Karten,
+   Schnellaktionen). Wird nach styles.css geladen und überschreibt dessen
+   HausPerfekt-Optik; Funktionen und Tastatur bleiben unverändert. */
+:root {
+  --cu-nav: #4a2a6e;
+  --cu-nav-aktiv: #6c4a96;
+  --cu-violett: #7c3aed;
+  --cu-violett-dunkel: #6a2fd6;
+  --cu-violett-hell: #f3eefd;
+  --cu-violett-zart: #faf7ff;
+  --cu-text: #1f1d2b;
+  --cu-text-2: #4b4760;
+  --cu-grau: #6b6880;
+  --cu-rand: #e8e5ef;
+  --cu-rand-2: #dcd8e6;
+  --cu-flaeche: #f7f6fb;
+  --cu-streifen: #f6f5f9;
+  --cu-gruen-bg: #e4f1ea;
+  --cu-gruen: #1f5c41;
+  --cu-rot: #c93b3b;
+  --cu-rot-bg: #fdf1f1;
+  --cu-radius: 12px;
+  --cu-schatten: 0 1px 2px rgba(30, 20, 60, .04), 0 1px 8px rgba(30, 20, 60, .03);
+  --cu-serif: Georgia, "Times New Roman", serif;
+  /* HausPerfekt-Variablen auf die neue Palette abbilden */
+  --hp-blau: var(--cu-violett);
+  --hp-text: var(--cu-text);
+  --hp-grau: var(--cu-grau);
+  --hp-maske: #fff;
+  --hp-panel-rand: var(--cu-rand);
+  --hp-fenster-rand: var(--cu-rand);
+  --hp-zeile-alt: transparent;
+  --hp-zeile-hover: var(--cu-violett-zart);
+  --primary: var(--cu-violett);
+  --border: var(--cu-rand-2);
+  --text: var(--cu-text);
+  --text-muted: var(--cu-grau);
+}
+
+body {
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  color: var(--cu-text);
+  background: var(--cu-flaeche);
+}
+a { color: var(--cu-violett); }
+
+/* ---------- Symbole ---------- */
+.cu-icon { width: 20px; height: 20px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.cu-icon.cu-klein { width: 16px; height: 16px; }
+.cu-akzent { color: var(--cu-violett); }
+
+/* ---------- Knöpfe & Felder ---------- */
+button, .btn {
+  background: #fff; color: var(--cu-text); border: 1px solid var(--cu-rand-2); border-radius: 8px;
+  padding: 6px 14px; min-height: 36px; gap: 8px; font-weight: 500;
+}
+button:hover, .btn:hover { background: var(--cu-violett-zart); border-color: #cbbcf0; }
+.btn-primary, button.btn-primary { background: var(--cu-violett); color: #fff; border-color: var(--cu-violett); }
+.btn-primary:hover, button.btn-primary:hover { background: var(--cu-violett-dunkel); border-color: var(--cu-violett-dunkel); }
+.btn-danger, button.btn-danger { background: var(--cu-rot); color: #fff; border-color: var(--cu-rot); }
+.btn-danger:hover, button.btn-danger:hover { background: #b23131; }
+:focus-visible { outline: 2px solid var(--cu-violett); outline-offset: 2px; }
+label { color: var(--cu-text-2); font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+input, select, textarea { border: 1px solid var(--cu-rand-2); border-radius: 8px; padding: 7px 10px; min-height: 38px; background: #fff; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--cu-violett); box-shadow: 0 0 0 3px rgba(124, 58, 237, .15); }
+input[type='checkbox'], input[type='radio'] { accent-color: var(--cu-violett); }
+.hp-mini { min-height: 30px; padding: 2px 10px; font-size: 13px; border-radius: 7px; gap: 6px; }
+.hp-mini.hp-pfeil { min-width: 32px; padding: 0 6px; color: var(--cu-violett); }
+kbd { font: 12px/1.6 inherit; font-family: inherit; color: var(--cu-grau); background: var(--cu-streifen); border: 1px solid var(--cu-rand); border-radius: 6px; padding: 0 8px; white-space: nowrap; }
+
+/* ---------- Rahmen: Navigation & Kopfzeile ---------- */
+.hp-kopf { background: transparent; border: none; position: sticky; top: 0; z-index: 60; }
+.cu-nav { display: flex; align-items: stretch; background: var(--cu-nav); color: #fff; min-height: 50px; padding: 0 12px; }
+.cu-nav-logo { display: flex; align-items: center; justify-content: center; width: 52px; color: #f0a3b8; flex: 0 0 auto; }
+.cu-nav-logo .cu-icon { width: 30px; height: 30px; stroke-width: 1.4; }
+.cu-nav-leiste { display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 0 8px; flex: 1; min-width: 0; }
+.cu-nav-leiste::-webkit-scrollbar { display: none; }
+.cu-nav-knopf {
+  background: transparent; border: none; color: #fff; font-weight: 500; font-size: 15px; padding: 8px 16px; min-height: 40px;
+  border-radius: 8px; flex: 0 0 auto;
+}
+.cu-nav-knopf:hover { background: rgba(255, 255, 255, .1); border: none; }
+.cu-nav-knopf.aktiv, .cu-nav-knopf.offen { background: var(--cu-nav-aktiv); }
+.cu-nav-knopf.folgt { opacity: .78; }
+.cu-kopf { display: flex; align-items: center; gap: 24px; background: #fff; border-bottom: 1px solid var(--cu-rand); padding: 10px 32px; flex-wrap: wrap; }
+.cu-marke { font-family: var(--cu-serif); font-size: 27px; color: #3d3550; text-decoration: none; letter-spacing: .2px; white-space: nowrap; }
+.cu-suche { position: relative; flex: 1 1 320px; max-width: 900px; display: flex; align-items: center; }
+.cu-suche-icon { position: absolute; left: 16px; color: var(--cu-text-2); pointer-events: none; }
+.cu-suche-feld { background: var(--cu-streifen); border: 1px solid var(--cu-rand); border-radius: 10px; padding: 10px 14px 10px 48px; min-height: 44px; font-size: 15px; }
+.cu-suche-liste { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 80; background: #fff; border: 1px solid var(--cu-rand);
+  border-radius: 12px; box-shadow: 0 12px 32px rgba(30, 20, 60, .14); padding: 6px; max-height: 60vh; overflow-y: auto; }
+.cu-suche-gruppe { font-size: 12px; font-weight: 600; color: var(--cu-grau); text-transform: uppercase; letter-spacing: .04em; padding: 8px 10px 4px; }
+.cu-suche-leer { padding: 12px; color: var(--cu-grau); }
+.cu-treffer { display: flex; width: 100%; justify-content: flex-start; gap: 10px; border: none; background: none; text-align: left; padding: 8px 10px; min-height: 40px; font-weight: 400; }
+.cu-treffer.aktiv, .cu-treffer:hover { background: var(--cu-violett-hell); border: none; }
+.cu-treffer-nr { color: var(--cu-grau); min-width: 54px; }
+.cu-kopf-rechts { display: flex; align-items: center; gap: 14px; margin-left: auto; }
+.cu-rund { position: relative; width: 42px; min-height: 42px; padding: 0; border: none; border-radius: 50%; background: transparent; color: var(--cu-text-2); }
+.cu-rund:hover { background: var(--cu-streifen); border: none; }
+.cu-rund .cu-icon { width: 24px; height: 24px; }
+#cu-glocke.hat::after { content: ''; position: absolute; top: 8px; right: 9px; width: 9px; height: 9px; border-radius: 50%; background: #e2445c; border: 2px solid #fff; }
+.cu-benutzer { border: none; background: transparent; gap: 10px; padding: 4px 6px; font-size: 16px; font-weight: 500; }
+.cu-benutzer:hover { background: var(--cu-streifen); border: none; }
+.cu-avatar { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%;
+  background: #ece6f7; color: #4a2a6e; font-weight: 700; font-size: 16px; }
+.cu-klassik { display: none; background: #fff; border-bottom: 1px solid var(--cu-rand); }
+.cu-mit-klassik .cu-klassik { display: block; }
+.hp-menue-knopf { border-radius: 6px; }
+.hp-menue-knopf:hover, .hp-menue-knopf.offen { background: var(--cu-violett-hell); border-color: transparent; }
+.hp-werkzeuge { background: #fff; border-top: 1px solid var(--cu-rand); }
+.hp-werkzeug { border-radius: 6px; min-height: 30px; width: 32px; }
+.hp-werkzeug:hover { background: var(--cu-violett-hell); border-color: transparent; }
+
+/* Klapplisten */
+.hp-dropdown { background: #fff; border: 1px solid var(--cu-rand); border-radius: 12px; box-shadow: 0 12px 32px rgba(30, 20, 60, .16); padding: 6px; }
+.hp-menue-eintrag { border-radius: 8px; padding: 8px 12px 8px 30px; min-height: 36px; font-size: 14px; font-weight: 400; }
+.hp-menue-eintrag:hover, .hp-menue-eintrag:focus { background: var(--cu-violett-hell); border-color: transparent; }
+.hp-menue-eintrag.gesperrt { color: #a3a0b3; }
+.hp-me-taste { color: var(--cu-grau); }
+.hp-app-liste { background: #fff; border: 1px solid var(--cu-rand); border-radius: 10px; padding: 6px; }
+
+/* ---------- Arbeitsbereich & Seitenkopf ---------- */
+.hp-desktop { display: block; background: var(--cu-flaeche); padding: 20px 32px 28px; }
+.hp-maske { max-width: none; background: transparent; border: none; box-shadow: none; }
+.hp-breit .hp-maske { max-width: none; }
+.hp-maske-inhalt { padding: 0; }
+.cu-seitenkopf { margin-bottom: 18px; }
+.cu-seitenkopf-oben { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-height: 40px; }
+.cu-brot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 15px; color: var(--cu-text); flex: 1; min-width: 0; }
+.cu-brot a { color: var(--cu-violett); text-decoration: none; font-weight: 500; }
+.cu-brot a:hover { text-decoration: underline; }
+.cu-brot-trenner { color: #a3a0b3; }
+.cu-chip { display: inline-flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--cu-rand-2); border-radius: 8px; padding: 8px 16px; font-size: 15px; }
+.cu-titelzeile { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+.cu-titel { min-width: 0; flex: 1 1 360px; }
+.cu-h1-zeile { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cu-h1-zeile h1 { margin: 0; font-family: var(--cu-serif); font-size: 40px; line-height: 1.15; font-weight: 700; color: #1d1a2a; overflow-wrap: anywhere; }
+.cu-badge { display: inline-block; border: 1.5px solid var(--cu-violett); color: var(--cu-violett); background: var(--cu-violett-zart); border-radius: 8px; padding: 3px 14px; font-size: 14px; white-space: nowrap; }
+.cu-badge-miete { border-color: #e08b8b; color: var(--cu-rot); background: var(--cu-rot-bg); }
+.cu-badge-neutral { border-color: var(--cu-rand-2); color: var(--cu-text-2); background: #fff; }
+.cu-unterzeile { color: var(--cu-text); font-size: 16px; margin-top: 4px; white-space: pre-wrap; }
+.cu-symbolzeile { margin-top: 10px; }
+.cu-symbolzeile .hp-symbole { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+.cu-aktionen { display: flex; flex-wrap: wrap; gap: 10px; }
+.cu-knopf { min-height: 44px; padding: 8px 18px; font-size: 15px; }
+.cu-aktionen .btn-primary { padding: 8px 26px; }
+
+/* ---------- Raster: Hauptspalte + Schnellaktionen ---------- */
+.hp-raster-layout { grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "oben seite" "unten seite"; gap: 18px 20px; align-items: start; }
+.hp-oben { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 16px; }
+.hp-oben > * { flex: none; }
+.cu-karte, .hp-panel, .hp-abschnitt {
+  background: #fff; border: 1px solid var(--cu-rand); border-radius: var(--cu-radius); box-shadow: var(--cu-schatten);
+  padding: 16px 20px; min-width: 0;
+}
+.hp-panel { box-shadow: var(--cu-schatten); }
+.cu-karten-titel { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; font-size: 19px; font-weight: 600; color: #251f38; }
+.cu-karten-titel .cu-icon { width: 34px; height: 34px; padding: 7px; border-radius: 9px; background: var(--cu-violett-hell); }
+.cu-karten-kopf { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.cu-karten-kopf .cu-karten-titel { margin: 0; }
+.hp-zeile .hp-label { color: var(--cu-grau); }
+.hp-blau { color: var(--cu-violett); }
+
+/* Stammdaten (zwei Spalten, Schlüssel/Wert) */
+.cu-spalten { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 0 28px; }
+.cu-spalte + .cu-spalte { border-left: 1px solid var(--cu-rand); padding-left: 28px; }
+.cu-gruppe { padding: 4px 0 10px; }
+.cu-gruppe + .cu-gruppe { border-top: 1px solid var(--cu-rand); padding-top: 14px; }
+.cu-kv { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 10px; padding: 4px 0; font-size: 15px; }
+.cu-kv-l { color: var(--cu-grau); }
+.cu-kv-w { color: var(--cu-text); overflow-wrap: anywhere; }
+.cu-pillen { display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap; margin-top: -4px; }
+.cu-pille { background: var(--cu-gruen-bg); color: #24493a; border-radius: 7px; padding: 7px 16px; font-size: 14px; }
+.hp-objekt-bild { max-width: 220px; width: 220px; min-height: 140px; border-radius: 10px; border: 1px solid var(--cu-rand); background: var(--cu-streifen); padding: 0; align-self: start; }
+.hp-objekt-bild img { border-radius: 10px; }
+
+/* Karten im Reiter */
+.cu-zweispaltig { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; margin-top: 20px; }
+.cu-suche-klein { position: relative; display: flex; align-items: center; flex: 0 1 330px; }
+.cu-suche-klein .cu-icon { position: absolute; left: 12px; color: var(--cu-grau); }
+.cu-karten-suche { padding-left: 40px; min-height: 42px; }
+.cu-streifen .cu-kv { padding: 3px 12px; border-radius: 4px; grid-template-columns: 120px minmax(0, 1fr); font-size: 14px; }
+.cu-streifen .cu-kv:nth-child(odd) { background: var(--cu-streifen); }
+.cu-leer { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 18px; color: var(--cu-grau); font-size: 15px; }
+.cu-leer .cu-icon { width: 44px; height: 44px; stroke-width: 1.3; color: #9b97ac; }
+.hp-notizen { padding: 4px 0; min-height: 0; }
+
+/* Reiter (unterstrichen) */
+.hp-reiter { gap: 0; border-bottom: 1px solid var(--cu-rand); margin: 4px 0 16px; }
+.hp-reiter button { background: transparent; border: none; border-radius: 0; border-bottom: 3px solid transparent; padding: 12px 18px; min-height: 46px;
+  font-size: 15px; font-weight: 500; color: var(--cu-text-2); }
+.hp-reiter button:hover { background: transparent; color: var(--cu-violett); border-color: transparent; border-bottom-color: #d7c8fa; }
+.hp-reiter button.aktiv { background: transparent; color: var(--cu-violett); font-weight: 600; top: 0; border-bottom-color: var(--cu-violett); }
+
+/* Abschnitte (Karten mit Kopf) */
+.hp-abschnitt { padding: 0; margin-top: 16px; overflow: hidden; }
+.hp-abschnitt-kopf { background: #fff; border-bottom: 1px solid var(--cu-rand); padding: 12px 18px; gap: 10px; }
+.hp-abschnitt-kopf .hp-blau { color: #251f38; font-size: 16px; font-weight: 600; }
+.hp-filter { background: #fff; border-bottom: 1px solid var(--cu-rand); padding: 12px 18px; gap: 10px 14px; }
+.hp-hinweis { background: #fffbeb; border-bottom: 1px solid #f4e3a3; }
+
+/* Tabellen */
+.hp-tabelle { font-size: 14px; }
+.hp-tabelle th { background: var(--cu-streifen); color: var(--cu-text-2); font-weight: 500; font-size: 13px; padding: 9px 14px; border-bottom: 1px solid var(--cu-rand); }
+.hp-tabelle td { padding: 8px 14px; border-right: none; border-bottom: 1px solid #f0eef5; }
+.hp-tabelle td + td, .hp-tabelle th + th { border-left: 1px solid #f0eef5; }
+.hp-tabelle tbody tr:nth-child(even) { background: transparent; }
+.hp-tabelle tr.klick:hover { background: var(--cu-violett-zart); }
+.hp-tabelle tr.klick:focus { outline: none; background: var(--cu-violett-hell); box-shadow: inset 3px 0 0 var(--cu-violett); }
+.hp-tabelle tr.hp-fuell { display: none; }
+.hp-tabelle tr.hp-leer td { color: var(--cu-grau); padding: 16px 14px; }
+.hp-tabelle tr.hp-treffer, .hp-tabelle tr.hp-treffer:hover { background: #fff3c4; }
+.cu-karte > .hp-tabelle-wrap, .hp-objekt-vschl .hp-tabelle-wrap { border: 1px solid var(--cu-rand); border-radius: 10px; }
+.hp-objekt-vschl tbody tr:last-child td { border-bottom: none; }
+
+/* Schnellaktionen (rechte Karte) */
+.hp-seitenleiste.cu-karte { padding: 16px; position: sticky; top: 120px; }
+.hp-seitenleiste .hp-knoepfe { display: flex; flex-direction: column; gap: 8px; }
+.cu-schnell, .hp-knoepfe .hp-knopf.cu-schnell {
+  display: flex; width: 100%; margin: 0; justify-content: flex-start; align-items: center; gap: 14px; text-align: left;
+  background: #fff; border: 1px solid var(--cu-rand); border-radius: 8px; padding: 9px 14px; min-height: 46px; font-size: 15px; font-weight: 500; color: var(--cu-text);
+  text-decoration: none;
+}
+.cu-schnell:hover { background: var(--cu-violett-zart); border-color: #d9cdf8; }
+.cu-schnell .cu-icon { color: #3d3550; }
+.cu-schnell-text { flex: 1; min-width: 0; }
+.cu-schnell.gesperrt { color: #8f8ba3; }
+.cu-schnell.gesperrt .cu-icon { color: #a8a4b8; }
+.hp-befehl-zeile { justify-content: flex-start; margin: 14px 2px 0; gap: 10px; }
+.hp-befehl-zeile label { margin: 0; color: var(--cu-grau); font-size: 13px; }
+.hp-befehl { width: 48px; min-height: 34px; text-align: center; }
+.hp-gruppe { color: var(--cu-grau); }
+
+/* Symbole (Wiedervorlagen, Kontakte, Termine, Ampel, Post) */
+.hp-symbol { width: 38px; min-height: 36px; background: #fff; border: 1px solid var(--cu-rand-2); border-radius: 9px; }
+.hp-symbol:hover { background: var(--cu-violett-zart); }
+.hp-symbol-zahl { background: var(--cu-violett); }
+.hp-datenschutz { width: auto; margin-top: 0; border: 1px solid var(--cu-rand-2); border-radius: 9px; background: #fff; min-height: 36px; padding: 2px 12px; color: var(--cu-text); font-size: 14px; }
+.hp-datenschutz:hover { background: var(--cu-violett-zart); border-color: var(--cu-rand-2); }
+
+/* Adressmaske: Karten statt Fensterpanels */
+.hp-anschrift { min-height: 0; font-size: 16px; line-height: 1.55; }
+.hp-lkto { justify-content: flex-start; gap: 12px; font-size: 14px; color: var(--cu-grau); padding: 0 4px; }
+.hp-oben .hp-geburtstag, .hp-oben .hp-anschrift { align-self: stretch; }
+.hp-adresse-anzeigen { text-align: left; margin: 0 0 8px; }
+
+/* Badges & Chips */
+.badge { border-radius: 999px; padding: 1px 10px; font-size: 12px; }
+.badge-aktiv { background: var(--cu-gruen-bg); color: var(--cu-gruen); border-color: transparent; }
+.badge-inaktiv { background: #efeef4; color: var(--cu-grau); border-color: transparent; }
+.badge-kat { background: var(--cu-violett-hell); color: #4c2e8f; border-color: transparent; }
+.chip { border-radius: 999px; }
+.nr-box { background: var(--cu-violett-zart); border: 1px solid var(--cu-rand); border-radius: 10px; }
+.nr-box legend { color: var(--cu-violett); }
+.hint { background: #fffbeb; border-color: #f4e3a3; border-radius: 8px; }
+
+/* ---------- Dialoge ---------- */
+.modal-backdrop { background: rgba(25, 15, 45, .42); padding: 40px 12px; }
+.modal { background: #fff; border: none; border-radius: 14px; box-shadow: 0 24px 60px rgba(25, 15, 45, .28); overflow: hidden; }
+.modal header { background: #fff; border-bottom: 1px solid var(--cu-rand); padding: 14px 16px 14px 22px; }
+.modal header h2 { font-size: 18px; font-weight: 600; color: #251f38; }
+.modal header .modal-x { background: transparent; color: var(--cu-grau); border: none; border-radius: 8px; width: 38px; min-height: 38px; font-size: 16px; font-weight: 400; }
+.modal header .modal-x:hover { background: var(--cu-streifen); color: var(--cu-text); }
+.modal .modal-body { padding: 20px 22px; }
+.modal footer { background: #faf9fc; border-top: 1px solid var(--cu-rand); padding: 12px 22px; }
+
+/* ---------- Statusleiste & Meldungen ---------- */
+.hp-status { background: #fff; border-top: 1px solid var(--cu-rand); color: var(--cu-grau); }
+.hp-status-feld { border-left: 1px solid var(--cu-rand); }
+.hp-anzeige { color: #c4c1d0; }
+.hp-anzeige.an { color: var(--cu-violett); }
+.toast { background: #2a2340; border-radius: 10px; padding: 11px 16px; }
+
+/* ---------- Übersicht (Start) ---------- */
+.cu-start { max-width: 1200px; }
+.cu-start h1 { font-family: var(--cu-serif); font-size: 36px; margin: 8px 0 4px; color: #1d1a2a; }
+.cu-kacheln { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 22px; }
+.cu-kachel { display: flex; flex-direction: column; gap: 6px; background: #fff; border: 1px solid var(--cu-rand); border-radius: var(--cu-radius); padding: 20px;
+  text-decoration: none; color: var(--cu-text); box-shadow: var(--cu-schatten); }
+.cu-kachel:hover { border-color: #cbbcf0; background: var(--cu-violett-zart); }
+.cu-kachel strong { font-size: 18px; }
+.cu-kachel .cu-unterzeile { font-size: 14px; color: var(--cu-grau); }
+.cu-kachel kbd { align-self: flex-start; margin-top: 6px; }
+.cu-kachel-icon { display: inline-flex; width: 44px; height: 44px; align-items: center; justify-content: center; border-radius: 10px; background: var(--cu-violett-hell); color: var(--cu-violett); margin-bottom: 6px; }
+
+/* ---------- Anmeldung ---------- */
+.login-wrap { background: linear-gradient(160deg, #4a2a6e 0%, #6c4a96 55%, #f7f6fb 55.1%); }
+.login-card { max-width: 400px; padding: 28px 28px 24px; text-align: left; }
+.login-card .cu-marke { display: block; font-size: 30px; margin: 4px 0 2px; }
+.login-card .sub { color: var(--cu-grau); margin: 0 0 18px; }
+.login-logo { display: inline-flex; width: 52px; height: 52px; align-items: center; justify-content: center; border-radius: 12px; background: var(--cu-violett-hell); color: var(--cu-violett); }
+.login-logo .cu-icon { width: 30px; height: 30px; }
+
+/* ---------- Z.I.S & Gesamtliste: Markierung in Violett ---------- */
+.hp-tabelle tr.hp-zis-aktiv, .hp-tabelle tr.hp-zis-aktiv:hover,
+.hp-gl-tabelle tbody tr.gewaehlt, .hp-gl-tabelle tbody tr.gewaehlt:hover { background: var(--cu-violett); color: #fff; }
+.hp-zis-eintrag { color: #3b2a6b; }
+.hp-zis-zusatz { border-color: var(--cu-rand); border-radius: 10px; }
+.hp-zis-feld, .hp-zis-text { border-color: var(--cu-rand-2); border-radius: 6px; }
+.hp-gl-liste { border-color: var(--cu-rand); border-radius: 10px; }
+.hp-gl-knoepfe .hp-knopf.aktiv { border-color: var(--cu-violett); box-shadow: inset 0 0 0 1px var(--cu-violett); }
+.hp-sprung-block h3 { background: var(--cu-violett-hell); color: #3b2a6b; border-radius: 6px; }
+.hp-sprung-tabelle td:first-child { color: var(--cu-violett); }
+
+/* ---------- Responsiv ---------- */
+@media (max-width: 1180px) {
+  .hp-raster-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "oben" "unten" "seite"; }
+  .hp-seitenleiste.cu-karte { position: static; }
+  .hp-seitenleiste .hp-knoepfe { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+  .cu-spalten { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .hp-objekt-bild { grid-column: 1 / -1; width: 100%; max-width: none; }
+}
+@media (max-width: 860px) {
+  .cu-kopf { padding: 10px 14px; gap: 10px 14px; }
+  .cu-suche { order: 3; flex: 1 1 100%; max-width: none; }
+  .cu-benutzer-name { display: none; }
+  .hp-desktop { padding: 14px; }
+  .cu-h1-zeile h1 { font-size: 30px; }
+  .cu-spalten, .cu-zweispaltig { grid-template-columns: minmax(0, 1fr); }
+  .cu-spalte + .cu-spalte { border-left: none; padding-left: 0; border-top: 1px solid var(--cu-rand); padding-top: 10px; }
+  .cu-kv { grid-template-columns: 140px minmax(0, 1fr); }
+  .cu-pillen { justify-content: flex-start; }
+  .cu-aktionen { width: 100%; }
+  .cu-suche-klein { flex: 1 1 100%; }
+}
+@media (max-width: 480px) {
+  .cu-nav-knopf span { display: none; }
+  .cu-nav-knopf { padding: 8px 12px; }
+  .cu-marke { font-size: 22px; }
+  .cu-kv { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .cu-aktionen .cu-knopf { flex: 1 1 auto; }
+}
+@media (pointer: coarse) {
+  .cu-nav-knopf, .cu-schnell, .cu-treffer, .cu-benutzer, .hp-mini, .hp-symbol, .hp-datenschutz { min-height: 44px; }
+  .cu-rund { width: 44px; min-height: 44px; }
+  .hp-symbol { width: 44px; }
+}
+
+/* ---------- Drucken ---------- */
+@media print {
+  .cu-nav, .cu-kopf, .cu-klassik, .cu-aktionen, .cu-chip, .hp-seite, .cu-suche-klein, .cu-karten-kopf button { display: none !important; }
+  .hp-desktop { padding: 0; background: #fff; }
+  .hp-raster-layout { grid-template-columns: 1fr; grid-template-areas: "oben" "unten"; }
+  .cu-karte, .hp-panel, .hp-abschnitt { box-shadow: none; }
+}
+
+/* ---------- ETV – Versammlungen ---------- */
+.cu-etv-werkzeug { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; }
+.cu-etv-werkzeug .cu-suche-klein { flex: 0 1 420px; }
+.cu-etv-tabelle .hp-tabelle { border-collapse: separate; border-spacing: 0 10px; margin-top: -10px; }
+.cu-etv-tabelle .hp-tabelle th { background: #fff; border: none; padding: 14px 16px; }
+.cu-etv-tabelle .hp-tabelle th:first-child { border-radius: 10px 0 0 10px; }
+.cu-etv-tabelle .hp-tabelle th:last-child { border-radius: 0 10px 10px 0; }
+.cu-etv-tabelle .hp-tabelle td { background: #fff; border: none; border-top: 1px solid var(--cu-rand); border-bottom: 1px solid var(--cu-rand); padding: 14px 16px; vertical-align: middle; font-size: 15px; }
+.cu-etv-tabelle .hp-tabelle td + td, .cu-etv-tabelle .hp-tabelle th + th { border-left: none; }
+.cu-etv-tabelle .hp-tabelle td:first-child { border-left: 1px solid var(--cu-rand); border-radius: 10px 0 0 10px; color: var(--cu-grau); }
+.cu-etv-tabelle .hp-tabelle td:last-child { border-right: 1px solid var(--cu-rand); border-radius: 0 10px 10px 0; }
+.cu-etv-tabelle .hp-tabelle tr.klick:hover td { background: var(--cu-violett-zart); }
+.cu-etv-tabelle .hp-tabelle tr.hp-leer td { border: 1px solid var(--cu-rand); border-radius: 10px; }
+.cu-etv-status .cu-icon { width: 26px; height: 26px; stroke-width: 2.2; }
+.cu-st-ok { color: #3c9a4f; }
+.cu-st-einl { color: var(--cu-violett); }
+.cu-st-vorb { color: #a3a0b3; }
+.cu-etv-art .cu-icon { width: 24px; height: 24px; color: var(--cu-text-2); }
+.cu-etv-aktionen { display: inline-flex; gap: 10px; }
+.cu-icon-knopf { width: 44px; min-height: 40px; padding: 0; border-radius: 8px; color: var(--cu-text-2); }
+.cu-icon-knopf:hover { color: var(--cu-violett); }
+.cu-sortierknopf { background: none; border: none; padding: 0; min-height: 0; gap: 6px; font: inherit; color: inherit; font-weight: 500; }
+.cu-sortierknopf:hover { background: none; border: none; color: var(--cu-violett); }
+.cu-etv-liste .hp-tabelle-wrap { overflow-x: auto; }
+
+/* ---------- Änderungshistorie ---------- */
+.hp-hist-portal { margin-left: 8px; }
+.hp-hist-alt { color: #8f3b3b; text-decoration: line-through; text-decoration-color: rgba(143, 59, 59, .4); overflow-wrap: anywhere; }
+.hp-hist-neu { color: var(--cu-gruen); font-weight: 500; overflow-wrap: anywhere; }
+
+/* =====================================================================
+   Laptop, Tablet, Smartphone
+   ===================================================================== */
+/* Schnellaktionen: auf breiten Bildschirmen mitlaufend (scrollbar, falls höher als das Fenster) */
+.hp-seitenleiste.cu-karte { max-height: calc(100vh - 140px); overflow-y: auto; }
+.cu-karten-h2 { margin: 0 0 12px; }
+.cu-klapp { width: 100%; margin: 0; padding: 0; min-height: 0; background: none; border: none; justify-content: flex-start; text-align: left; cursor: default; }
+.cu-klapp:hover { background: none; border: none; }
+.cu-klapp-pfeil { display: none; margin-left: auto; transition: transform .15s; }
+.cu-unten { display: none; }
+
+/* Laptop mit wenig Höhe / Smartphone quer: Kopfbereich nicht festhalten */
+@media (max-height: 560px) {
+  .hp-kopf { position: static; }
+  .hp-seitenleiste.cu-karte { position: static; max-height: none; }
+}
+
+/* Tablet & schmale Laptops: eine Spalte, Schnellaktionen direkt unter den Stammdaten (offen) */
+@media (max-width: 1180px) {
+  .hp-raster-layout { grid-template-areas: "oben" "seite" "unten"; }
+  .hp-seitenleiste.cu-karte { max-height: none; overflow: visible; }
+}
+/* Smartphone: Schnellaktionen einklappbar (anfangs zu) */
+@media (max-width: 760px) {
+  .cu-klapp { cursor: pointer; min-height: 44px; }
+  .cu-klapp-pfeil { display: block; }
+  .hp-seitenleiste.zu .cu-karten-h2 { margin-bottom: 0; }
+  .hp-seitenleiste.zu .hp-knoepfe, .hp-seitenleiste.zu .hp-befehl-zeile { display: none; }
+  .hp-seitenleiste.zu .cu-klapp-pfeil { transform: rotate(-90deg); }
+}
+
+/* Smartphone: Navigation unten im Daumenbereich, kompakter Kopf */
+@media (max-width: 760px) {
+  .cu-nav { display: none; }
+  .hp-kopf { position: static; }
+  .cu-kopf { padding: 8px 12px; gap: 8px 10px; }
+  .cu-marke { font-size: 21px; }
+  .cu-kopf-rechts { gap: 2px; }
+  .cu-avatar { width: 38px; height: 38px; font-size: 14px; }
+  .cu-unten {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 70;
+    background: #fff; border-top: 1px solid var(--cu-rand); box-shadow: 0 -2px 12px rgba(30, 20, 60, .06);
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+  }
+  .cu-unten-knopf {
+    flex: 1 1 0; min-width: 0; flex-direction: column; gap: 2px; min-height: 54px; padding: 4px 2px;
+    background: none; border: none; border-radius: 10px; color: var(--cu-text-2); font-size: 11.5px; font-weight: 500;
+  }
+  .cu-unten-knopf span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cu-unten-knopf .cu-icon { width: 22px; height: 22px; }
+  .cu-unten-knopf:hover { background: var(--cu-violett-zart); border: none; }
+  .cu-unten-knopf.aktiv, .cu-unten-knopf.offen { color: var(--cu-violett); background: var(--cu-violett-hell); }
+  .hp { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
+  .hp-status { display: none; }
+  #toast-container { bottom: calc(76px + env(safe-area-inset-bottom)); right: 12px; left: 12px; }
+  .toast { max-width: none; }
+  .hp-desktop { padding: 12px 12px 20px; }
+  .cu-seitenkopf { margin-bottom: 12px; }
+  .cu-brot { font-size: 13px; gap: 6px; }
+  .cu-chip { padding: 6px 10px; font-size: 13px; }
+  .cu-h1-zeile { gap: 10px; }
+  .cu-h1-zeile h1 { font-size: 26px; }
+  .cu-unterzeile { font-size: 14px; }
+  .cu-aktionen .cu-knopf { flex: 1 1 auto; padding: 8px 12px; }
+  .cu-karte, .hp-panel { padding: 14px; }
+  .cu-karten-titel { font-size: 17px; }
+  .hp-reiter button { padding: 10px 12px; font-size: 14px; }
+  .cu-kacheln { grid-template-columns: 1fr; gap: 10px; }
+  .cu-start h1 { font-size: 26px; }
+  .hp-seitenleiste .hp-knoepfe { grid-template-columns: 1fr; }
+  .cu-etv-werkzeug .cu-suche-klein { flex: 1 1 100%; }
+  .cu-etv-werkzeug .btn-primary { flex: 1 1 100%; }
+}
+
+/* Listen auf dem Smartphone als Karten (Spaltenname vor jedem Wert) */
+@media (max-width: 640px) {
+  .hp-tabelle-wrap { overflow: visible; }
+  .hp-abschnitt > .hp-tabelle-wrap, .hp-abschnitt .hp-tabelle-wrap { padding: 10px; }
+  .hp-tabelle.cu-mobil, .hp-tabelle.cu-mobil tbody { display: block; width: 100%; }
+  .hp-tabelle.cu-mobil thead { display: none; }
+  .hp-tabelle.cu-mobil tr { display: block; background: #fff; border: 1px solid var(--cu-rand); border-radius: 10px; padding: 6px 12px; margin: 0 0 10px; }
+  .hp-tabelle.cu-mobil tr:last-child { margin-bottom: 0; }
+  .hp-tabelle.cu-mobil td {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    padding: 6px 0 !important; border: none !important; border-radius: 0 !important; background: none !important; text-align: right; font-size: 14px;
+  }
+  .hp-tabelle.cu-mobil td + td { border-top: 1px solid #f2f0f6 !important; }
+  .hp-tabelle.cu-mobil td::before { content: attr(data-label); flex: 0 0 38%; color: var(--cu-grau); font-size: 13px; text-align: left; }
+  .hp-tabelle.cu-mobil td:not([data-label]) { justify-content: flex-start; text-align: left; }
+  .hp-tabelle.cu-mobil td:not([data-label])::before { content: none; }
+  .hp-tabelle.cu-mobil td.aktionen { justify-content: flex-end; }
+  .hp-tabelle.cu-mobil td:empty { display: none; }
+  .hp-tabelle.cu-mobil td > * { min-width: 0; overflow-wrap: anywhere; }
+  .hp-tabelle.cu-mobil tr.hp-leer td { justify-content: center; text-align: center; }
+  .hp-tabelle.cu-mobil tr.klick:focus { box-shadow: inset 3px 0 0 var(--cu-violett); }
+  .cu-etv-tabelle .hp-tabelle.cu-mobil { border-spacing: 0; margin-top: 0; }
+  .cu-etv-tabelle .hp-tabelle.cu-mobil td:first-child:empty { display: none; }
+
+  /* Dialoge im Vollbild, Knöpfe unten immer erreichbar */
+  .modal-backdrop { padding: 0; align-items: stretch; }
+  .modal, .modal.wide, .modal.hp-gl-fenster { max-width: none; width: 100%; min-height: 100%; margin: 0; border-radius: 0; display: flex; flex-direction: column; }
+  .modal header { position: sticky; top: 0; z-index: 2; }
+  .modal .modal-body { max-height: none; flex: 1; padding: 16px; }
+  .modal footer { position: sticky; bottom: 0; z-index: 2; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+  .modal footer button { flex: 1 1 auto; min-height: 44px; }
+}
+
+/* Touch: großzügige Ziele auch für neue Elemente */
+@media (pointer: coarse) {
+  .cu-klapp, .cu-icon-knopf, .cu-sortierknopf, .cu-unten-knopf { min-height: 44px; }
+  .cu-brot a { display: inline-flex; align-items: center; min-height: 32px; }
+}
+
+/* ---------- FIBU Gesamtmenü ---------- */
+.cu-fibu-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; align-items: start; }
+.cu-fibu-gruppe .hp-knoepfe { display: flex; flex-direction: column; gap: 6px; }
+.cu-fibu-gruppe .cu-schnell { min-height: 40px; padding: 7px 12px; font-size: 14px; }
+.cu-fibu-gruppe .cu-schnell .cu-icon { width: 16px; height: 16px; transform: rotate(-90deg); }
+.cu-fibu-gruppe[hidden], .cu-fibu-gruppe .cu-schnell[hidden] { display: none; }
+@media (pointer: coarse) { .cu-fibu-gruppe .cu-schnell { min-height: 44px; } }
+
+/* ---------- Kontenrahmen Objekt (Objekt FIBU) ---------- */
+.cu-bj-wahl { width: auto; min-height: 40px; font-weight: 600; color: var(--cu-rot); }
+.cu-fibu-knoepfe { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
+.cu-fibu-knoepfe .hp-mini.gesperrt { color: #a3a0b3; }
+.cu-konto-nr { display: inline-flex; align-items: center; gap: 10px; }
+.cu-konto-art { font-size: 12px; font-weight: 700; color: var(--cu-violett); background: var(--cu-violett-hell); border-radius: 5px; padding: 0 6px; }
+.cu-kb { color: #a3a0b3; font-size: 13px; }
+.cu-summe { margin-top: 10px; text-align: right; color: var(--cu-text-2); font-size: 14px; }
+@media (pointer: coarse) { .cu-fibu-knoepfe .hp-mini { min-height: 44px; } }
+.cu-konto-art.cu-art-B { color: #1f5c41; background: var(--cu-gruen-bg); }
+.cu-konto-art.cu-art-A { color: #8a4b00; background: #fdf0dc; }
+
+/* ---------- Wohnung: Eigentümer/Mieter, Personenkonto ---------- */
+.cu-abstand { margin-top: 16px; }
+.cu-pfkt-raster { margin-top: 0; margin-bottom: 4px; }
+.cu-pfkt-person + .cu-pfkt-person { border-top: 1px solid var(--cu-rand); margin-top: 12px; padding-top: 12px; }
+.cu-pfkt-kopf { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-bottom: 10px; font-size: 15px; }
+.cu-pfkt-kopf a { font-weight: 600; text-decoration: none; }
+.cu-pkto-link { color: var(--cu-violett); background: var(--cu-violett-hell); border-radius: 7px; padding: 4px 10px; }
+.cu-kein-pkto { display: inline-flex; align-items: center; gap: 8px; color: var(--cu-rot); font-weight: 600; }
+
+/* ---------- IBAN-Prüfung im Bankformular ---------- */
+.cu-iban-status { margin-top: 6px; font-size: 13px; line-height: 1.45; }
+.cu-iban-status.ok { color: var(--cu-gruen); }
+.cu-iban-status.hinweis { color: #8a4b00; }
+.cu-iban-status.fehler { color: var(--cu-rot); font-weight: 500; }
+.cu-hp-attribute { display: flex; flex-wrap: wrap; gap: 6px; }
+.cu-import-ergebnis { margin-top: 12px; }
+
+/* Datenschutz: Zustimmung zur Datenweitergabe – grüner Haken / rotes X */
+.hp-datenschutz .hp-ds-icon, .hp-ds-knopf.nein .hp-ds-icon { background: #d93025; }
+.hp-datenschutz.ok .hp-ds-icon, .hp-ds-knopf.ja .hp-ds-icon { background: #2e9b45; }
+.hp-ds-wahl { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 14px; }
+.hp-ds-knopf { flex: 1 1 200px; display: flex; align-items: center; gap: 10px; min-height: 48px; margin: 0; padding: 8px 14px;
+  border: 2px solid var(--cu-rand-2); border-radius: 10px; background: #fff; color: var(--cu-text); text-align: left; }
+.hp-ds-knopf .hp-ds-icon { width: 24px; height: 24px; font-size: 14px; flex: none; }
+.hp-ds-knopf.ja.aktiv { border-color: #2e9b45; background: #e8f5ec; }
+.hp-ds-knopf.nein.aktiv { border-color: #d93025; background: #fdecea; }
+
+/* Telefoneingang erfassen (Strg+E) – Aufbau wie HausPerfekt */
+.modal.tel-fenster { max-width: 1080px; }
+.tel-maske { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 16px; }
+.tel-links, .tel-rechts { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.tel-block { border: 1px solid var(--cu-rand-2); border-radius: 10px; padding: 10px 12px; margin: 0; min-width: 0; }
+.tel-block legend { font-size: 13px; padding: 0 4px; }
+.tel-block textarea { width: 100%; min-height: 110px; }
+.tel-zeile { display: grid; grid-template-columns: 170px auto minmax(0, 1fr); gap: 8px; align-items: center; margin: 4px 0; }
+.tel-zeile > label { font-weight: 600; }
+.tel-zeile > input:only-of-type { grid-column: 2 / 4; }
+.tel-bezug .tel-zeile { grid-template-columns: 90px 110px minmax(0, 1fr); }
+.tel-nr { width: 90px; }
+.tel-kurz { width: 110px; }
+.tel-wtext { color: var(--cu-text-2, #555); }
+.tel-reihe { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 4px 0; }
+.tel-reihe select { width: 90px; }
+.tel-reihe #tel_team { flex: 1 1 140px; width: auto; }
+.tel-reihe input[type=date] { width: 160px; } .tel-reihe input[type=time] { width: 110px; }
+.tel-sb { margin-left: auto; display: inline-flex; gap: 8px; align-items: center; }
+.tel-haken { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; font-weight: 600; }
+.tel-haken input { width: 20px; height: 20px; margin: 0; }
+.tel-haken.aus { color: #9aa0a6; cursor: default; }
+.tel-info { border: 1px solid var(--cu-rand-2); border-radius: 10px; padding: 10px 12px; min-height: 180px; background: var(--cu-violett-zart, #f6f3fc); font-size: 14px; }
+.tel-info-kopf { margin-top: 8px; font-size: 12px; }
+.tel-pfkt { display: block; width: 100%; text-align: left; margin: 4px 0 0; min-height: 44px; padding: 6px 10px; font-size: 13px; }
+.tel-ampel { margin-top: 6px; font-weight: 600; } .tel-ampel.rot { color: #d93025; } .tel-ampel.gelb { color: #b37400; } .tel-ampel.gruen { color: #2e9b45; }
+.tel-optionen { margin-top: auto; }
+.tel-fenster footer { flex-wrap: wrap; align-items: center; }
+.tel-dauer-text { margin-right: auto; font-size: 14px; }
+.tel-dauer { font-variant-numeric: tabular-nums; font-weight: 600; }
+.tel-erl.ja { color: #2e9b45; } .tel-erl.nein { color: #d93025; font-weight: 600; }
+@media (max-width: 760px) {
+  .tel-maske { grid-template-columns: 1fr; }
+  .tel-zeile, .tel-bezug .tel-zeile { grid-template-columns: 1fr; gap: 4px; }
+  .tel-zeile > input, .tel-nr, .tel-kurz { width: 100%; grid-column: auto !important; }
+  .tel-info { min-height: 0; }
+  .tel-sb { margin-left: 0; }
+}
+
+/* Plaud: Aufnahme/Text-Export → Zusammenfassung */
+.tel-plaud { margin-top: 10px; padding: 10px; border: 1px dashed var(--cu-rand-2); border-radius: 10px; background: #fbfaff; }
+.tel-plaud-titel { display: block; font-weight: 600; margin-bottom: 6px; }
+.tel-plaud-datei { width: 100%; min-height: 44px; }
+.tel-plaud-knoepfe { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.tel-plaud-knopf { flex: 1 1 220px; min-height: 44px; margin: 0; }
+.tel-plaud-status { margin-top: 6px; }
+.tel-plaud-abschrift { margin-top: 6px; font-size: 13px; }
+.tel-plaud-abschrift > div { max-height: 220px; overflow: auto; padding: 6px; background: #fff; border-radius: 6px; }

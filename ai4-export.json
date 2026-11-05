@@ -1,0 +1,31 @@
+{
+  "contents": {
+    "ai_assisted": true,
+    "git_history_included": false,
+    "uploads_included": false
+  },
+  "export_version": 1,
+  "generated_docs": {
+    "deployment": "DEPLOYMENT.md",
+    "env_example": ".env.example",
+    "readme": "README.md"
+  },
+  "project_name": "hausperfekt-2-0",
+  "runtime": {
+    "original_ai4_server_command": "cd /app && exec node /app/server.js",
+    "port": 8080
+  },
+  "stack": {
+    "confidence": "high",
+    "name": "node",
+    "signals": [
+      "package.json",
+      "package-lock.json",
+      "server.js"
+    ]
+  },
+  "warnings": [
+    "AI-generated handoff docs were included in this export.",
+    "App runtime data was excluded. Recreate or migrate application data separately for production."
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "CuraAedificii – WEG- und Mietverwaltung",
+  "short_name": "CuraAedificii",
+  "description": "Objekte, Wohnungen, Adressen, Archiv und Eigentümerversammlungen",
+  "lang": "de",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f7f6fb",
+  "theme_color": "#4a2a6e",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

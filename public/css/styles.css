@@ -1,0 +1,535 @@
+/* HausPerfekt 2.0 – Oberfläche im Stil der gewohnten Windows-Masken
+   (hellblauer Arbeitsbereich, Fenstermasken, dichte Raster).
+   Responsiv bis Tablet/Phone; Touch-Ziele ≥ 44 px bei grobem Zeiger. */
+:root {
+  --hp-desk-1: #d6e5f8;
+  --hp-desk-2: #a8c3ea;
+  --hp-maske: #c9dcf4;
+  --hp-panel-rand: #9db8dc;
+  --hp-blau: #1b4fa8;
+  --hp-zeile-alt: #d7e6f8;
+  --hp-zeile-hover: #b9d3f2;
+  --hp-text: #111;
+  --hp-grau: #5e6670;
+  --hp-rot: #d33b2c;
+  --hp-gruen: #1e7d3c;
+  --hp-fenster-rand: #7f9cc3;
+  --hp-knopf-1: #fbfbfb;
+  --hp-knopf-2: #e2e2e2;
+  --hp-knopf-rand: #a6a6a6;
+  --primary: #2a63b0;
+  --danger: #c0352a;
+  --danger-bg: #fbe4e1;
+  --success: #1e7d3c;
+  --border: #9db8dc;
+  --surface: #ffffff;
+  --surface-2: #eef4fc;
+  --text: #111;
+  --text-muted: #5e6670;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--hp-text);
+  background: var(--hp-desk-2);
+}
+a { color: var(--hp-blau); }
+
+/* ---------- Knöpfe & Formularfelder (Windows-Anmutung) ---------- */
+button, .btn {
+  font: inherit;
+  cursor: pointer;
+  color: var(--hp-text);
+  background: linear-gradient(var(--hp-knopf-1), var(--hp-knopf-2));
+  border: 1px solid var(--hp-knopf-rand);
+  border-radius: 3px;
+  padding: 4px 14px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+button:hover, .btn:hover { background: linear-gradient(#ffffff, #d6e8fa); border-color: #6e9fd6; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(#4b8ad6, #2a63b0); color: #fff; border-color: #22549a; }
+.btn-primary:hover { background: linear-gradient(#5b97df, #2557a0); }
+.btn-danger { background: linear-gradient(#e0574b, #b8302a); color: #fff; border-color: #9c271f; }
+.btn-danger:hover { background: linear-gradient(#e86a5f, #a92a24); }
+.btn-sm { min-height: 22px; padding: 1px 8px; font-size: 12px; }
+.btn-ghost { background: transparent; border-color: transparent; }
+
+:focus-visible { outline: 2px solid #1b4fa8; outline-offset: 1px; }
+
+label { display: block; font-size: 12px; color: var(--hp-blau); margin-bottom: 2px; }
+input, select, textarea {
+  width: 100%;
+  font: inherit;
+  color: var(--hp-text);
+  background: #fff;
+  border: 1px solid #8ea9cc;
+  border-radius: 2px;
+  padding: 4px 6px;
+  min-height: 26px;
+}
+textarea { min-height: 70px; resize: vertical; }
+input[type='checkbox'] { width: auto; min-height: 0; }
+.field { margin-bottom: 10px; min-width: 0; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 14px; }
+
+/* iOS-Zoom verhindern: Formfelder ≥ 16 px auf mobilen Breiten */
+@media (max-width: 1023px) {
+  input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']):not([type='image']),
+  textarea, select { font-size: 16px; }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+}
+
+/* ---------- Rahmen: Titelleiste, Menüband, Symbolleiste, Statusleiste ---------- */
+.hp { min-height: 100vh; display: flex; flex-direction: column; }
+.hp-kopf { background: #fff; border-bottom: 1px solid #c8c8c8; }
+.hp-titelleiste { display: flex; align-items: center; gap: 8px; padding: 3px 8px; font-size: 13px; flex-wrap: wrap; }
+.hp-logo { background: #1f8f8f; color: #fff; font-weight: 700; font-size: 11px; padding: 1px 4px; border-radius: 2px; }
+.hp-app { font-weight: 600; }
+.hp-spacer { flex: 1; }
+.hp-titelleiste .hp-abmelden { min-height: 22px; padding: 1px 10px; font-size: 12px; }
+
+.hp-menueleiste { display: flex; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; padding: 0 4px; }
+.hp-menue-knopf {
+  background: none; border: 1px solid transparent; border-radius: 0;
+  padding: 2px 8px; min-height: 24px; font-size: 13px; color: #000; flex: 0 0 auto;
+}
+.hp-menue-knopf:hover, .hp-menue-knopf.offen { background: #cce8ff; border-color: #99d1ff; }
+
+.hp-dropdown {
+  position: fixed; z-index: 150; min-width: 260px; max-width: calc(100vw - 8px);
+  max-height: calc(100vh - 80px); overflow-y: auto;
+  background: #f2f2f2; border: 1px solid #b9b9b9; box-shadow: 2px 3px 8px rgba(0,0,0,.25); padding: 2px;
+}
+.hp-menue-eintrag {
+  display: flex; width: 100%; justify-content: space-between; gap: 24px;
+  background: none; border: 1px solid transparent; border-radius: 0;
+  padding: 3px 10px 3px 24px; min-height: 26px; font-size: 13px; text-align: left;
+}
+.hp-menue-eintrag:hover, .hp-menue-eintrag:focus { background: #cce8ff; border-color: #99d1ff; outline: none; }
+.hp-menue-eintrag.gesperrt { color: #7d7d7d; }
+.hp-me-taste { color: #555; font-size: 12px; }
+.hp-trenner { height: 1px; background: #cfcfcf; margin: 3px 4px 3px 24px; }
+
+.hp-werkzeuge { display: flex; flex-wrap: wrap; align-items: center; gap: 1px; padding: 1px 6px; background: #f3f3f3; border-top: 1px solid #e2e2e2; }
+.hp-werkzeug {
+  background: none; border: 1px solid transparent; border-radius: 2px;
+  width: 28px; min-height: 26px; padding: 0; font-size: 15px; line-height: 1;
+}
+.hp-werkzeug:hover { background: #cce8ff; border-color: #99d1ff; }
+.hp-werkzeug-trenner { width: 1px; height: 18px; background: #c8c8c8; margin: 0 5px; }
+
+.hp-desktop {
+  flex: 1;
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px;
+  padding: 8px;
+  background: linear-gradient(180deg, var(--hp-desk-1), var(--hp-desk-2));
+  min-width: 0;
+}
+
+.hp-status { display: flex; flex-wrap: wrap; background: #f0f0f0; border-top: 1px solid #c8c8c8; font-size: 12px; }
+.hp-status > span { padding: 3px 12px; }
+.hp-status-feld { border-left: 1px solid #c8c8c8; }
+
+/* ---------- Maske (Fenster) ---------- */
+.hp-maske {
+  flex: 1 1 760px; max-width: 1100px; min-width: 0;
+  background: var(--hp-maske);
+  border: 1px solid var(--hp-fenster-rand);
+  box-shadow: 1px 2px 6px rgba(20, 50, 90, .25);
+}
+.hp-maske-titel {
+  display: flex; align-items: center; gap: 6px;
+  background: linear-gradient(#eaf1fa, #d3e1f3);
+  border-bottom: 1px solid var(--hp-fenster-rand);
+  padding: 2px 2px 2px 8px;
+}
+.hp-maske-titel h1 { flex: 1; margin: 0; font-size: 13px; font-weight: 400; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hp-schliessen, .modal header .modal-x {
+  background: linear-gradient(#e7675b, var(--hp-rot)); color: #fff; border: 1px solid #a2281d;
+  border-radius: 2px; min-height: 22px; width: 34px; padding: 0; font-size: 13px; font-weight: 700;
+}
+.hp-schliessen:hover, .modal header .modal-x:hover { background: linear-gradient(#f07e72, #c22f21); }
+.hp-maske-inhalt { padding: 8px; }
+
+.hp-raster-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 128px;
+  grid-template-areas: "oben seite" "unten seite";
+  gap: 8px 10px;
+}
+.hp-oben { grid-area: oben; display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; min-width: 0; }
+.hp-seite { grid-area: seite; min-width: 0; }
+.hp-unten { grid-area: unten; min-width: 0; }
+
+.hp-panel {
+  background: var(--hp-maske);
+  border: 1px solid var(--hp-panel-rand);
+  box-shadow: inset 1px 1px 0 #e9f1fb;
+  padding: 6px 10px;
+  min-width: 0;
+}
+.hp-kopf-panel { flex: 2 1 320px; font-size: 14px; }
+.hp-info { flex: 1 1 200px; font-size: 12px; }
+.hp-such-panel { flex: 1 1 100%; }
+.hp-zeile { display: grid; grid-template-columns: 100px minmax(0, max-content) minmax(0, 1fr); gap: 2px 14px; align-items: center; padding: 2px 0; }
+.hp-zeile .hp-label { color: var(--hp-text); margin: 0; font-size: inherit; }
+.hp-info .hp-zeile .hp-label { color: var(--hp-blau); }
+.hp-zeile .hp-w1:last-child { grid-column: 2 / -1; }
+.hp-w1, .hp-w2 { min-width: 0; overflow-wrap: anywhere; }
+.hp-zeile input, .hp-zeile select { max-width: 420px; }
+.hp-blau { color: var(--hp-blau); }
+.hp-gross { font-weight: 600; text-transform: uppercase; }
+
+/* Seitenleiste mit Befehl-Feld und Knöpfen */
+.hp-sb-box { font-size: 12px; line-height: 1.45; }
+.hp-befehl-zeile { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin: 10px 0 8px; }
+.hp-befehl-zeile label { margin: 0; color: var(--hp-blau); font-size: 12px; }
+.hp-befehl { width: 34px; min-height: 24px; padding: 2px 4px; text-align: center; }
+.hp-knopf {
+  display: flex; width: 100%; margin: 0 0 5px; padding: 2px 6px; min-height: 24px; font-size: 12px;
+  border-radius: 2px;
+}
+.hp-knopf.gesperrt { color: #8a8a8a; }
+.hp-gruppe { color: var(--hp-blau); font-size: 12px; margin: 12px 0 4px; }
+
+/* Reiter */
+.hp-reiter { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--hp-panel-rand); margin-top: 4px; scrollbar-width: thin; }
+.hp-reiter button {
+  flex: 0 0 auto; background: #dbe8f8; border: 1px solid var(--hp-panel-rand); border-bottom: none;
+  border-radius: 3px 3px 0 0; padding: 3px 18px; min-height: 26px; font-size: 14px;
+}
+.hp-reiter button.aktiv { background: #f4f8fd; font-weight: 600; position: relative; top: 1px; }
+
+/* Abschnitte mit Rastern */
+.hp-abschnitt { background: #fff; border: 1px solid var(--hp-panel-rand); margin-top: 6px; min-width: 0; }
+.hp-abschnitt-kopf { display: flex; align-items: center; gap: 6px; padding: 2px 6px; background: #f4f8fd; border-bottom: 1px solid #c6d7ee; flex-wrap: wrap; }
+.hp-mini { min-height: 20px; padding: 0 8px; font-size: 12px; }
+.hp-filter { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 6px; background: #f4f8fd; border-bottom: 1px solid #c6d7ee; }
+.hp-filter input[type='search'] { flex: 1 1 220px; width: auto; }
+.hp-filter select { width: auto; }
+.hp-tabelle-wrap { overflow-x: auto; }
+.hp-tabelle { width: 100%; border-collapse: collapse; font-size: 13px; }
+.hp-tabelle th { color: var(--hp-blau); font-weight: 400; text-align: left; padding: 3px 6px; background: #fff; border-bottom: 1px solid #c6d7ee; white-space: nowrap; }
+.hp-tabelle td { padding: 3px 6px; border-right: 1px solid #e3eaf4; vertical-align: top; }
+.hp-tabelle td:last-child { border-right: none; }
+.hp-tabelle tbody tr:nth-child(even) { background: var(--hp-zeile-alt); }
+.hp-tabelle tr.klick { cursor: pointer; }
+.hp-tabelle tr.klick:hover { background: var(--hp-zeile-hover); }
+.hp-tabelle tr.klick:focus { outline: 2px solid var(--hp-blau); outline-offset: -2px; }
+.hp-tabelle tr.hp-leer td { color: var(--hp-grau); padding: 10px 6px; }
+.hp-tabelle .zahl { text-align: right; }
+.hp-tabelle .aktionen { white-space: nowrap; text-align: right; }
+.hp-tabelle .aktionen > * + * { margin-left: 4px; }
+.hp-notizen { white-space: pre-wrap; padding: 8px; min-height: 60px; }
+.hp-hinweis { padding: 4px 8px; font-size: 12px; color: var(--hp-grau); background: #fffbe6; border-bottom: 1px solid #efe3a6; }
+
+/* Seitenfeld „Tastaturbefehle" */
+.hp-tasten { flex: 0 0 360px; max-width: 100%; background: #fff; border: 1px solid var(--hp-panel-rand); box-shadow: 1px 2px 6px rgba(20, 50, 90, .2); }
+.hp-tasten-titel { color: #8a8f96; background: #eef1f5; padding: 4px 8px; font-size: 13px; }
+.hp-tasten-liste { display: grid; grid-template-columns: auto 1fr; padding: 8px 10px; }
+.hp-taste {
+  display: contents;
+}
+.hp-taste button {
+  background: none; border: none; border-radius: 0; justify-content: flex-start;
+  padding: 1px 10px; min-height: 26px; font-size: 18px; font-family: Calibri, "Segoe UI", Arial, sans-serif;
+}
+.hp-taste button:hover { background: #e6f1fd; }
+.hp-taste .hp-kbd { border-right: 2px solid #2aa5a5; color: #222; }
+.hp-taste .hp-tx { color: #111; }
+.hp-taste.folgt button { color: #9aa0a6; }
+.hp-tasten-fuss { font-size: 11px; color: var(--hp-grau); padding: 0 10px 8px; }
+@media (max-width: 1399px) {
+  .hp-tasten:not(.start) { display: none; }
+}
+
+/* Schmale Bildschirme: Seitenleiste unter den Kopf, Knöpfe als Reihe */
+@media (max-width: 760px) {
+  .hp-raster-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "oben" "seite" "unten"; }
+  .hp-knoepfe { display: flex; flex-wrap: wrap; gap: 6px; }
+  .hp-knoepfe .hp-knopf { width: auto; margin: 0; flex: 1 1 110px; }
+  .hp-gruppe { flex: 1 1 100%; margin: 4px 0 0; }
+  .hp-sb-box { display: none; }
+  .hp-befehl-zeile { justify-content: flex-start; margin-top: 0; }
+  .hp-zeile { grid-template-columns: 90px minmax(0, 1fr); }
+  .hp-zeile .hp-w2 { grid-column: 2; }
+  .hp-desktop { padding: 4px; }
+}
+
+/* ---------- Chips (Archiv-Zuordnungen) ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { display: inline-flex; align-items: center; max-width: 100%; border: 1px solid var(--border); border-radius: 3px; background: #fff; font-size: 12px; overflow: hidden; }
+.chip a { display: inline-flex; gap: 6px; align-items: center; padding: 1px 6px; text-decoration: none; color: var(--hp-text); min-width: 0; }
+.chip a:hover { background: #e6f1fd; }
+.chip-label { color: var(--hp-grau); max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip-objekt { border-color: #8fb3db; }
+.chip-einheit { border-color: #b39ad6; }
+.chip-adresse { border-color: #9ccaa9; }
+.chip-x { border: none; border-left: 1px solid var(--border); border-radius: 0; background: #fff; min-height: 22px; padding: 0 8px; font-size: 14px; color: var(--danger); }
+.chip-x:hover { background: var(--danger-bg); }
+.chips-box { margin-bottom: 4px; }
+
+.nr-box { border: 1px solid var(--border); border-radius: 2px; padding: 8px 12px 2px; margin: 4px 0 10px; min-width: 0; background: #dde9f8; }
+.nr-box legend { font-size: 12px; color: var(--hp-blau); padding: 0 6px; }
+.nr-status { margin-top: 3px; min-height: 1em; }
+.nr-ok { color: var(--success); }
+.nr-fehlt { color: var(--danger); }
+.zuordnen-zeile { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.zuordnen-zeile select { width: auto; flex: 0 0 auto; }
+.zuordnen-zeile input { flex: 1 1 160px; width: auto; }
+.check-inline { display: inline-flex; align-items: center; gap: 6px; margin: 0; min-height: 26px; font-size: 13px; color: var(--hp-text); cursor: pointer; }
+.check-inline input { width: 16px; height: 16px; }
+.dateiname { overflow-wrap: anywhere; }
+
+/* ---------- Badges & Kleinkram ---------- */
+.badge { display: inline-block; padding: 0 6px; border-radius: 2px; font-size: 12px; line-height: 1.6; white-space: nowrap; border: 1px solid transparent; }
+.badge-aktiv { background: #e0f2e5; color: var(--hp-gruen); border-color: #b5dcc0; }
+.badge-inaktiv { background: #eceff2; color: var(--hp-grau); border-color: #d3d8dd; }
+.badge-kat { background: #eef3fa; color: #34404d; border-color: #cbd8ea; }
+.muted { color: var(--hp-grau); }
+.small { font-size: 12px; }
+.nowrap { white-space: nowrap; }
+.hint { background: #fffbe6; border: 1px solid #efe3a6; padding: 6px 10px; font-size: 12px; color: #4d4a3a; margin-bottom: 10px; }
+.loading { padding: 30px; text-align: center; color: var(--hp-grau); }
+
+/* ---------- Dialoge (Modale) im Fensterstil ---------- */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(30, 50, 80, .35);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 24px 10px; z-index: 100; overflow-y: auto;
+}
+.modal { background: var(--hp-maske); border: 1px solid var(--hp-fenster-rand); box-shadow: 2px 4px 18px rgba(0,0,0,.35); width: 100%; max-width: 620px; margin: auto 0; }
+.modal.wide { max-width: 840px; }
+.modal header { display: flex; align-items: center; gap: 6px; background: linear-gradient(#eaf1fa, #d3e1f3); border-bottom: 1px solid var(--hp-fenster-rand); padding: 2px 2px 2px 10px; }
+.modal header h2 { margin: 0; font-size: 13px; font-weight: 400; flex: 1; }
+.modal .modal-body { padding: 14px; max-height: 72vh; overflow-y: auto; }
+.modal footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--hp-panel-rand); background: #dde9f8; }
+
+/* ---------- Anmeldung ---------- */
+.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; background: linear-gradient(180deg, var(--hp-desk-1), var(--hp-desk-2)); }
+.login-card { width: 100%; max-width: 380px; }
+.login-card .hp-maske-inhalt { padding: 16px; }
+.login-card .sub { margin: 0 0 14px; color: var(--hp-grau); }
+
+/* ---------- Meldungen ---------- */
+#toast-container { position: fixed; bottom: 34px; right: 16px; z-index: 200; display: flex; flex-direction: column; gap: 8px; max-width: calc(100vw - 32px); }
+.toast { background: #2d3743; color: #fff; padding: 9px 14px; border-radius: 3px; box-shadow: 0 4px 14px rgba(0,0,0,.3); max-width: 380px; }
+.toast.error { background: var(--danger); }
+.toast.success { background: var(--success); }
+
+/* ---------- Touch-Geräte: Bedienelemente ≥ 44 × 44 px ---------- */
+@media (pointer: coarse) {
+  button, .btn, .btn-sm, .hp-knopf, .hp-mini, .hp-menue-knopf, .hp-menue-eintrag, .hp-reiter button, .hp-taste button { min-height: 44px; }
+  .hp-werkzeug { min-height: 44px; width: 44px; }
+  .hp-schliessen, .modal header .modal-x { min-height: 44px; width: 44px; }
+  .hp-befehl { min-height: 44px; width: 48px; }
+  .hp-tabelle td { padding: 10px 8px; }
+  .chip a { min-height: 44px; }
+  .chip-x { min-height: 44px; min-width: 44px; }
+  input, select { min-height: 44px; }
+}
+
+/* Menütitel: unterstrichener Alt-Buchstabe; Untermenü; Applikationsliste */
+.hp-menue-knopf u { text-decoration: underline; text-underline-offset: 2px; }
+.hp-untermenue { min-width: 220px; }
+.hp-app-liste { background: #f2f2f2; border: 1px solid #b9b9b9; max-height: 50vh; overflow-y: auto; padding: 2px; }
+
+/* Edit: Häkchen bei Zoom/Breiter, Statusanzeigen, Ansichten */
+.hp-menue-eintrag.haken { position: relative; }
+.hp-menue-eintrag.haken::before { content: '✓'; position: absolute; left: 8px; }
+.hp-anzeige { color: #9aa0a6; }
+.hp-anzeige.an { color: #000; font-weight: 600; }
+.hp-zoom .hp-desktop { zoom: 1.2; }
+.hp-breit .hp-maske { max-width: none; }
+
+/* Optionen: Symbole im Menü, Suchtreffer, sortierbare Spalten */
+.hp-me-sym { position: absolute; left: 5px; width: 16px; text-align: center; font-size: 12px; }
+.hp-menue-eintrag { position: relative; }
+.hp-tabelle tr.hp-treffer, .hp-tabelle tr.hp-treffer:hover { background: #ffe89a; }
+
+/* ---------- Adressmaske („Adresse zeigen") nach HausPerfekt ---------- */
+.hp-anschrift { flex: 2 1 320px; min-height: 150px; font-size: 14px; line-height: 1.5; position: relative; padding-right: 44px; }
+.hp-stift { position: absolute; top: 6px; right: 6px; min-height: 24px; width: 28px; padding: 0; font-size: 14px; }
+.hp-geburtstag { flex: 0 1 170px; align-self: flex-start; min-height: 64px; font-size: 13px; }
+.hp-geburtstag .hp-blau { font-size: 12px; margin-bottom: 4px; }
+.hp-lkto { flex: 1 1 100%; display: flex; justify-content: center; gap: 24px; font-size: 12px; padding: 2px 0; }
+.hp-datenschutz { display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 10px; padding: 2px 4px; min-height: 26px;
+  background: none; border: 1px solid transparent; color: var(--hp-blau); font-size: 14px; justify-content: flex-start; }
+.hp-datenschutz:hover { background: rgba(255,255,255,.4); border-color: var(--hp-panel-rand); }
+.hp-ds-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%;
+  background: #9aa0a6; color: #fff; font-size: 11px; font-weight: 700; }
+.hp-datenschutz.ok .hp-ds-icon { background: #2e9b45; }
+.hp-abstand { height: 22px; }
+.hp-mini.hp-pfeil { min-width: 26px; padding: 0 4px; font-size: 14px; color: #000; }
+.hp-adresse-anzeigen { text-align: right; font-size: 12px; margin: 4px 2px -2px; }
+.hp-tabelle tr.hp-fuell td { height: 22px; }
+.hp-tabelle .zentriert { text-align: center; }
+.hp-tabelle input[type='checkbox'] { width: 14px; height: 14px; margin: 0; accent-color: #1b4fa8; }
+.hp-info-liste { display: grid; grid-template-columns: 170px 1fr; gap: 4px 12px; margin: 0 0 12px; }
+.hp-info-liste dt { color: var(--hp-blau); }
+.hp-info-liste dd { margin: 0; }
+@media (pointer: coarse) { .hp-tabelle tr.hp-fuell td { height: 44px; } .hp-stift { min-height: 44px; width: 44px; } .hp-datenschutz { min-height: 44px; } }
+
+/* ---------- Drucken: nur die Maske ---------- */
+@media print {
+  .hp-kopf, .hp-status, .hp-seite, .hp-reiter, .hp-abschnitt-kopf button, .hp-tabelle .aktionen, .hp-stift,
+  .hp-schliessen, .hp-adresse-anzeigen, #toast-container, .hp-filter { display: none !important; }
+  .hp-desktop { background: none; padding: 0; }
+  .hp-maske { max-width: none; border: none; box-shadow: none; background: #fff; }
+  .hp-raster-layout { grid-template-columns: 1fr; grid-template-areas: "oben" "unten"; }
+  .hp-panel { background: #fff; }
+}
+
+/* ---------- Adressmaske: Symbole (Wiedervorlagen, Kontakte, Termine, Ampel) ---------- */
+.hp-symbole { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; margin-top: 8px; }
+.hp-symbol { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 30px; min-height: 26px;
+  padding: 0; background: rgba(255,255,255,.55); border: 1px solid var(--hp-panel-rand); border-radius: 3px; font-size: 15px; }
+.hp-symbol:hover { background: #fff; }
+.hp-symbol.warn { border-color: #c0352a; background: #fde7e4; }
+.hp-symbol.gesperrt { opacity: .55; }
+.hp-symbol-zahl { position: absolute; top: -6px; right: -8px; min-width: 16px; padding: 0 3px; border-radius: 8px;
+  background: var(--hp-blau); color: #fff; font-size: 10px; line-height: 16px; font-weight: 700; }
+.hp-symbol.warn .hp-symbol-zahl { background: #c0352a; }
+.hp-sieben { display: inline-block; width: 18px; height: 18px; border: 1px solid #555; border-top: 4px solid #3a6fc4; border-radius: 2px;
+  background: #fff; font-size: 10px; font-weight: 700; line-height: 13px; text-align: center; color: #222; }
+.hp-ampel { display: inline-flex; flex-direction: column; gap: 1px; padding: 2px 3px; background: #222; border-radius: 3px; }
+.hp-ampel i { display: block; width: 6px; height: 6px; border-radius: 50%; background: #555; }
+.hp-ampel.rot .r { background: #ff3b30; box-shadow: 0 0 4px #ff3b30; }
+.hp-ampel.gelb .g { background: #ffcc00; box-shadow: 0 0 4px #ffcc00; }
+.hp-ampel.gruen .n { background: #34c759; box-shadow: 0 0 4px #34c759; }
+.hp-ampel-punkt { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,.35); vertical-align: middle; }
+.hp-ampel-punkt.gruen { background: #34c759; }
+.hp-ampel-punkt.gelb { background: #ffcc00; }
+.hp-ampel-punkt.rot { background: #ff3b30; }
+.hp-ampel-punkt.keine { background: #fff; }
+.hp-ampel-wahl { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.hp-ampel-knopf { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; gap: 0 8px; text-align: left;
+  justify-content: stretch; align-items: center; padding: 8px 10px; min-height: 52px; white-space: normal; }
+.hp-ampel-knopf .hp-ampel-punkt { grid-row: span 2; width: 18px; height: 18px; }
+.hp-ampel-knopf.aktiv { border: 2px solid var(--hp-blau); background: #fff; }
+.hp-ueberfaellig { color: #c0352a; font-weight: 700; }
+.badge-rot { background: #fde7e4; color: #a52a20; border-color: #f1b8b1; }
+.hp-umbruch { white-space: pre-wrap; }
+@media (pointer: coarse) { .hp-symbol { min-height: 44px; width: 44px; } }
+@media (max-width: 760px) { .hp-symbole { flex-direction: row; flex-wrap: wrap; } }
+
+/* ---------- Portooptimierung (gelbes Post-Symbol) ---------- */
+.hp-symbol.hp-post { background: #ffd200; border-color: #b89600; }
+.hp-symbol.hp-post:hover { background: #ffe14d; }
+.hp-symbol.hp-post.warn { border: 2px solid #c0352a; }
+.hp-post-icon { font-size: 12px; font-weight: 700; color: #1a1a1a; }
+.hp-versand-standard { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+.hp-versand-knopf { flex: 1 1 140px; min-height: 36px; }
+.hp-versand-knopf.aktiv { border: 2px solid var(--hp-blau); background: #fff; font-weight: 600; }
+
+/* ---------- Z.I.S – Zentrales Informationssystem ---------- */
+.hp-zis-kopf { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 2px 0 4px; }
+.hp-zis-suche { flex: 1 1 220px; width: auto; }
+.hp-tabelle tr.hp-zis-aktiv, .hp-tabelle tr.hp-zis-aktiv:hover { background: #0a4fa0; color: #fff; }
+.hp-zis-eintrag { color: #1b3f86; }
+.hp-tabelle tr.hp-zis-aktiv .hp-zis-eintrag { color: #fff; }
+.hp-zis-zusatz { border: 1px solid var(--hp-panel-rand); border-radius: 2px; margin: 8px 0; padding: 6px 10px 8px; min-width: 0; }
+.hp-zis-zusatz legend { color: var(--hp-blau); font-size: 12px; padding: 0 4px; }
+.hp-zis-raster { display: grid; grid-template-columns: 80px minmax(0, 1fr) 50px minmax(0, 120px); gap: 4px 10px; align-items: center; }
+.hp-zis-feld { display: inline-block; min-width: 40px; min-height: 20px; padding: 0 4px; background: #fff; border: 1px solid #8ea9cc; }
+.hp-zis-feld.kurz { min-width: 52px; }
+.hp-zis-intern { display: inline-flex; margin-left: 16px; }
+.hp-zis-text { margin-top: 8px; min-height: 48px; padding: 6px 8px; background: #fff; border: 1px solid #8ea9cc; white-space: pre-wrap; overflow-wrap: anywhere; }
+.hp-zis-zusatz .hp-mini { margin-top: 6px; }
+.hp-zis-knoepfe { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.hp-zis-knoepfe button { min-width: 96px; }
+.hp-zis-knoepfe button.gesperrt { color: #8a8a8a; }
+@media (max-width: 760px) { .hp-zis-raster { grid-template-columns: 80px minmax(0, 1fr); } }
+
+/* Einzeldruck (DirektDruck / ZIS-Liste) */
+#hp-druckbereich { display: none; }
+@media print {
+  body.hp-druck-einzel > *:not(#hp-druckbereich) { display: none !important; }
+  body.hp-druck-einzel #hp-druckbereich { display: block; padding: 10mm; font-size: 11pt; }
+  #hp-druckbereich table { width: 100%; border-collapse: collapse; }
+  #hp-druckbereich td, #hp-druckbereich th { border-bottom: 1px solid #999; padding: 2px 4px; text-align: left; }
+}
+
+/* Bank / E-Mail-Dialoge */
+.hp-iban { font-family: Consolas, "Courier New", monospace; letter-spacing: .02em; }
+.hp-porto-hinweis { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+/* ---------- Gesamtliste Adresse (Suche aus der Adressmaske) ---------- */
+.modal.hp-gl-fenster { max-width: 980px; }
+.hp-gesamtliste { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'haupt knoepfe' 'filter filter'; gap: 8px 10px; }
+.hp-gl-haupt { grid-area: haupt; min-width: 0; }
+.hp-gl-suche { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }
+.hp-gl-suche label { margin: 0; }
+.hp-gl-suche input { flex: 1 1 160px; min-width: 0; }
+.hp-gl-anzahl { color: var(--hp-grau); font-size: 12px; }
+.hp-gl-liste { height: min(52vh, 430px); overflow: auto; background: #fff; border: 1px solid var(--hp-fenster-rand); scroll-padding-top: 26px; }
+.hp-gl-liste:focus { outline: 2px solid var(--hp-blau); outline-offset: 1px; }
+.hp-gl-tabelle { font-size: 12.5px; }
+.hp-gl-tabelle thead th { position: sticky; top: 0; z-index: 1; }
+.hp-gl-tabelle td { white-space: nowrap; padding: 2px 6px; }
+.hp-gl-tabelle tbody tr[data-id] { cursor: pointer; }
+.hp-gl-tabelle tbody tr.gewaehlt, .hp-gl-tabelle tbody tr.gewaehlt:hover { background: #0b4fa3; color: #fff; }
+.hp-gl-tabelle .r { text-align: right; }
+.hp-gl-tabelle .c { text-align: center; }
+.hp-gl-tabelle .hp-gl-warn { width: 18px; padding: 2px 3px; text-align: center; }
+.hp-gl-ausruf { display: inline-block; color: #fff; background: #d0021b; border-radius: 2px; font-weight: 700; line-height: 14px; width: 10px; text-align: center; }
+.hp-gl-knoepfe { grid-area: knoepfe; display: flex; flex-direction: column; gap: 4px; min-width: 118px; }
+.hp-gl-knoepfe .hp-knopf { width: 100%; margin: 0; }
+.hp-gl-knoepfe .hp-knopf.aktiv { border-color: var(--hp-blau); box-shadow: inset 0 0 0 1px var(--hp-blau); font-weight: 600; }
+.hp-gl-filter { grid-area: filter; display: flex; flex-wrap: wrap; gap: 2px 22px; }
+.hp-gl-filter label { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: var(--hp-text); font-size: 12.5px; min-height: 28px; cursor: pointer; }
+@media (pointer: coarse) { .hp-gl-filter label { min-height: 44px; } .hp-gl-tabelle td { padding: 8px 6px; } }
+@media (max-width: 760px) {
+  .hp-gesamtliste { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'haupt' 'knoepfe' 'filter'; }
+  .hp-gl-knoepfe { flex-direction: row; flex-wrap: wrap; }
+  .hp-gl-knoepfe .hp-knopf { width: auto; flex: 1 1 110px; }
+}
+
+/* ---------- Sprung-Übersicht (F1) ---------- */
+.hp-sprung { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px 16px; }
+.hp-sprung > p { grid-column: 1 / -1; margin: 0; }
+.hp-sprung-block h3 { margin: 0 0 4px; padding: 3px 6px; font-size: 12.5px; font-weight: 600; background: #cfe6e8; }
+.hp-sprung-tabelle { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.hp-sprung-tabelle td { padding: 1px 6px; vertical-align: top; }
+.hp-sprung-tabelle td:first-child { width: 72px; color: var(--hp-blau); }
+.hp-sprung-tabelle tr.folgt td { color: #8a8a8a; }
+
+/* ---------- Objektmaske („Objekt anzeigen") ---------- */
+.hp-titel-zusatz { font-size: 12px; white-space: nowrap; padding: 0 10px; }
+.hp-objekt-kopf { flex: 3 1 420px; position: relative; display: flex; flex-wrap: wrap; gap: 6px 16px; padding-right: 44px; font-size: 13.5px; }
+.hp-objekt-kopfzeilen { flex: 1 1 300px; min-width: 0; }
+.hp-objekt-kopf .hp-zeile { grid-template-columns: 80px minmax(0, max-content) minmax(0, 1fr); }
+.hp-objekt-typ { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.hp-mobile-logo { align-self: flex-start; font-size: 11px; font-weight: 700; color: #fff; background: #2e8b57; border-radius: 3px; padding: 3px 6px; opacity: .55; }
+.hp-objekt-bild { flex: 1 1 200px; max-width: 280px; min-height: 120px; padding: 0; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  background: linear-gradient(135deg, #fbe3c4, #f6d2a6); border: 1px solid var(--hp-panel-rand); border-radius: 2px; }
+.hp-objekt-bild img { width: 100%; height: 100%; max-height: 160px; object-fit: cover; display: block; }
+.hp-objekt-gruppen, .hp-objekt-technik { flex: 1 1 210px; font-size: 13px; }
+.hp-objekt-zahlen { flex: 1 1 220px; font-size: 13px; }
+.hp-objekt-zahlen .hp-zeile { grid-template-columns: 80px minmax(0, 1fr); }
+.hp-objekt-zahlen .zahl { text-align: right; max-width: 60px; }
+.hp-verkauf { display: flex !important; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; }
+.hp-objekt-allgemein { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2.2fr); gap: 10px; align-items: start; }
+.hp-objekt-links .hp-zeile { grid-template-columns: 110px minmax(0, 1fr); }
+.hp-objekt-links .hp-notizen { white-space: pre-wrap; min-height: 2em; }
+.hp-warn, .hp-vschl-summe.warn { color: #b3261e; font-weight: 600; }
+.hp-vschl-summe { margin-top: 6px; font-size: 13px; }
+.hp-anteil { width: 130px; text-align: right; }
+.hp-kennzahlen .hp-zeile { grid-template-columns: 140px minmax(0, max-content) minmax(0, 1fr); }
+@media (max-width: 760px) {
+  .hp-objekt-allgemein { grid-template-columns: minmax(0, 1fr); }
+  .hp-objekt-bild { max-width: none; }
+  .hp-titel-zusatz { display: none; }
+}
