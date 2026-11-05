@@ -14,5 +14,8 @@
     "express": "^4.21.2",
     "multer": "^2.4.0",
     "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
   }
 }
