@@ -26,6 +26,7 @@ function startMaske() {
       kachel('house', 'Wohnungen', 'Einheiten mit Eigentümern und Mietern', '#/einheiten', 'Alt+S, W'),
       kachel('user', 'Adressen', 'Personen und Firmen, Kontakte, Z.I.S, Wiedervorlagen', '#/adressen', 'Alt+S, A'),
       kachel('file', 'Dokumente', 'Zentrales Archiv mit Zuordnung per Nummer', '#/archiv', 'Alt+S, D'),
+      darfSchreiben() ? kachel('settings', 'HP-Verbindung', 'Eigenes HP-Kundenkonto verbinden und Datenzugriff prüfen', '#/hausperfekt') : null,
     ]),
   ]));
 }
