@@ -33,6 +33,16 @@ CREATE TABLE IF NOT EXISTS sitzungen (
 );
 
 -- Persönliche Plaud-Verbindungen: Tokens und Clientdaten nur verschlüsselt.
+CREATE TABLE IF NOT EXISTS hp_mobile_verbindungen (
+  id TEXT PRIMARY KEY,
+  benutzer_id INTEGER NOT NULL REFERENCES benutzer(id) ON DELETE CASCADE,
+  subdomain TEXT NOT NULL,
+  erp TEXT,
+  daten TEXT NOT NULL,
+  aktualisiert_am TEXT NOT NULL,
+  UNIQUE(benutzer_id, subdomain)
+);
+
 CREATE TABLE IF NOT EXISTS plaud_verbindungen (
   benutzer_id INTEGER PRIMARY KEY REFERENCES benutzer(id) ON DELETE CASCADE,
   daten TEXT NOT NULL

@@ -70,6 +70,19 @@ Back up the DB file **and** `UPLOAD_DIR` together.
 2. Deploy the new code, then run `npm ci --omit=dev`.
 3. Restart. Migrations run automatically and idempotently on start. Check the logs for `[MIGRATION]` / `[FATAL]`.
 
+## Optional: HP-Mobile connection setup
+
+The HP-Mobile connection uses a separate API from the HausPerfekt Datendienst.
+See [the verified protocol and current implementation scope](docs/hausperfekt-mobile.md).
+Configure `HP_MOBILE_CLIENT_ID` and `HP_MOBILE_CLIENT_SECRET` in the server's
+secret store for the authorized OAuth application. The existing public-origin
+configuration is reused. The optional setup screen is `/#/hausperfekt`.
+Back up `.hausperfekt-token-key` beside the persistent database with the database
+and uploads. Do not expose connection tokens or user passwords to logs or GitHub.
+
+The initial setup permits login verification and direct reads. It does not yet
+connect the existing local editing screens to the ERP or activate write-back.
+
 ## Optional: AI summaries
 
 Set `MISTRAL_API_KEY` (and optionally `MISTRAL_ZUSAMMENFASSUNG_MODELL`). Outbound HTTPS to `api.mistral.ai` must be allowed. Without the key, only this feature is disabled.

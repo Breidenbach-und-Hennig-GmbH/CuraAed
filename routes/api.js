@@ -114,6 +114,7 @@ function baueApi(db, uploadDir, options = {}) {
   // Alle folgenden Routen erfordern eine Anmeldung.
   router.use(auth.erfordereLogin);
   router.use('/plaud', require('./plaud').bauePlaudRouter(db, options.plaud));
+  router.use('/hausperfekt', require('./hausperfekt').baueHausperfektRouter(db, options.hausperfekt));
 
   // ===================== Metadaten (für UI-Dropdowns) ===================
   const V = require('../lib/validation');

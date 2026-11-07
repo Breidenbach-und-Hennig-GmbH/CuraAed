@@ -48,6 +48,7 @@ function route() {
   if (bereich === 'pkto') return personenkontoMaske(id, params);
   if (bereich === 'benutzer') return benutzerMaske();
   if (bereich === 'plaud') return plaudRueckkehr(params);
+  if (bereich === 'hausperfekt') return hausperfektMaske();
   return startMaske();
 }
 
