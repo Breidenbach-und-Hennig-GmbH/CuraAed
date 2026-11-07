@@ -1,4 +1,4 @@
-# HausPerfekt 2.0 (CuraAedificii)
+#CuraAedificii
 
 WEG and rental property management (German UI). It is a single Node.js/Express service with a vanilla-JS single-page frontend and an embedded SQLite database.
 
