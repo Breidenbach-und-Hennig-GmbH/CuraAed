@@ -70,7 +70,8 @@ test('HP direkt: Konflikte, falsche Datensätze und abgelaufene/entzogene Freiga
  await assert.rejects(f.queue({art:'titel',version:view.version,neu:'Neu'}),e=>e.status===409);
  await f.svc.trennen(f.owner.id,f.c.id);await assert.rejects(f.poll(),e=>e.status===401);
  const second=await f.svc.anlegen(f.owner.id,{name:'Zweite',datenbank:'TESTDB',test_nummer:123});f.advance(8*3600000);
- await assert.rejects(f.svc.poll(second.id,second.token,f.identity),e=>e.status===401);
+ await assert.rejects(f.svc.poll(second.id,second.token,f.identity),e=>e.status===401 && e.message.includes('achtstündige'));
+ await assert.rejects(f.svc.poll(second.id,'x'.repeat(43),f.identity),e=>e.status===401 && !e.message.includes('abgelaufen'));
 });
 test('HP direkt: Dateidatenbank bewahrt wartende Aufträge über Neustart',async t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'curaaed-direct-'));let reopened;

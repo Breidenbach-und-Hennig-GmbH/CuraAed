@@ -18,7 +18,7 @@ steht bis zur ausdrücklich freigegebenen Ausführung des neuen Connectors aus.
 2. „Direkten HP-Testconnector koppeln“ wählen. Eigenen Verbindungsnamen,
    tatsächlichen HP-Datenbanknamen und Nummer eines **separaten** Kontakts mit
    `Name1 = CURAAED-TEST` eintragen. Die Freigabe umfasst maximal acht Stunden.
-3. Die einmalig angezeigten Kopplungsdaten selbst in das Connector-Fenster auf
+3. Die verdeckten Kopplungsdaten über „Kopplungsdaten kopieren“ selbst in das geschützte Feld des Connector-Fensters auf
    dem HP-Anwendungsserver einfügen. Den vorhandenen 32-Bit-DSN und dieselbe
    Datenbank/Testnummer angeben. Der Connector prüft den lokalen Bestand vor
    dem ersten Netzaufruf. Titel-Rückschreibung dort ausdrücklich aktivieren.
@@ -30,6 +30,12 @@ steht bis zur ausdrücklich freigegebenen Ausführung des neuen Connectors aus.
    zurückgelesen“ bedeutet bestätigten Abschluss. Zusätzlich in HP selbst prüfen.
 7. Nach dem Test den ursprünglichen Titel über denselben geprüften Weg
    wiederherstellen, Verbindung trennen und Connector schließen.
+
+Kopplungsdaten bleiben in Browser und Windows-Connector standardmäßig verdeckt.
+Der Browser zeigt eine eigene Kopierschaltfläche. Bei abgelaufener Freigabe
+meldet der Connector dies ausdrücklich mit HTTP-Status; die Verbindungskarte
+zeigt immer die konkrete Ablaufzeit. Nach einer Ablehnung kann im selben Fenster
+mit aktuellen Kopplungsdaten erneut verbunden werden.
 
 Kopplungsdaten sind Zugangsdaten. Nicht in Git, E-Mail, Chat oder Bildschirmfotos
 speichern. Der CuraAed-Server speichert nur den SHA-256-Hash. Der Connector hält

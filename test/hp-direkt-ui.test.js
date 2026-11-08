@@ -19,4 +19,15 @@ test('Direkte HP UI: veralteter Lesestand sperrt Schreiben, Mitarbeiter erhält 
  const stale=await fixture(t,{fresh:false});assert.equal(stale.button('Titel in HP speichern').disabled,true);
  const staff=await fixture(t,{role:'mitarbeiter'});assert.equal(staff.calls.length,0);assert.equal(staff.w.document.querySelectorAll('button').length,0);
 });
+test('Direkte HP UI: Zugangsdaten bleiben verdeckt, werden nur per Kopieraktion ausgegeben und beim Schließen geleert',async t=>{
+ const f=await fixture(t);let copied='';Object.defineProperty(f.w.navigator,'clipboard',{value:{writeText:async value=>{copied=value;}}});
+ f.button('Direkten HP-Testconnector koppeln').click();const d=f.w.document;
+ d.getElementById('f_name').value='Test';d.getElementById('f_datenbank').value='TESTDB';d.getElementById('f_test_nummer').value='123';
+ d.querySelector('[role=dialog] input[type=checkbox]').checked=true;
+ d.querySelector('form').dispatchEvent(new f.w.Event('submit',{cancelable:true}));await tick();
+ const secret=d.querySelector('input[aria-label="Geschützte Connector-Zugangsdaten"]');
+ assert.ok(secret);assert.equal(secret.type,'password');assert.equal(d.body.textContent.includes('synthetic-token'),false);assert.equal(copied,'');
+ f.button('Kopplungsdaten kopieren').click();await tick();assert.equal(JSON.parse(copied).token,'synthetic-token');
+ f.button('Schließen').click();assert.equal(secret.value,'');
+});
 

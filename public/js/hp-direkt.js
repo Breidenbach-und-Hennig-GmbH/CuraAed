@@ -22,7 +22,7 @@ async function hpDirektBereich(lauf, desktop) {
       const online=v.zuletzt_gesehen && Date.now()-v.zuletzt_gesehen<20000;
       list.append(el('div',{style:'border:1px solid #ddd;padding:14px;margin:12px 0'},[
         el('h3',{text:v.name}),
-        el('p',{text:v.datenbank+' · Testkontakt '+v.test_nummer+' · '+(Date.now()>v.ablauf_ms?'Freigabe abgelaufen':online?'Connector verbunden':'Connector nicht aktuell verbunden')}),
+        el('p',{text:v.datenbank+' · Testkontakt '+v.test_nummer+' · '+(Date.now()>v.ablauf_ms?'Freigabe abgelaufen':online?'Connector verbunden':'Connector nicht aktuell verbunden')+' · Gültig bis '+new Date(v.ablauf_ms).toLocaleString('de-DE')}),
         el('p',{text:v.snapshot?'Zuletzt aus HP gelesen: '+v.snapshot.name+'; Titel: '+(v.snapshot.titel||'(leer)'):'Noch kein bestätigter HP-Lesezugriff für diese Verbindung.'}),
         el('button',{type:'button',text:'Testkontakt frisch aus HP lesen',onclick:()=>queue('lesen')}),
         el('label',{},[' Titel des Testkontakts ',title]),
@@ -40,18 +40,23 @@ async function hpDirektBereich(lauf, desktop) {
   }
   const create=el('button',{type:'button',text:'Direkten HP-Testconnector koppeln',onclick:()=> {
     const f=formular([[{name:'name',label:'Name dieser HP-Verbindung',required:true},{name:'datenbank',label:'HP-Datenbank (aus der Serverprüfung)',required:true},{name:'test_nummer',label:'HP-Nummer des separaten Kontakts CURAAED-TEST',required:true,type:'number'}]]);
-    const consent=el('input',{type:'checkbox'}), info=el('p',{role:'status'}); let sending=false;
+    const consent=el('input',{type:'checkbox'}), info=el('p',{role:'status'}); let sending=false, pairing;
     f.form.append(el('label',{},[consent,' Für 8 Stunden das Lesen des benannten Testkontakts und Änderungen ausschließlich an dessen Titel freigeben.']));
-    const win=modal({titel:'Direkten HP-Testconnector koppeln',inhalt:el('div',{},[f.form,info]),footer:close=>[
+    const win=modal({titel:'Direkten HP-Testconnector koppeln',inhalt:el('div',{},[f.form,info]),onClose:()=>{if(pairing)pairing.value='';},footer:close=>[
       el('button',{type:'button',text:'Freigabe erstellen',onclick:()=>f.form.requestSubmit()}),el('button',{type:'button',text:'Schließen',onclick:close}),
     ]});
     f.form.addEventListener('submit',async ev=> {
       ev.preventDefault(); if(sending || !consent.checked)return; sending=true;
       try {
         const r=await API.post('/hp-direkt/verbindungen',{name:f.inputs.name.value,datenbank:f.inputs.datenbank.value,test_nummer:Number(f.inputs.test_nummer.value),zustimmung:true});
-        const pairing=el('textarea',{readonly:'readonly',rows:'6','aria-label':'Einmalig angezeigte Connector-Zugangsdaten'});
+        pairing=el('input',{type:'password',readonly:'readonly',autocomplete:'off',spellcheck:'false',style:'width:100%','aria-label':'Geschützte Connector-Zugangsdaten'});
         pairing.value=JSON.stringify({id:r.id,token:r.token});
-        f.form.replaceChildren(el('p',{text:'Diese Zugangsdaten einmalig in das HP-Connector-Fenster auf dem Server einfügen. Sie werden hier nach dem Schließen nicht erneut angezeigt. Nicht per E-Mail oder Chat versenden.'}),pairing);
+        const copied=el('p',{role:'status','aria-live':'polite'});
+        const copy=el('button',{type:'button',text:'Kopplungsdaten kopieren',onclick:async()=>{
+          try{await navigator.clipboard.writeText(pairing.value);copied.textContent='Kopiert. Im HP-Connector in das geschützte Kopplungsfeld einfügen.';}
+          catch{copied.textContent='Kopieren nicht möglich. Bitte die Zwischenablage dieses Browsers prüfen.';}
+        }});
+        f.form.replaceChildren(el('p',{text:'Die Zugangsdaten bleiben verdeckt. Mit „Kopplungsdaten kopieren“ einmalig kopieren und auf dem HP-Server in das geschützte Kopplungsfeld einfügen. Nach dem Schließen werden sie nicht erneut angezeigt. Nicht per E-Mail oder Chat versenden.'}),pairing,copy,copied);
         info.textContent='Freigabe gültig bis '+new Date(r.ablauf_ms).toLocaleString('de-DE')+'. Auf dem Server müssen Datenbank und Testnummer übereinstimmen.';
         await load();
       }catch(e){info.textContent=e.message;sending=false;}
