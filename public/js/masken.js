@@ -1130,6 +1130,7 @@ async function adresseMaske(id, params) {
 
   // ---- Kopf: Anschrift, Geburtstage, LKto-Nr.
   const oben = [
+    hpAdressInfo(a),
     el('div', { class: 'hp-panel hp-anschrift' }, [
       schreiben ? el('button', { type: 'button', class: 'hp-stift', title: 'Adresse bearbeiten', 'aria-label': 'Adresse bearbeiten', text: '✎', onclick: () => adresseFormular(a) }) : null,
       ...anschriftZeilen(a).map((t) => el('div', { text: t })),
@@ -1816,3 +1817,4 @@ async function benutzerMaske() {
     }),
   }));
 }
+

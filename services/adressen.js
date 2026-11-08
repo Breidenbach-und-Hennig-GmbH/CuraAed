@@ -44,7 +44,7 @@ async function holen(db, id) {
     'SELECT a.*, b.name AS ampel_von_name FROM adressen a LEFT JOIN benutzer b ON b.id = a.ampel_von WHERE a.id = ?',
     [id]
   );
-  return a ? { ...a, anzeigename: anzeigename(a) } : undefined;
+  return a ? require('./hpAdressSync').metadata(db, { ...a, anzeigename: anzeigename(a) }) : undefined;
 }
 
 function validiereNamen(data, adresstyp) {
@@ -107,7 +107,7 @@ async function anlegen(db, data) {
   return holen(db, id);
 }
 
-async function aktualisieren(db, id, data) {
+async function aktualisierenIntern(db, id, data) {
   const vorhanden = await db.get('SELECT * FROM adressen WHERE id = ?', [id]);
   if (!vorhanden) throw new V.ValidationError('Adresse nicht gefunden.', 404);
   // Nicht mitgesendete Felder bleiben unverändert (z. B. Telefon/E-Mail, die
@@ -116,6 +116,7 @@ async function aktualisieren(db, id, data) {
   const adresstyp = V.oneOf(data.adresstyp, V.ADRESSTYPEN, 'Adresstyp', vorhanden.adresstyp);
   validiereNamen(data, adresstyp);
   const nummer = N.pruefeNummer(data.nummer, 'Adress-Nr.') || vorhanden.nummer;
+  await require('./hpAdressSync').validateSave(db, vorhanden, {...data,nummer});
   await N.aktualisierenMitNummer(
     () =>
       db.run(
@@ -127,6 +128,10 @@ async function aktualisieren(db, id, data) {
     'Adress-Nr.'
   );
   return holen(db, id);
+}
+
+async function aktualisieren(db,id,data) {
+  return db.transaktion(tx=>aktualisierenIntern(tx,id,data));
 }
 
 /** Zustimmung zur Weitergabe der Daten: 'ja' (mit Datum, Std. heute) oder 'nein'. */
@@ -150,3 +155,4 @@ async function setzeArchiviert(db, id, archiviert) {
 }
 
 module.exports = { anzeigename, liste, holen, anlegen, aktualisieren, setzeArchiviert, datenschutzSetzen };
+

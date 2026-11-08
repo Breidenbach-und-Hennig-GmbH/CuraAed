@@ -115,7 +115,7 @@ function adresseFormular(a) {
     { grid: 2, felder: [
       { name: 'nummer', label: bearb ? 'Adress-Nr.' : 'Adress-Nr. (leer = automatisch)', value: a?.nummer, placeholder: 'z. B. 10001' },
       { name: 'adresstyp', label: 'Typ', type: 'select', options: opt(L.adresstyp), value: typInit },
-      { name: 'anrede', label: 'Anrede', type: 'select', options: [{ value: '', label: '–' }, { value: 'Herr', label: 'Herr' }, { value: 'Frau', label: 'Frau' }, { value: 'Divers', label: 'Divers' }], value: a?.anrede },
+      { name: 'anrede', label: 'Anrede', type: 'text', value: a?.anrede },
     ] },
     { grid: 2, felder: [
       { name: 'vorname', label: 'Vorname', value: a?.vorname },
@@ -130,6 +130,7 @@ function adresseFormular(a) {
     { grid: 2, felder: [
       { name: 'plz', label: 'PLZ', value: a?.plz },
       { name: 'ort', label: 'Ort', value: a?.ort },
+      { name: 'land', label: 'Land (HP-Ländercode)', value: a?.land || 'DE' },
     ] },
     // Telefon/E-Mail nur beim Anlegen – danach über die Listen in der Adressmaske
     ...(bearb ? [] : [{ grid: 3, felder: [
@@ -144,6 +145,7 @@ function adresseFormular(a) {
     { felder: [{ name: 'notizen', label: 'Notizen / Info', type: 'textarea', value: a?.notizen }] },
   ]);
   if (bearb) form.appendChild(el('p', { class: 'small muted', text: 'Telefonnummern, E-Mail-Adressen und Ansprechpartner pflegen Sie in der Adressmaske über die Pfeile ➠ bzw. die Knöpfe rechts.' }));
+  if(a?.hp_sync){inputs.nummer.readOnly=true;form.append(el('p',{role:'status',text:hpAdressStatus(a)}));}
 
   // Sichtbarkeit Person/Firma umschalten
   const anpassen = () => {
@@ -163,7 +165,7 @@ function adresseFormular(a) {
       el('button', { class: 'btn-primary', text: 'Speichern', onclick: async () => {
         try {
           const v = werte();
-          if (bearb) { await API.put('/adressen/' + a.id, v); toast('Gespeichert', 'success'); close(); neuLaden(); }
+          if (bearb) { await API.put('/adressen/' + a.id, {...v,hp_version:a.hp_sync?.version}); toast(a.hp_sync?'Gespeichert; HP-Übertragung folgt automatisch.':'Gespeichert', 'success'); close(); neuLaden(); }
           else { const neu = await API.post('/adressen', v); toast('Adresse angelegt', 'success'); close(); geheZu('#/adressen/' + neu.id); }
         } catch (e) { fehler(e); }
       } }),
@@ -1673,3 +1675,4 @@ async function telefonEingang(vorgabe = {}, k = null, danach = null) {
   m.box.classList.add('tel-fenster');
   (vorgabe.adresse || k ? f.bemerkung : f.adrName).focus();
 }
+

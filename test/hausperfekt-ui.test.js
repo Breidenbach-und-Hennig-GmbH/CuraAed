@@ -15,13 +15,13 @@ function fixture(t, { configured = true, failLogin = false } = {}) {
     get: async url => { calls.push({ method: 'GET', url }); if (url.endsWith('/status')) return { eingerichtet: configured }; if (url.endsWith('/verbindungen')) return { verbindungen: [{ id: 'own-connection', subdomain: 'kunde-a' }] }; return { data: [{ id: 17, hp_id: 100, name: '<img src=x onerror=alert(1)>' }] }; },
     post: async (url, body) => { calls.push({ method: 'POST', url, body: { ...body } }); if (failLogin) throw new Error('Anmeldung abgelehnt'); return { id: 'own-connection' }; },
   };
-  for (const file of ['ui', 'kern', 'hp-direkt', 'hausperfekt']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js', file + '.js'), 'utf8'), dom.getInternalVMContext());
+  for (const file of ['ui', 'kern', 'hp-direkt', 'hp-adressen', 'hausperfekt']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js', file + '.js'), 'utf8'), dom.getInternalVMContext());
   vm.runInContext('S.lauf=1;', dom.getInternalVMContext());
   return { w, calls, async open() { await w.hausperfektMaske(); await tick(); }, button: text => [...w.document.querySelectorAll('button')].find(b => b.textContent === text) };
 }
 test('HP UI: Datenzugriff mit Kundenkennung, keine Speicherung oder automatische Rückübertragung', async t => {
   const f = fixture(t); await f.open();
-  assert.match(f.w.document.body.textContent, /bisherigen CuraAed-Masken sind noch nicht mit HP gekoppelt/);
+  assert.match(f.w.document.body.textContent, /Mobile-Ansicht liest HP-Mobile-Daten/);
   f.button('kunde-a.hausperfekt-mobile.de').click(); await tick();
   assert.ok(f.calls.some(c => c.url === '/hausperfekt/verbindungen/own-connection/daten/persons?seite=1'));
   assert.equal(f.w.document.querySelectorAll('img').length, 0);

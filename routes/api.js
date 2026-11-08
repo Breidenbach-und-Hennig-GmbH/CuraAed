@@ -114,6 +114,7 @@ function baueApi(db, uploadDir, options = {}) {
   // Der direkte Connector verwendet eigene, zeitlich begrenzte Tokens.
   // Seine Browser-Routen erzwingen innerhalb des Routers Administratorrechte.
   router.use('/hp-direkt', require('./hausperfektDirekt').baueHpDirektRouter(db, options.hpDirekt));
+  router.use('/hp-adressen', require('./hpAdressSync')(db, options.hpDirekt));
 
   // Alle folgenden Routen erfordern eine Anmeldung.
   router.use(auth.erfordereLogin);
