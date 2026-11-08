@@ -47,19 +47,51 @@ async function liste(db, opts = {}) {
   if (modus === 'pfkt' && opts.rolle && !V.ROLLEN.includes(opts.rolle)) throw new V.ValidationError('Unbekannte Personenfunktion.');
   const stichtag = new Date().toISOString().slice(0, 10);
 
+  // Namen-/Nummernsuche vor dem Laden filtern. Große HP-Bestände nicht pro
+  // Tastendruck vollständig in JavaScript materialisieren.
+  const where=['a.archiviert=0'],args=[];
+  const sqlLike=(cols,term)=>{where.push('('+cols.map(c=>c+' LIKE ?').join(' OR ')+')');args.push(...cols.map(()=>term));};
+  if(q&&modus==='suche')sqlLike(['a.nachname','a.firmenname','a.nummer',"COALESCE(a.nachname,'') || ', ' || COALESCE(a.vorname,'')"],q+'%');
+  if(q&&modus==='intensiv'){
+    const cols=['nummer','vorname','nachname','firmenname','ansprechpartner','strasse','plz','ort','land','telefon','mobil','email','notizen','lkto_nr'].map(c=>'a.'+c);
+    const parts=cols.map(c=>c+' LIKE ?');args.push(...cols.map(()=>'%'+q+'%'));
+    for(const [table,col]of [['adress_telefone','nummer'],['adress_emails','adresse'],['adress_ansprechpartner','name']]){parts.push(`EXISTS (SELECT 1 FROM ${table} x WHERE x.adresse_id=a.id AND x.${col} LIKE ?)`);args.push('%'+q+'%');}
+    where.push('('+parts.join(' OR ')+')');
+  }
+  if(q&&modus==='feld'&&['nummer','name','plz','ort','strasse','lkto_nr','notizen'].includes(opts.feld||'name'))sqlLike((opts.feld||'name')==='name'?['a.nachname','a.vorname','a.firmenname']:['a.'+opts.feld],'%'+q+'%');
+  if(q&&modus==='feld'&&opts.feld==='email'){where.push('(a.email LIKE ? OR EXISTS (SELECT 1 FROM adress_emails x WHERE x.adresse_id=a.id AND x.adresse LIKE ?))');args.push('%'+q+'%','%'+q+'%');}
+  if(q&&modus==='ansprechp'){where.push('(a.ansprechpartner LIKE ? OR EXISTS (SELECT 1 FROM adress_ansprechpartner x WHERE x.adresse_id=a.id AND x.name LIKE ?))');args.push('%'+q+'%','%'+q+'%');}
+  if(modus==='pfkt'){
+    let clause='EXISTS (SELECT 1 FROM rollen_zuordnungen z LEFT JOIN einheiten e ON e.id=z.einheit_id LEFT JOIN objekte o ON o.id=COALESCE(z.objekt_id,e.objekt_id) WHERE z.adresse_id=a.id';
+    if(opts.rolle){clause+=' AND z.rolle=?';args.push(opts.rolle);}
+    if(q){clause+=' AND (o.nummer LIKE ? OR e.nummer LIKE ?)';args.push(q+'%',q+'%');}where.push(clause+')');
+  }
+  if(q&&modus==='telefon'){
+    const normalized=col=>[' ', '+', '-', '/', '(', ')', '.', '\\'].reduce((s,c)=>`replace(${s},'${c}','')`,col);
+    where.push(`(${normalized('a.telefon')} LIKE ? OR ${normalized('a.mobil')} LIKE ? OR EXISTS (SELECT 1 FROM adress_telefone x WHERE x.adresse_id=a.id AND ${normalized('x.nummer')} LIKE ?))`);args.push(...Array(3).fill('%'+ziffern(q)+'%'));
+  }
+  // Personenfunktionen ebenfalls vor dem LIMIT anwenden.
+  const active="(z.gueltig_von IS NULL OR z.gueltig_von<=?) AND (z.gueltig_bis IS NULL OR z.gueltig_bis>=?)";
+  if(filter==='aktiv'){where.push(`EXISTS (SELECT 1 FROM rollen_zuordnungen z WHERE z.adresse_id=a.id AND ${active})`);args.push(stichtag,stichtag);}
+  if(filter==='ohne')where.push('NOT EXISTS (SELECT 1 FROM rollen_zuordnungen z WHERE z.adresse_id=a.id)');
+  if(filter==='nicht_aktiv'){where.push(`EXISTS (SELECT 1 FROM rollen_zuordnungen z WHERE z.adresse_id=a.id) AND NOT EXISTS (SELECT 1 FROM rollen_zuordnungen z WHERE z.adresse_id=a.id AND ${active})`);args.push(stichtag,stichtag);}
+  // Spezialmodi benötigen weiterhin ihre bestehende Prüfung; auch diese sind
+  // begrenzt. Keine verdeckte Behauptung eines vollständigen CSV-Exports.
+  const idsSql=`SELECT a.id FROM adressen a WHERE ${where.join(' AND ')} ORDER BY COALESCE(NULLIF(a.nachname,''),a.firmenname) COLLATE NOCASE,a.id LIMIT 500`;
+
   const [adressen, zuord, telefone, emails, ansprech] = await Promise.all([
-    db.all('SELECT * FROM adressen WHERE archiviert = 0'),
+    db.all(`SELECT * FROM adressen WHERE id IN (${idsSql})`,args),
     db.all(
       `SELECT z.id, z.adresse_id, z.rolle, z.gueltig_von, z.gueltig_bis, z.einheit_id,
               o.nummer AS objekt_nummer, e.nummer AS einheit_nummer
        FROM rollen_zuordnungen z
        LEFT JOIN einheiten e ON e.id = z.einheit_id
        LEFT JOIN objekte o ON o.id = COALESCE(z.objekt_id, e.objekt_id)
-       ORDER BY z.gueltig_von DESC, z.id DESC`
+       WHERE z.adresse_id IN (${idsSql}) ORDER BY z.gueltig_von DESC, z.id DESC`,args
     ),
-    db.all('SELECT adresse_id, nummer FROM adress_telefone'),
-    db.all('SELECT adresse_id, adresse FROM adress_emails'),
-    db.all('SELECT adresse_id, name FROM adress_ansprechpartner'),
+    db.all(`SELECT adresse_id, nummer FROM adress_telefone WHERE adresse_id IN (${idsSql})`,args),
+    db.all(`SELECT adresse_id, adresse FROM adress_emails WHERE adresse_id IN (${idsSql})`,args),
+    db.all(`SELECT adresse_id, name FROM adress_ansprechpartner WHERE adresse_id IN (${idsSql})`,args),
   ]);
   const zMap = gruppieren(zuord);
   const tMap = gruppieren(telefone);
@@ -128,3 +160,4 @@ async function liste(db, opts = {}) {
 }
 
 module.exports = { liste, FILTER, MODI, FELDER: Object.keys(FELDER) };
+

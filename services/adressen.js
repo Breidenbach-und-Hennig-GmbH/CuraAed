@@ -33,8 +33,8 @@ async function liste(db, opts = {}) {
   }
   const rows = await db.all(
     `SELECT * FROM adressen WHERE ${where.join(' AND ')}
-     ORDER BY COALESCE(NULLIF(nachname,''), firmenname) COLLATE NOCASE ASC`,
-    params
+     ORDER BY COALESCE(NULLIF(nachname,''), firmenname) COLLATE NOCASE ASC LIMIT ?`,
+    [...params, 500]
   );
   return rows.map((r) => ({ ...r, anzeigename: anzeigename(r) }));
 }

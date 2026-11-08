@@ -546,4 +546,5 @@ CREATE TABLE IF NOT EXISTS hp_adress_importfehler (
  hp_nummer INTEGER NOT NULL, meldung TEXT NOT NULL, gesehen_am TEXT NOT NULL,
  PRIMARY KEY(verbindung_id,hp_nummer)
 );
+CREATE INDEX IF NOT EXISTS hp_adress_sync_status ON hp_adress_zuordnung(verbindung_id,status,unterwegs_ms);
 
