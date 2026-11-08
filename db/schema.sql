@@ -495,3 +495,36 @@ CREATE TABLE IF NOT EXISTS pfkt_codes (
 INSERT OR IGNORE INTO pfkt_codes (code, bezeichnung, rolle) VALUES
   ('001', 'Eigentümer eigengenutzt', 'eigentuemer'),
   ('002', 'Eigentümer fremdvermietet', 'eigentuemer');
+
+-- Zeitlich begrenzter direkter HP-Test: persönliche Verbindung und dauerhafte
+-- Aufträge. Ausschließlich ein benannter Testkontakt und dessen Titel.
+CREATE TABLE IF NOT EXISTS hp_direkt_verbindungen (
+  id TEXT PRIMARY KEY,
+  benutzer_id INTEGER NOT NULL REFERENCES benutzer(id),
+  name TEXT NOT NULL,
+  datenbank TEXT NOT NULL,
+  test_nummer INTEGER NOT NULL,
+  token_hash TEXT NOT NULL,
+  ablauf_ms INTEGER NOT NULL,
+  aktiv INTEGER NOT NULL DEFAULT 1,
+  zuletzt_gesehen INTEGER,
+  snapshot TEXT,
+  version TEXT,
+  gelesen_am INTEGER
+);
+CREATE TABLE IF NOT EXISTS hp_direkt_auftraege (
+  id TEXT PRIMARY KEY,
+  verbindung_id TEXT NOT NULL REFERENCES hp_direkt_verbindungen(id),
+  art TEXT NOT NULL CHECK (art IN ('lesen','titel')),
+  status TEXT NOT NULL,
+  request_hash TEXT NOT NULL,
+  daten TEXT NOT NULL,
+  claim TEXT,
+  abgeholt_ms INTEGER,
+  result_hash TEXT,
+  meldung TEXT,
+  erstellt_am TEXT NOT NULL,
+  erledigt_am TEXT
+);
+CREATE INDEX IF NOT EXISTS hp_direkt_job_status ON hp_direkt_auftraege(verbindung_id,status);
+

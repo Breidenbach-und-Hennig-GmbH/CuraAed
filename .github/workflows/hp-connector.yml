@@ -1,0 +1,20 @@
+name: HP Windows connector
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  connector:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and verify the bounded HP connector
+        shell: pwsh
+        run: |
+          $hpCompiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe'
+          & $hpCompiler /nologo /target:winexe /platform:x86 /out:HP-Direktconnector.exe /r:System.Data.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Web.Extensions.dll tools\hp-direkt\HPDirektConnector.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $hpCompiler /nologo /target:exe /platform:x86 /main:HPDirectTests /out:HPDirectTests.exe /r:System.Data.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Web.Extensions.dll tools\hp-direkt\HPDirektConnector.cs tools\hp-direkt\HPDirectTests.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & .\HPDirectTests.exe
+          exit $LASTEXITCODE
+
