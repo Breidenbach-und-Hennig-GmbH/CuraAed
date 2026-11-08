@@ -62,7 +62,7 @@ function suchMaske({ titel, symbol, felder, abrufen, abschnittTitel, spalten, on
       if (lauf !== S.lauf) return;
       if (listenBasis) S.trefferliste = { basis: listenBasis, ids: daten.map((d) => d.id) };
       ergebnis.replaceChildren(abschnitt(`${abschnittTitel} (${daten.length})`, raster(spalten, daten, { onOpen, leer })));
-      status(`${daten.length} Treffer`);
+      status(daten.length>=500?'500 Treffer angezeigt – bitte die Suche eingrenzen.':`${daten.length} Treffer`);
     } catch (e) { fehler(e); status('Fehler bei der Suche'); }
   }
 
@@ -270,7 +270,7 @@ function gesamtlisteAdresse(aktuelleId) {
       tr.addEventListener('dblclick', () => oeffnen(i));
       tbody.appendChild(tr);
     });
-    anzahl.textContent = `${z.daten.length} Adresse${z.daten.length === 1 ? '' : 'n'}`;
+    anzahl.textContent = z.daten.length>=500?'500 Adressen angezeigt – Suche eingrenzen.':`${z.daten.length} Adresse${z.daten.length === 1 ? '' : 'n'}`;
   }
   async function laden() {
     const nr = ++z.anfrage;
