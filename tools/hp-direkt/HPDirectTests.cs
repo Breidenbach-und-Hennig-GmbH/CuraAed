@@ -8,7 +8,10 @@ internal static class HPDirectTests
         if(!HPDirectClient.Binding(65937,65937,"CURAAED-TEST") || HPDirectClient.Binding(65937,65927,"CURAAED-TEST") || HPDirectClient.Binding(65937,65937,"Kunde"))throw new Exception("Datensatzbindung");
         if(!HPDirectClient.CompareTitle("A","A") || HPDirectClient.CompareTitle("A","a"))throw new Exception("Konfliktvergleich");
         bool rejected=false;try{new HPDirectClient("HPSD","HPSERVSD",65937,"{}");}catch{rejected=true;}if(!rejected)throw new Exception("Kopplungsdaten fehlen");
-        Console.WriteLine("Connector-Grenzen erfolgreich geprüft (DSN, Titel, Datensatzbindung, Konflikt und Kopplung).");return 0;
+        if(!HPDirectClient.Rejection(401,"Die achtstündige Connector-Freigabe ist abgelaufen.").Contains("abgelaufen"))throw new Exception("Ablaufmeldung");
+        if(HPDirectClient.Rejection(401,"token:secret-test").Contains("secret-test"))throw new Exception("Fehler darf keine fremden Inhalte ausgeben");
+        if(!HPDirectClient.Rejection(409,"").Contains("Zuordnungskonflikt"))throw new Exception("Zuordnungsmeldung");
+        Console.WriteLine("Connector-Grenzen und sichere Ablehnungsgründe erfolgreich geprüft.");return 0;
     }
 }
 

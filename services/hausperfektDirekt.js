@@ -22,7 +22,8 @@ function baueHpDirekt(db, { now = () => Date.now() } = {}) {
   async function agent(tx, id, token) {
     if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(token)) bad('Connector-Anmeldung ungültig.', 401);
     const row = await tx.get('SELECT v.* FROM hp_direkt_verbindungen v JOIN benutzer b ON b.id=v.benutzer_id WHERE v.id=? AND v.aktiv=1 AND b.aktiv=1 AND b.rolle=\'admin\'', [id]);
-    if (!row || row.ablauf_ms <= now() || !crypto.timingSafeEqual(Buffer.from(hash(token)), Buffer.from(row.token_hash))) bad('Connector-Anmeldung ungültig oder abgelaufen.', 401);
+    if (!row || !crypto.timingSafeEqual(Buffer.from(hash(token)), Buffer.from(row.token_hash))) bad('Connector-Anmeldung ungültig.', 401);
+    if (row.ablauf_ms <= now()) bad('Die achtstündige Connector-Freigabe ist abgelaufen. Bitte in CuraAed neu koppeln.', 401);
     return row;
   }
   async function expire(tx, id) {

@@ -35,6 +35,30 @@ internal sealed class HPDirectClient
     internal static bool ValidTitle(string value) { return value != null && Regex.IsMatch(value, @"\A[\x20-\x7e]{0,30}\z") && !value.EndsWith(" ",StringComparison.Ordinal); }
     internal static bool Binding(int expected, int actual, string name) { return expected == actual && name == TestName; }
     internal static bool CompareTitle(string current, string expected) { return String.Equals(current, expected, StringComparison.Ordinal); }
+    internal static string Rejection(int code, string detail)
+    {
+        if(code==401 && detail!=null && detail.Contains("achtstündige"))return "Die achtstündige CuraAed-Freigabe ist abgelaufen (HTTP 401). In CuraAed neu koppeln.";
+        if(code==401)return "CuraAed hat die Kopplungsdaten abgelehnt (HTTP 401). Aktuelle Kopplungsdaten erneut kopieren.";
+        if(code==409)return "CuraAed meldet einen Zuordnungskonflikt (HTTP 409). HP-Datenbank, Testnummer und Auftragsstand prüfen.";
+        if(code==403)return "Die CuraAed-Freigabe ist gesperrt (HTTP 403). Administratorfreigabe prüfen.";
+        return "CuraAed findet Verbindung oder Auftrag nicht (HTTP 404). Kopplung prüfen.";
+    }
+    string ErrorDetail(HttpWebResponse response)
+    {
+        if(response==null)return "";
+        try
+        {
+            using(var reader=new StreamReader(response.GetResponseStream(),Encoding.UTF8))
+            {
+                char[] chars=new char[2049];int count=0,n;
+                while(count<chars.Length && (n=reader.Read(chars,count,chars.Length-count))>0)count+=n;
+                if(count>2048)return "";
+                var body=json.Deserialize<Dictionary<string,object>>(new string(chars,0,count));object value;
+                return body!=null && body.TryGetValue("fehler",out value) ? Convert.ToString(value) : "";
+            }
+        }
+        catch{return "";}
+    }
     OdbcConnection Open()
     {
         var b = new OdbcConnectionStringBuilder(); b.Dsn = dsn;
@@ -164,9 +188,10 @@ internal sealed class HPDirectClient
             {
                 var response = e.Response as HttpWebResponse;
                 int code = response == null ? 0 : (int)response.StatusCode;
+                string detail=ErrorDetail(response);
                 if (response != null) response.Dispose();
                 if (code == 401 || code == 403 || code == 409 || code == 404)
-                { log("CuraAed hat die Verbindung abgelehnt oder beendet. Kein erneuter SQL-Versuch."); return; }
+                { log(Rejection(code,detail)+" Kein erneuter SQL-Versuch."); return; }
                 log(pending != null ? "Rückmeldung ausstehend. Es wird nur die Rückmeldung erneut gesendet, nicht die Änderung." : "CuraAed nicht erreichbar. Warte auf Verbindung.");
             }
             // Beim Beenden genau einen bereits vorliegenden Bericht noch senden;
@@ -180,7 +205,7 @@ internal sealed class HPDirectClient
 internal sealed class HPDirectForm : Form
 {
     readonly TextBox dsn = new TextBox { Width=120 }, database = new TextBox { Width=140 }, number = new TextBox { Width=100 };
-    readonly TextBox pairing = new TextBox { Multiline=true,Width=700,Height=70,ScrollBars=ScrollBars.Vertical };
+    readonly TextBox pairing = new TextBox { Width=700,UseSystemPasswordChar=true };
     readonly CheckBox consent = new CheckBox { AutoSize=true,Text="Lesen und Titel-Rückschreibung ausschließlich für diesen CURAAED-TEST freigeben." };
     readonly Button start = new Button { Text="Mit CuraAed verbinden",AutoSize=true }, stopButton = new Button { Text="Verbindung beenden",AutoSize=true,Enabled=false };
     readonly TextBox log = new TextBox { Multiline=true,ReadOnly=true,Dock=DockStyle.Fill,ScrollBars=ScrollBars.Vertical,Font=new Font("Consolas",10) };
@@ -192,7 +217,7 @@ internal sealed class HPDirectForm : Form
         top.Controls.Add(new Label {Text="ODBC-Quelle",AutoSize=true});top.Controls.Add(dsn);
         top.Controls.Add(new Label {Text="HP-Datenbank",AutoSize=true});top.Controls.Add(database);
         top.Controls.Add(new Label {Text="Testnummer",AutoSize=true});top.Controls.Add(number);top.SetFlowBreak(number,true);
-        top.Controls.Add(new Label {Text="Einmalig angezeigte Kopplungsdaten aus CuraAed (JSON)",AutoSize=true});top.SetFlowBreak(top.Controls[top.Controls.Count-1],true);
+        top.Controls.Add(new Label {Text="Geschützte Kopplungsdaten aus CuraAed (JSON)",AutoSize=true});top.SetFlowBreak(top.Controls[top.Controls.Count-1],true);
         top.Controls.Add(pairing);top.SetFlowBreak(pairing,true);top.Controls.Add(consent);top.SetFlowBreak(consent,true);
         top.Controls.Add(start);top.Controls.Add(stopButton);top.SetFlowBreak(stopButton,true);
         top.Controls.Add(new Label {Text="Ziel: https://curaaed.onrender.com · läuft nur bei geöffnetem Fenster · keine Installation und keine Speicherung des Tokens",AutoSize=true});
@@ -207,7 +232,7 @@ internal sealed class HPDirectForm : Form
             cancellation=new CancellationTokenSource();
             worker=Task.Run(()=>client.Run(cancellation.Token,WriteLog));
             try {await worker;}catch {WriteLog("Connector beendet: lokale Zuordnung oder Verbindung konnte nicht sicher geprüft werden.");}
-            finally {cancellation.Dispose();cancellation=null;stopButton.Enabled=false;WriteLog("Connector beendet. Für erneutes Verbinden das Fenster neu öffnen.");if(closing)Close();}
+            finally {cancellation.Dispose();cancellation=null;stopButton.Enabled=false;WriteLog("Connector beendet. Für erneutes Verbinden aktuelle Kopplungsdaten einfügen.");if(closing)Close();else{start.Enabled=true;dsn.Enabled=database.Enabled=number.Enabled=pairing.Enabled=consent.Enabled=true;}}
         };
         stopButton.Click += delegate { if(cancellation!=null)cancellation.Cancel();WriteLog("Beenden angefordert. Ein bereits laufender Auftrag wird noch abgeschlossen."); };
         FormClosing += delegate(object sender,FormClosingEventArgs e)
