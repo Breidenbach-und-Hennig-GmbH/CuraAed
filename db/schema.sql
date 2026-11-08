@@ -541,4 +541,9 @@ CREATE TABLE IF NOT EXISTS hp_adress_zuordnung (
  status TEXT NOT NULL, meldung TEXT, unterwegs_ms INTEGER, gelesen_am TEXT,
  PRIMARY KEY(verbindung_id,hp_nummer)
 );
+CREATE TABLE IF NOT EXISTS hp_adress_importfehler (
+ verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),
+ hp_nummer INTEGER NOT NULL, meldung TEXT NOT NULL, gesehen_am TEXT NOT NULL,
+ PRIMARY KEY(verbindung_id,hp_nummer)
+);
 
