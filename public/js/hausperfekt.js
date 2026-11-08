@@ -88,5 +88,6 @@ async function hausperfektMaske() {
   try { const s = await API.get('/hausperfekt/status'); if (lauf !== S.lauf) return; neu.disabled = !s.eingerichtet; if (!s.eingerichtet) meldung.textContent = 'Die HP-Anmeldung ist auf dem CuraAed-Server noch nicht eingerichtet.'; await verbindungenLaden(); }
   catch (e) { if (lauf === S.lauf) meldung.textContent = e.message; }
   if (lauf === S.lauf) await hpDirektBereich(lauf, desktop);
+  if (lauf === S.lauf) await hpAdressBereich(lauf, desktop);
 }
 

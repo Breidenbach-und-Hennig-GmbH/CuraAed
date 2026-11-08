@@ -528,3 +528,17 @@ CREATE TABLE IF NOT EXISTS hp_direkt_auftraege (
 );
 CREATE INDEX IF NOT EXISTS hp_direkt_job_status ON hp_direkt_auftraege(verbindung_id,status);
 
+-- Ein HP-Kundenbestand je CuraAed-Installation; Adressen niemals per Name zuordnen.
+CREATE TABLE IF NOT EXISTS hp_adress_verbindungen (
+ id TEXT PRIMARY KEY, benutzer_id INTEGER NOT NULL REFERENCES benutzer(id),
+ name TEXT NOT NULL, datenbank TEXT NOT NULL, token_hash TEXT NOT NULL,
+ ablauf_ms INTEGER NOT NULL, aktiv INTEGER NOT NULL DEFAULT 1, zuletzt_gesehen INTEGER
+);
+CREATE TABLE IF NOT EXISTS hp_adress_zuordnung (
+ verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),
+ hp_nummer INTEGER NOT NULL, adresse_id INTEGER NOT NULL UNIQUE REFERENCES adressen(id),
+ basis TEXT NOT NULL, remote TEXT, ziel TEXT, claim TEXT UNIQUE, result_hash TEXT,
+ status TEXT NOT NULL, meldung TEXT, unterwegs_ms INTEGER, gelesen_am TEXT,
+ PRIMARY KEY(verbindung_id,hp_nummer)
+);
+
