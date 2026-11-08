@@ -64,7 +64,8 @@ function service(db,{now=()=>Date.now()}={}) {
     return {id,token,ablauf_ms:expires};
    });
   },
-  async list(owner){return db.all('SELECT id,name,datenbank,aktiv,ablauf_ms,zuletzt_gesehen,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id) AS anzahl,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id AND m.status IN (\'konflikt\',\'unklar\',\'fehler\')) AS probleme FROM hp_adress_verbindungen v WHERE benutzer_id=?',[owner]);},
+  async list(owner){const rows=await db.all('SELECT id,name,datenbank,aktiv,ablauf_ms,zuletzt_gesehen,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id) AS anzahl,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id AND m.status IN (\'konflikt\',\'unklar\',\'fehler\')) AS probleme FROM hp_adress_verbindungen v WHERE benutzer_id=?',[owner]);for(const v of rows){v.importfehler=await db.all('SELECT hp_nummer,meldung,gesehen_am FROM hp_adress_importfehler WHERE verbindung_id=? ORDER BY hp_nummer',[v.id]);}return rows;},
+  async report(id,token,error){return db.transaktion(async tx=>{await auth(tx,id,token);const message=error instanceof ValidationError?error.message:'Interner Abgleichfehler'+(typeof error.code==='string'&&/^SQLITE_[A-Z_]+$/.test(error.code)?' ('+error.code+')':'')+'.';await tx.run('INSERT OR REPLACE INTO hp_adress_importfehler VALUES (?,?,?,?)',[id,0,message,iso()]);});},
   async disconnect(owner,id){await db.run('UPDATE hp_adress_verbindungen SET aktiv=0 WHERE id=? AND benutzer_id=?',[id,owner]);return {ok:true};},
   async resolve(address,input){return db.transaktion(async tx=>{
    const m=await tx.get('SELECT * FROM hp_adress_zuordnung WHERE adresse_id=?',[address]);
@@ -77,9 +78,13 @@ function service(db,{now=()=>Date.now()}={}) {
   });},
   async scan(id,token,input) {
    if(!input||!Array.isArray(input.records)||input.records.length>50)fail('Höchstens 50 Adressen je Abgleich.',400);
-   const records=input.records.map(record);if(new Set(records.map(r=>r.nummer)).size!==records.length)fail('Doppelte HP-Adressnummer.',400);
+   if(input.records.some(r=>!r||!Number.isSafeInteger(r.nummer)||r.nummer<1||r.nummer>2147483647))fail('Ungültige HP-Adressnummer.',400);
+   if(new Set(input.records.map(r=>r.nummer)).size!==input.records.length)fail('Doppelte HP-Adressnummer.',400);
    return db.transaktion(async tx=>{
     const v=await auth(tx,id,token);if(input.datenbank!==v.datenbank)fail('HP-Kundenbestand stimmt nicht überein.');
+    await tx.run('DELETE FROM hp_adress_importfehler WHERE verbindung_id=? AND hp_nummer=0',[id]);
+    const records=[];
+    for(const raw of input.records){try{records.push(record(raw));await tx.run('DELETE FROM hp_adress_importfehler WHERE verbindung_id=? AND hp_nummer=?',[id,raw.nummer]);}catch(e){if(!(e instanceof ValidationError))throw e;await tx.run('INSERT OR REPLACE INTO hp_adress_importfehler VALUES (?,?,?,?)',[id,raw.nummer,e.message,iso()]);await tx.run("UPDATE hp_adress_zuordnung SET status='fehler',meldung=? WHERE verbindung_id=? AND hp_nummer=?",[e.message,id,raw.nummer]);}}
     await tx.run('UPDATE hp_adress_verbindungen SET zuletzt_gesehen=? WHERE id=?',[now(),id]);
     await tx.run("UPDATE hp_adress_zuordnung SET status='unklar',meldung='Keine bestätigte Rückmeldung; keine automatische Wiederholung.' WHERE verbindung_id=? AND status='unterwegs' AND unterwegs_ms<?",[id,now()-120000]);
     const jobs=[];
@@ -88,7 +93,7 @@ function service(db,{now=()=>Date.now()}={}) {
      if(!m) {
       // Bestehende lokale Kontakte werden niemals allein anhand einer gleichen Nummer überschrieben.
       const number='HP-'+remote.nummer;
-      if(await tx.get('SELECT id FROM adressen WHERE nummer=?',[number]))fail('Adressnummer '+number+' ist bereits lokal belegt. Zuordnung manuell prüfen.');
+      if(await tx.get('SELECT id FROM adressen WHERE nummer=?',[number])){await tx.run('INSERT OR REPLACE INTO hp_adress_importfehler VALUES (?,?,?,?)',[id,remote.nummer,'Lokale Adressnummer bereits belegt. Zuordnung manuell prüfen.',iso()]);continue;}
       const a={id:(await tx.run("INSERT INTO adressen (nummer,adresstyp,nachname) VALUES (?,'person',?)",[number,remote.name1])).lastID,adresstyp:'person'};
       await apply(tx,a,remote);
       await tx.run("INSERT INTO hp_adress_zuordnung (verbindung_id,hp_nummer,adresse_id,basis,status,gelesen_am) VALUES (?,?,?,?,'synchron',?)",[id,remote.nummer,a.id,JSON.stringify(remote),iso()]);continue;
