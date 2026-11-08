@@ -81,7 +81,7 @@ async function hausperfektMaske() {
   desktop.append(el('section', { class: 'cu-karte', style: 'padding:20px;max-width:1100px;margin:16px auto' }, [
     el('h1', { text: 'HP-Verbindung einrichten' }),
     el('p', { text: 'Verbinde dein HP-Mobile-Kundenkonto und prüfe den direkten Zugriff auf dessen Daten.' }),
-    el('p', { class: 'hint', text: 'Einrichtungsschritt: Die bisherigen CuraAed-Masken sind noch nicht mit HP gekoppelt. Hier werden HP-Daten nur gelesen. Änderungen werden in diesem Schritt nicht an HP übertragen.' }),
+    el('p', { class: 'hint', text: 'Diese Mobile-Ansicht liest HP-Mobile-Daten. Den automatischen Abgleich der normalen Adressmasken richtest du unten separat über den HP-Adressconnector ein.' }),
     neu, verbindungen, el('label', {}, ['Datenbereich ', datenbereich]), meldung, ergebnis,
     el('div', { class: 'tel-plaud-knoepfe' }, [vorher, weiter]),
   ]));

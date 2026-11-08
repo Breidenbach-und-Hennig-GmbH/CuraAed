@@ -54,11 +54,11 @@ internal sealed class HPAddressClient
    tx=c.BeginTransaction(IsolationLevel.Serializable);int n=Convert.ToInt32(old["nummer"]);var current=Read(c,tx,n);
    if(!Same(current,old)){tx.Rollback();return Result("konflikt",current);}
    // Feste Feldliste und alte Werte im WHERE: keine beliebigen SQL-Befehle oder Fremdfelder.
-   var sets=new List<string>();var where=new List<string>();for(int i=0;i<Keys.Length;i++){if(!String.Equals(Convert.ToString(old[Keys[i]]),Convert.ToString(desired[Keys[i]]),StringComparison.Ordinal))sets.Add(Columns[i]+"=?");where.Add("("+Columns[i]+"=? OR ("+Columns[i]+" IS NULL AND ?=''))");}
+   var sets=new List<string>();var where=new List<string>();for(int i=0;i<Keys.Length;i++){if(!String.Equals(Convert.ToString(old[Keys[i]]),Convert.ToString(desired[Keys[i]]),StringComparison.Ordinal))sets.Add(Columns[i]+"=?");where.Add("("+Columns[i]+"=?"+(Convert.ToString(old[Keys[i]])==""?" OR "+Columns[i]+" IS NULL":"")+")");}
    using(var cmd=new OdbcCommand("UPDATE AD_Adr SET "+String.Join(",",sets)+" WHERE AdrNr=? AND "+String.Join(" AND ",where),c,tx)){
     cmd.CommandTimeout=15;for(int i=0;i<Keys.Length;i++)if(!String.Equals(Convert.ToString(old[Keys[i]]),Convert.ToString(desired[Keys[i]]),StringComparison.Ordinal))cmd.Parameters.Add("new"+i,OdbcType.Char,Sizes[i]).Value=desired[Keys[i]];
     cmd.Parameters.Add("n",OdbcType.Int).Value=n;
-    for(int i=0;i<Keys.Length;i++){cmd.Parameters.Add("old"+i,OdbcType.Char,Sizes[i]).Value=old[Keys[i]];cmd.Parameters.Add("null"+i,OdbcType.Char,Sizes[i]).Value=old[Keys[i]];}
+    for(int i=0;i<Keys.Length;i++)cmd.Parameters.Add("old"+i,OdbcType.Char,Sizes[i]).Value=old[Keys[i]];
     if(cmd.ExecuteNonQuery()!=1)throw new InvalidOperationException();
    }
    if(!Same(Read(c,tx,n),desired))throw new InvalidOperationException();commit=true;tx.Commit();tx.Dispose();tx=null;

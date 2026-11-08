@@ -54,7 +54,7 @@ function service(db,{now=()=>Date.now()}={}) {
  }
  return {
   async create(owner,input) {
-   if(input.zustimmung!==true||!input.name?.trim()||input.name.length>80||!/^\w[\w-]{0,63}$/.test(input.datenbank||''))fail('Name, Datenbank und Freigabe für den Adressabgleich fehlen.',400);
+   if(input.zustimmung!==true||typeof input.name!=='string'||!input.name.trim()||input.name.length>80||typeof input.datenbank!=='string'||!/^[A-Za-z0-9_-]{1,64}$/.test(input.datenbank))fail('Name, Datenbank und Freigabe für den Adressabgleich fehlen.',400);
    return db.transaktion(async tx=>{
     const previous=await tx.get('SELECT * FROM hp_adress_verbindungen LIMIT 1');
     if(previous&&(previous.benutzer_id!==owner||previous.datenbank!==input.datenbank.toUpperCase()))fail('Diese Installation ist bereits einem anderen HP-Kundenbestand zugeordnet. Keine Vermischung von Kundendaten.');

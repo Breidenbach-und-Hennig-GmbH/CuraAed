@@ -21,7 +21,7 @@ function fixture(t, { configured = true, failLogin = false } = {}) {
 }
 test('HP UI: Datenzugriff mit Kundenkennung, keine Speicherung oder automatische Rückübertragung', async t => {
   const f = fixture(t); await f.open();
-  assert.match(f.w.document.body.textContent, /bisherigen CuraAed-Masken sind noch nicht mit HP gekoppelt/);
+  assert.match(f.w.document.body.textContent, /Mobile-Ansicht liest HP-Mobile-Daten/);
   f.button('kunde-a.hausperfekt-mobile.de').click(); await tick();
   assert.ok(f.calls.some(c => c.url === '/hausperfekt/verbindungen/own-connection/daten/persons?seite=1'));
   assert.equal(f.w.document.querySelectorAll('img').length, 0);
