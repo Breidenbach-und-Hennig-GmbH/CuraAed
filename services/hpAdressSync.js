@@ -5,6 +5,8 @@ const {ValidationError}=require('../lib/validation');
 const fields={anrede:30,vorname:30,name1:30,zusatz:30,strasse:30,land:3,plz:6,ort:30};
 const fail=(m,s=409)=>{throw new ValidationError(m,s);};
 const digest=v=>crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex');
+// 0 bedeutet ausdrücklich unbefristet. Bestehende Zeitfreigaben behalten ihren Ablauf.
+const validUntil=(v,now)=>v.ablauf_ms===0||v.ablauf_ms>now;
 function record(v) {
  if(!v || !Number.isSafeInteger(v.nummer) || v.nummer<1 || v.nummer>2147483647)fail('Ungültige HP-Adressnummer.',400);
  const out={nummer:v.nummer};
@@ -22,7 +24,7 @@ async function metadata(db,a) {
  if(!m)return a;
  let status=m.status;
  if(status==='synchron'&&revision(a,m.hp_nummer)!==digest(JSON.parse(m.basis)))status='ausstehend';
- return {...a,hp_sync:{nummer:m.hp_nummer,status,aktiv:!!m.aktiv&&m.ablauf_ms>Date.now(),online:!!m.zuletzt_gesehen&&Date.now()-m.zuletzt_gesehen<30000,version:revision(a,m.hp_nummer),konflikt_version:digest([m.basis,m.remote,revision(a,m.hp_nummer)]),meldung:m.meldung}};
+ return {...a,hp_sync:{nummer:m.hp_nummer,status,aktiv:!!m.aktiv&&validUntil(m,Date.now()),online:!!m.zuletzt_gesehen&&Date.now()-m.zuletzt_gesehen<30000,version:revision(a,m.hp_nummer),konflikt_version:digest([m.basis,m.remote,revision(a,m.hp_nummer)]),meldung:m.meldung}};
 }
 async function validateSave(db,old,data) {
  const m=await db.get('SELECT * FROM hp_adress_zuordnung WHERE adresse_id=?',[old.id]);if(!m)return;
@@ -38,7 +40,7 @@ function service(db,{now=()=>Date.now()}={}) {
  const iso=()=>new Date(now()).toISOString();
  async function auth(tx,id,token) {
   const v=await tx.get("SELECT v.* FROM hp_adress_verbindungen v JOIN benutzer b ON b.id=v.benutzer_id WHERE v.id=? AND v.aktiv=1 AND b.aktiv=1 AND b.rolle='admin'",[id]);
-  if(!v||typeof token!=='string'||!crypto.timingSafeEqual(Buffer.from(digest(token)),Buffer.from(v.token_hash))||v.ablauf_ms<=now())fail('Adressconnector-Freigabe ungültig oder abgelaufen.',401);
+  if(!v||typeof token!=='string'||!crypto.timingSafeEqual(Buffer.from(digest(token)),Buffer.from(v.token_hash))||!validUntil(v,now()))fail('Adressconnector-Freigabe ungültig oder abgelaufen.',401);
   return v;
  }
  async function audit(tx,a,k,old,value) {
@@ -54,14 +56,25 @@ function service(db,{now=()=>Date.now()}={}) {
  }
  return {
   async create(owner,input) {
+   if(input.dauerhaft!==undefined&&typeof input.dauerhaft!=='boolean')fail('Ungültige Freigabedauer.',400);
    if(input.zustimmung!==true||typeof input.name!=='string'||!input.name.trim()||input.name.length>80||typeof input.datenbank!=='string'||!/^[A-Za-z0-9_-]{1,64}$/.test(input.datenbank))fail('Name, Datenbank und Freigabe für den Adressabgleich fehlen.',400);
    return db.transaktion(async tx=>{
     const previous=await tx.get('SELECT * FROM hp_adress_verbindungen LIMIT 1');
     if(previous&&(previous.benutzer_id!==owner||previous.datenbank!==input.datenbank.toUpperCase()))fail('Diese Installation ist bereits einem anderen HP-Kundenbestand zugeordnet. Keine Vermischung von Kundendaten.');
-    const id=previous?.id||crypto.randomUUID(),token=crypto.randomBytes(32).toString('base64url'),expires=now()+8*3600000;
+    const permanent=input.dauerhaft===true||(input.dauerhaft===undefined&&previous?.ablauf_ms===0);
+    const id=previous?.id||crypto.randomUUID(),token=crypto.randomBytes(32).toString('base64url'),expires=permanent?0:now()+8*3600000;
     if(previous)await tx.run('UPDATE hp_adress_verbindungen SET token_hash=?,ablauf_ms=?,aktiv=1 WHERE id=?',[digest(token),expires,id]);
     else await tx.run('INSERT INTO hp_adress_verbindungen (id,benutzer_id,name,datenbank,token_hash,ablauf_ms) VALUES (?,?,?,?,?,?)',[id,owner,input.name.trim(),input.datenbank.toUpperCase(),digest(token),expires]);
     return {id,token,ablauf_ms:expires};
+   });
+  },
+  async permanent(owner,id,input){
+   if(input.zustimmung!==true)fail('Bitte die dauerhafte Adressfreigabe ausdrücklich bestätigen.',400);
+   return db.transaktion(async tx=>{
+    const v=await tx.get('SELECT * FROM hp_adress_verbindungen WHERE id=? AND benutzer_id=? AND aktiv=1',[id,owner]);
+    if(!v)fail('Eigene aktive Adressverbindung nicht gefunden.',404);
+    await tx.run('UPDATE hp_adress_verbindungen SET ablauf_ms=0 WHERE id=?',[id]);
+    return {ok:true,ablauf_ms:0};
    });
   },
   async list(owner){const rows=await db.all('SELECT id,name,datenbank,aktiv,ablauf_ms,zuletzt_gesehen,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id) AS anzahl,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id AND m.status IN (\'konflikt\',\'unklar\',\'fehler\')) AS probleme FROM hp_adress_verbindungen v WHERE benutzer_id=?',[owner]);for(const v of rows){v.importfehler=await db.all('SELECT hp_nummer,meldung,gesehen_am FROM hp_adress_importfehler WHERE verbindung_id=? ORDER BY hp_nummer',[v.id]);}return rows;},

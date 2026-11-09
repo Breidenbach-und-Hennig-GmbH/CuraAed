@@ -13,6 +13,7 @@ module.exports=(db,options={})=>{
  r.get('/verbindungen',h(async(req,res)=>res.json({verbindungen:await svc.list(req.benutzer.id)})));
  r.post('/verbindungen',h(async(req,res)=>res.json(await svc.create(req.benutzer.id,req.body))));
  r.post('/verbindungen/:id/trennen',h(async(req,res)=>res.json(await svc.disconnect(req.benutzer.id,req.params.id))));
+ r.post('/verbindungen/:id/dauerhaft',h(async(req,res)=>res.json(await svc.permanent(req.benutzer.id,req.params.id,req.body))));
  r.post('/adressen/:id/konflikt',h(async(req,res)=>res.json(await svc.resolve(req.params.id,req.body))));
  return r;
 };
