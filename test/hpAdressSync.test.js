@@ -2,6 +2,20 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {openDatabase}=require('../db'),users=require('../services/benutzer'),adressen=require('../services/adressen');
 const {service,record}=require('../services/hpAdressSync');
+test('Adress-Delta: unveränderte Datensätze nicht übertragen, neue und Änderungen beider Seiten erkennen, Neustart erhält Basis',async t=>{
+ const f=await fixture(t),hash=require('../services/hpAdressSync').fingerprint;
+ const check=async records=>f.svc.compare(f.c.id,f.c.token,{datenbank:'HPTEST',fingerprints:records.map(r=>({nummer:r.nummer,hash:hash(r)}))});
+ assert.deepEqual((await check([f.r])).benoetigt,[]);
+ const remote={...f.r,ort:'HP neu'},added={...f.r,nummer:100};assert.deepEqual((await check([remote,added])).benoetigt,[99,100]);
+ await f.scan([remote]);assert.deepEqual((await check([remote])).benoetigt,[]);
+ await f.save({ort:'Cura neu'});assert.deepEqual((await check([remote])).benoetigt,[99]);
+ const jobs=(await f.scan([remote])).jobs;await f.svc.result(f.c.id,f.c.token,{id:jobs[0].id,status:'erfolg',record:jobs[0].neu});
+ const fresh=service(f.db);assert.deepEqual((await fresh.compare(f.c.id,f.c.token,{datenbank:'HPTEST',fingerprints:[{nummer:99,hash:hash(jobs[0].neu)}]})).benoetigt,[]);
+ await assert.rejects(f.svc.compare(f.c.id,'x'.repeat(43),{datenbank:'HPTEST',fingerprints:[]}),e=>e.status===401);
+ await assert.rejects(f.svc.compare(f.c.id,f.c.token,{datenbank:'FREMD',fingerprints:[]}),e=>e.status===409);
+ await assert.rejects(f.svc.compare(f.c.id,f.c.token,{datenbank:'HPTEST',fingerprints:[{nummer:99,hash:'bad'}]}),e=>e.status===400);
+ assert.equal(hash({nummer:65937,anrede:'Herr',vorname:'Jörg',name1:'Müller',zusatz:'',strasse:'Test 1',land:'DE',plz:'12345',ort:'Köln'}),'952062ac5ba53f2fa432a4a8bb144c4613774b205a35016de908d5e22e1ec34f');
+});
 test('HP-Importdiagnose: nennt Feld und Grund ohne den Adresswert offenzulegen',()=>{
  const r={nummer:1,anrede:'',vorname:'',name1:'Test',zusatz:'',strasse:'',land:'DE',plz:'',ort:''};
  assert.throws(()=>record({...r,anrede:'Vertraulich\n'}),e=>e.message.includes('anrede')&&e.message.includes('U+000A')&&!e.message.includes('Vertraulich'));

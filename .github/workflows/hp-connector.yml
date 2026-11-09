@@ -22,6 +22,8 @@ jobs:
           & $hpCompiler /nologo /target:exe /platform:x86 /main:HPAddressTests /out:HPAddressTests.exe /r:System.Data.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Web.Extensions.dll /r:System.Security.dll tools\hp-direkt\HPAdressConnector.cs tools\hp-direkt\HPAddressTests.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & .\HPAddressTests.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $hpCompiler /nologo /target:winexe /platform:x86 /out:HP-Strukturpruefung.exe /r:System.Data.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Web.Extensions.dll tools\hp-direkt\HPStrukturPruefung.cs
           exit $LASTEXITCODE
 
 

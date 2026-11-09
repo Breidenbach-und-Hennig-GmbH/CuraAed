@@ -7,6 +7,7 @@ const fail=(m,s=409)=>{throw new ValidationError(m,s);};
 const digest=v=>crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex');
 // 0 bedeutet ausdrücklich unbefristet. Bestehende Zeitfreigaben behalten ihren Ablauf.
 const validUntil=(v,now)=>v.ablauf_ms===0||v.ablauf_ms>now;
+function fingerprint(r){const h=crypto.createHash('sha256');for(const key of ['nummer',...Object.keys(fields)]){const text=String(r[key]);h.update(Buffer.byteLength(text,'utf8')+':');h.update(text,'utf8');}return h.digest('hex');}
 function record(v) {
  if(!v || !Number.isSafeInteger(v.nummer) || v.nummer<1 || v.nummer>2147483647)fail('Ungültige HP-Adressnummer.',400);
  const out={nummer:v.nummer};
@@ -93,6 +94,21 @@ function service(db,{now=()=>Date.now()}={}) {
    if(input.uebernehmen==='hp')await apply(tx,a,JSON.parse(m.remote));
    await tx.run("UPDATE hp_adress_zuordnung SET basis=remote,status='synchron',ziel=NULL,meldung=NULL WHERE adresse_id=?",[address]);return {ok:true};
   });},
+  async compare(id,token,input){
+   if(!input||!Array.isArray(input.fingerprints)||input.fingerprints.length>50||input.fingerprints.some(r=>!r||!Number.isSafeInteger(r.nummer)||r.nummer<1||r.nummer>2147483647||typeof r.hash!=='string'||!(/^[a-f0-9]{64}$/).test(r.hash))||new Set(input.fingerprints.map(r=>r.nummer)).size!==input.fingerprints.length)fail('Ungültiger Adress-Fingerabdruckvergleich.',400);
+   return db.transaktion(async tx=>{
+    const v=await auth(tx,id,token);if(input.datenbank!==v.datenbank)fail('HP-Kundenbestand stimmt nicht überein.');
+    const required=[];
+    for(const r of input.fingerprints){
+     const m=await tx.get('SELECT * FROM hp_adress_zuordnung WHERE verbindung_id=? AND hp_nummer=?',[id,r.nummer]);
+     if(!m||m.status!=='synchron'){required.push(r.nummer);continue;}
+     const base=JSON.parse(m.basis),a=await tx.get('SELECT * FROM adressen WHERE id=?',[m.adresse_id]);
+     if(fingerprint(base)!==r.hash||fingerprint(local(a,r.nummer))!==fingerprint(base))required.push(r.nummer);
+    }
+    await tx.run('UPDATE hp_adress_verbindungen SET zuletzt_gesehen=? WHERE id=?',[now(),id]);
+    return {protokoll:'adress-delta-v1',benoetigt:required};
+   });
+  },
   async scan(id,token,input) {
    if(!input||!Array.isArray(input.records)||input.records.length>50)fail('Höchstens 50 Adressen je Abgleich.',400);
    if(input.records.some(r=>!r||!Number.isSafeInteger(r.nummer)||r.nummer<1||r.nummer>2147483647))fail('Ungültige HP-Adressnummer.',400);
@@ -161,5 +177,5 @@ function service(db,{now=()=>Date.now()}={}) {
   },
  };
 }
-module.exports={service,fields,record,local,metadata,validateSave,revision};
+module.exports={service,fields,record,local,metadata,validateSave,revision,fingerprint};
 
