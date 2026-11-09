@@ -88,14 +88,14 @@ function objektSuche() {
     titel: 'Objekte – Suche', listenBasis: '#/objekte/', symbol: '🏢', abschnittTitel: 'Objekte',
     felder: [
       { name: 'suche', label: 'Suchbegriff', platzhalter: 'Objekt-Nr., Bezeichnung, Straße, Ort …' },
-      { name: 'objekttyp', label: 'Typ', optionen: [['', 'alle'], ['WEG', 'WEG'], ['MIETE', 'Miete']] },
+      { name: 'objekttyp', label: 'Typ', optionen: [['', 'alle'], ['WEG', 'WEG'], ['MIETE', 'Miete'], ['HP', 'HP-Typ']] },
       { name: 'archiviert', label: 'Bestand', optionen: [['', 'aktive Objekte'], ['1', 'deaktivierte Objekte']] },
     ],
     abrufen: (w) => API.get('/objekte' + API.qs(w)),
     spalten: [
       { label: 'Nr.', class: 'nowrap', render: (o) => o.nummer },
       { label: 'Bezeichnung', render: (o) => el('strong', { text: o.bezeichnung }) },
-      { label: 'Typ', render: (o) => (o.objekttyp === 'WEG' ? 'WEG' : 'Miete') },
+      { label: 'Typ', render: (o) => (o.objekttyp === 'HP' ? 'HP-Typ' : o.objekttyp === 'WEG' ? 'WEG' : 'Miete') },
       { label: 'Strasse', render: (o) => o.strasse },
       { label: 'PLZ', render: (o) => o.plz },
       { label: 'Ort', render: (o) => o.ort },
@@ -490,7 +490,7 @@ async function objektMaske(id, params) {
     inhalt.append(
       el('section', { class: 'cu-karte', 'aria-label': 'Verteilerschlüssel' }, [
         el('div', { class: 'cu-karten-kopf' }, [
-          el('h2', { class: 'cu-karten-titel' }, [icon('key', 'cu-akzent'), el('span', { text: 'Verteilerschlüssel' })]),
+          el('h2', { class: 'cu-karten-titel' }, [icon('key', 'cu-akzent'), el('span', { text: 'Verteilerschlüssel'+(verteiler[0]?.jahr?' · '+verteiler[0].jahr:'') })]),
           el('span', { class: 'hp-spacer' }),
           el('div', { class: 'cu-suche-klein' }, [icon('search'), vSuche]),
           schreiben ? el('button', { type: 'button', class: 'btn-primary cu-knopf', onclick: () => verteilerForm(o, null, neuLaden) }, [icon('plus'), el('span', { text: 'Schlüssel' })]) : null,
@@ -553,7 +553,7 @@ async function objektMaske(id, params) {
     kopf: {
       brot: [{ text: 'Objekte', href: '#/objektliste' }, { text: o.nummer, href: basis }, { text: o.bezeichnung }],
       ueberschrift: o.bezeichnung,
-      badge: o.objekttyp === 'WEG' ? 'WEG-Verwaltung' : 'Mietverwaltung', badgeKlasse: o.objekttyp === 'WEG' ? 'cu-badge-weg' : 'cu-badge-miete',
+      badge: o.objekttyp === 'HP' ? 'HP-Typ noch nicht zugeordnet' : o.objekttyp === 'WEG' ? 'WEG-Verwaltung' : 'Mietverwaltung', badgeKlasse: o.objekttyp === 'WEG' ? 'cu-badge-weg' : 'cu-badge-miete',
       unterzeile: [`Objekt ${o.nummer}`, [o.plz, o.ort].filter(Boolean).join(' ')].filter(Boolean).join('  •  ') + (o.archiviert ? '  •  deaktiviert' : ''),
       buchungsjahr: true,
     },
@@ -605,7 +605,7 @@ async function einheitMaske(id, params) {
     panel([
       ['angelegt', datumKurz(e.erstellt_am)],
       ['geändert', datumKurz(e.geaendert_am)],
-      ['Objekttyp', o.objekttyp === 'WEG' ? 'WEG' : 'Miete'],
+      ['Objekttyp', o.objekttyp === 'HP' ? 'HP-Typ' : o.objekttyp === 'WEG' ? 'WEG' : 'Miete'],
       ['Status', e.archiviert ? badge('deaktiviert', 'badge-inaktiv') : badge('aktiv', 'badge-aktiv')],
     ], 'hp-info'),
   ];
@@ -684,7 +684,7 @@ async function einheitMaske(id, params) {
 // ---------------------------------------------------------------------
 //  Personenkonto zur Wohnung (Strg+P in der Wohnung) – nach HausPerfekt
 // ---------------------------------------------------------------------
-const pktoRolle = (p) => (p.pfkt_bezeichnung ? `${p.pfkt_code} ${p.pfkt_bezeichnung}` : L.rolle[p.rolle] || p.rolle);
+const pktoRolle = (p) => (p.pfkt_bezeichnung ? `${p.pfkt_code} ${p.pfkt_bezeichnung}` : L.rolle[p.rolle] || p.rolle || 'HP-Konto ohne Funktionszuordnung');
 
 /** Strg+P: Personenkonto passend zur aktuellen Maske öffnen. */
 async function pktoSprung(k) {
@@ -799,7 +799,7 @@ async function personenkontoMaske(id, params) {
   const basis = '#/pkto/' + p.pkto_id;
   const tab = params.get('tab') || 'stammdaten';
   const schreiben = darfSchreiben();
-  const a = p.adresse;
+  const a = p.adresse || {adresstyp:'person',nachname:p.kontoname||'Keine HP-Adresse zugeordnet',nummer:''};
   const whgNr = String(p.einheit_nummer || '').split('-').pop();
   const pktoFormular = () => formFenster({
     titel: `Personenkonto ${p.pkto_nummer} ändern`,
@@ -811,8 +811,8 @@ async function personenkontoMaske(id, params) {
     danach: neuLaden,
   });
   S.kontext = {
-    typ: 'pkto', pkto: p, adresse: a, objekt: { id: p.objekt_id }, einheit: { id: p.einheit_id }, zurueck: '#/einheiten/' + p.einheit_id,
-    archivKtx: { typ: 'adresse', id: a.id, nummer: a.nummer }, bearbeiten: pktoFormular,
+    typ: 'pkto', pkto: p, adresse: a.id?a:null, objekt: { id: p.objekt_id }, einheit: { id: p.einheit_id }, zurueck: p.einheit_id?'#/einheiten/'+p.einheit_id:'#/objekte/'+p.objekt_id,
+    archivKtx: a.id?{ typ: 'adresse', id: a.id, nummer: a.nummer }:{typ:'objekt',id:p.objekt_id}, bearbeiten: pktoFormular,
     suchen: async () => { try { pktoWahl(await API.get(`/objekte/${p.objekt_id}/personenkonten`), {}); } catch (e) { fehler(e); } },
     erstellen: async () => { try { pktoWahl(await API.get(`/einheiten/${p.einheit_id}/personenkonten`), { einheit: { id: p.einheit_id, nummer: p.einheit_nummer } }); } catch (e) { fehler(e); } },
   };
@@ -824,14 +824,14 @@ async function personenkontoMaske(id, params) {
       el('div', { class: 'cu-spalte' }, [zeile('PKto-Nr', `${p.pkto_nummer}  ${suchname(a)}`), zeile('Ref.-Nr', p.ref_nr || '0'),
         zeile('PFkt.', `${whgNr} ${pktoRolle(p)}  ·  ${datumKurz(p.gueltig_von) || '…'} –${p.gueltig_bis ? ' ' + datumKurz(p.gueltig_bis) : ''}`)]),
       el('div', { class: 'cu-spalte' }, [zeile('Objekt', `${p.einheit_nummer}, ${String(p.objekt_bezeichnung || '').toUpperCase()}`), zeile('SB', p.sb_kuerzel ? String(p.sb_kuerzel).toUpperCase() : ''),
-        el('div', { class: 'cu-kv' }, [el('span', { class: 'cu-kv-l', text: 'Offene Posten' }), el('strong', { class: 'cu-kv-w', text: `${zahlDe(p.offene_posten, 2)} EUR` })])]),
+        el('div', { class: 'cu-kv' }, [el('span', { class: 'cu-kv-l', text: 'Offene Posten' }), el('strong', { class: 'cu-kv-w', text: p.offene_posten===null?'Nicht importiert':`${zahlDe(p.offene_posten, 2)} EUR` })])]),
     ]),
   ])];
   const seite = seitenleiste([
     { text: 'Suche', titel: 'Anderes Personenkonto im Objekt (Taste s)', onclick: () => S.kontext.suchen() },
-    { text: 'Bank', schnell: true, titel: 'Bankverbindung / SEPA-Mandat der Adresse', onclick: () => bankDialog(a) },
+    { text: 'Bank', schnell: true, titel: 'Bankverbindung / SEPA-Mandat der Adresse', onclick: () => bankDialog(a), gesperrt:!a.id },
     { text: 'W.Soll', schnell: true, titel: 'Sollwerte (Hausgeld/Miete)', onclick: () => wSollDialog(p.pkto_id) },
-    { text: 'Telefon', schnell: true, titel: 'Telefonnummer ergänzen', onclick: () => telefonDialog(a.id), gesperrt: !schreiben },
+    { text: 'Telefon', schnell: true, titel: 'Telefonnummer ergänzen', onclick: () => telefonDialog(a.id), gesperrt: !schreiben||!a.id },
     { text: 'Vschl.', schnell: true, titel: 'Verteilerschlüssel des Objekts', onclick: () => verteilerDialog({ id: p.objekt_id, nummer: p.objekt_nummer, bezeichnung: p.objekt_bezeichnung }) },
     { text: 'KAusz.', schnell: true, gesperrt: true, grund: 'Kontoauszug – ' + FOLGT },
     { text: 'Kaution', gesperrt: true, grund: 'Kautionsverwaltung – ' + FOLGT },
@@ -840,8 +840,8 @@ async function personenkontoMaske(id, params) {
     { text: 'AbrKto', gesperrt: true, grund: 'Abrechnungskonto – ' + FOLGT },
     { text: 'Index', gesperrt: true, grund: 'Indexmiete – folgt mit der Mietanpassung.' },
     { text: 'Info', titel: 'Bemerkung / Wichtige Informationen', onclick: pktoFormular, gesperrt: !schreiben },
-    { text: 'Adresse', titel: 'Adresse öffnen (Strg+A)', onclick: () => geheZu('#/adressen/' + a.id) },
-    { text: 'Wohnung', titel: 'Zurück zur Wohnung (Esc)', onclick: () => geheZu('#/einheiten/' + p.einheit_id) },
+    { text: 'Adresse', titel: 'Adresse öffnen (Strg+A)', onclick: () => geheZu('#/adressen/' + a.id),gesperrt:!a.id },
+    { text: 'Wohnung', titel: 'Zurück zur Wohnung (Esc)', onclick: () => geheZu('#/einheiten/' + p.einheit_id),gesperrt:!p.einheit_id },
   ]);
   const inhalt = el('div');
   if (tab === 'stammdaten') {
@@ -869,24 +869,29 @@ async function personenkontoMaske(id, params) {
           zeile('Whg.', `${whgNr}  ${p.lage || ''}`), zeile('WG m² Fläche', p.flaeche_qm != null ? zahlDe(p.flaeche_qm, 2) : ''),
           raster([
             { label: 'VSchl.', class: 'nowrap', render: (v) => v.kuerzel },
-            { label: 'Wohnungsanteile', class: 'zahl nowrap', render: (v) => zahlDe(v.anteil) },
+            { label: 'Jahr',render:v=>v.jahr||'—' },
+            { label: 'Kontoanteil', class: 'zahl nowrap', render: (v) => v.jahr?(v.anteil??'—'):zahlDe(v.anteil) },
+            { label:'Einheitenanteil',render:v=>v.einheitsanteil??'—' },
             { label: 'Schlüsseltext', render: (v) => v.bezeichnung },
           ], p.verteiler, { leer: 'Keine Verteilerschlüssel-Anteile für diese Wohnung.' }),
         ]),
         el('section', { class: 'cu-karte cu-abstand', 'aria-label': 'Sollstellung' }, [
           el('div', { class: 'cu-karten-kopf' }, [el('h2', { class: 'cu-karten-titel' }, [icon('calendar', 'cu-akzent'), el('span', { text: 'Sollstellung' })]), el('span', { class: 'hp-spacer' }),
             el('button', { type: 'button', class: 'hp-mini', onclick: () => wSollDialog(p.pkto_id) }, [el('span', { text: 'W.Soll' })])]),
+          p.hp_importiert?el('p',{text:'Sollwerte und offene Posten werden in diesem Stammdatenimport nicht übernommen.'}):null,
           raster([
             { label: 'Gilt ab', class: 'nowrap', render: (x) => datumKurz(x.gilt_ab) },
             { label: 'Netto', class: 'zahl nowrap', render: (x) => zahlDe(x.netto, 2) },
             { label: 'Sollstellungsbetrag', class: 'zahl nowrap', render: (x) => zahlDe(x.betrag, 2) },
             { label: 'Bezeichnung', render: (x) => x.bezeichnung },
           ], p.soll.aktuell, { leer: 'Keine aktuellen Sollwerte.', onOpen: schreiben ? () => wSollDialog(p.pkto_id) : null }),
-          el('div', { class: 'cu-summe' }, [el('div', { text: `Summe Sollstellungsbeträge monatlich: ${zahlDe(p.soll.betrag, 2)}` }), el('div', { text: `Summe Netto-Beträge monatlich: ${zahlDe(p.soll.netto, 2)}` })]),
+          p.hp_importiert&&!p.soll.aktuell.length?el('p',{text:'Keine Sollwerte importiert.'}):el('div', { class: 'cu-summe' }, [el('div', { text: `Summe Sollstellungsbeträge monatlich: ${zahlDe(p.soll.betrag, 2)}` }), el('div', { text: `Summe Netto-Beträge monatlich: ${zahlDe(p.soll.netto, 2)}` })]),
         ]),
       ]),
     ]));
     inhalt.appendChild(abschnitt('Bemerkung / Wichtige Informationen', el('div', { class: 'hp-notizen', text: p.bemerkung || '' }), [schreiben ? { text: 'Bearbeiten', pfeil: false, onclick: pktoFormular } : null]));
+  } else if (!a.id&&['korrespondenz','archiv','zis','wiedervorlage'].includes(tab)) {
+    inhalt.append(el('p',{text:'Diesem HP-Konto ist keine Adresse zugeordnet.'}));
   } else if (tab === 'korrespondenz' || tab === 'archiv') {
     archivListe(inhalt, { ktx: { typ: 'adresse', id: a.id }, kategorie: tab === 'korrespondenz' ? 'korrespondenz' : params.get('kategorie'), lauf });
   } else if (tab === 'zis') {
@@ -901,9 +906,9 @@ async function personenkontoMaske(id, params) {
   zeigeAufDesktop(lauf, maskenFenster({
     titel: `Personenkonto zur Wohnung  Nr.: ${p.pkto_nummer} ${suchname(a)}`,
     kopf: {
-      brot: [{ text: 'Objekte', href: '#/objektliste' }, { text: p.objekt_nummer, href: '#/objekte/' + p.objekt_id }, { text: 'Whg ' + p.einheit_nummer, href: '#/einheiten/' + p.einheit_id }, { text: 'PKto ' + p.pkto_nummer }],
+      brot: [{ text: 'Objekte', href: '#/objektliste' }, { text: p.objekt_nummer, href: '#/objekte/' + p.objekt_id }, { text: p.einheit_nummer?'Whg '+p.einheit_nummer:'Ohne Einheit', href: p.einheit_id?'#/einheiten/'+p.einheit_id:undefined }, { text: 'PKto ' + p.pkto_nummer }],
       ueberschrift: a.anzeigename || suchname(a), badge: `PKto ${p.pkto_nummer}`, badgeKlasse: 'cu-badge-neutral',
-      unterzeile: `${pktoRolle(p)} · Wohnung ${p.einheit_nummer} · ${p.objekt_bezeichnung}  •  Offene Posten ${zahlDe(p.offene_posten, 2)} EUR`,
+      unterzeile: `${pktoRolle(p)} · ${p.einheit_nummer?'Einheit '+p.einheit_nummer:'Ohne Einheit'} · ${p.objekt_bezeichnung}  •  Offene Posten ${p.offene_posten===null?'nicht importiert':zahlDe(p.offene_posten, 2)+' EUR'}`,
     },
     inhalt: maskenRaster({
       oben, seite,
@@ -1817,4 +1822,3 @@ async function benutzerMaske() {
     }),
   }));
 }
-

@@ -89,5 +89,5 @@ async function hausperfektMaske() {
   catch (e) { if (lauf === S.lauf) meldung.textContent = e.message; }
   if (lauf === S.lauf) await hpDirektBereich(lauf, desktop);
   if (lauf === S.lauf) await hpAdressBereich(lauf, desktop);
+  if (lauf === S.lauf) await hpObjektImportBereich(lauf, desktop);
 }
-

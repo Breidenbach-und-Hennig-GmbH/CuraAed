@@ -1,0 +1,22 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict');
+const {openDatabase}=require('../db'),{baueApp}=require('../lib/appFactory'),users=require('../services/benutzer');
+test('Objektimport-API trennt Adminfreigabe, Origin, Importtoken und Adressrechte',async t=>{
+ const db=await openDatabase(':memory:');t.after(()=>db.close());for(const [name,rolle]of [['admin','admin'],['team','mitarbeiter']])await users.anlegen(db,{benutzername:name,name,rolle,passwort:'test12345'});
+ const server=baueApp(db,{hpDirekt:{publicUrl:'https://curaaed.test'}}).listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>new Promise(r=>server.close(r)));const base='http://127.0.0.1:'+server.address().port+'/api';
+ const login=async n=>{const r=await fetch(base+'/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({benutzername:n,passwort:'test12345'})});return r.headers.get('set-cookie').split(';')[0];};const admin=await login('admin'),team=await login('team');
+ const post=(url,data,cookie='',token='',origin='https://curaaed.test')=>fetch(base+url,{method:'POST',headers:{'content-type':'application/json',cookie,origin,...(token?{authorization:'Bearer '+token}:{})},body:JSON.stringify(data)});
+ const address=await(await post('/hp-adressen/verbindungen',{name:'Testkunde',datenbank:'HPTEST',zustimmung:true,dauerhaft:true},admin)).json();const input={verbindung_id:address.id,zustimmung:true};
+ assert.equal((await post('/hp-objekte/verbindungen',input,team)).status,403);assert.equal((await post('/hp-objekte/verbindungen',input,admin,'','https://fremd.test')).status,403);
+ assert.equal((await fetch(base+'/hp-objekte/verbindungen')).status,401);assert.equal((await fetch(base+'/hp-objekte/konflikte',{headers:{cookie:team}})).status,403);
+ const grant=await(await post('/hp-objekte/verbindungen',input,admin)).json();assert.equal(grant.scope,'objekte-import-v1');assert.equal(grant.ablauf_ms,0);
+ const path='/hp-objekte/agent/'+grant.id,body={datenbank:'HPTEST',objnr:4010,fi_beendet:0,quelle:'a'.repeat(64)};
+ assert.equal((await post(path+'/quelle',body,'',grant.token)).status,200);
+ assert.equal((await post(path+'/quelle',{...body,quelle:'b'.repeat(64)},'',grant.token)).status,409);
+ assert.equal((await post(path+'/status',body,'',address.token)).status,401);assert.equal((await post(path+'/status',{...body,datenbank:'FREMD'},'',grant.token)).status,409);
+ assert.equal((await post(path+'/status',body,'',grant.token)).status,200);assert.equal((await post('/hp-adressen/agent/'+grant.id+'/abgleich',{datenbank:'HPTEST',records:[]},'',grant.token)).status,401);
+ assert.equal((await post(path+'/diagnose',{...body,art:'einheit',code:'ODBC_42S22'},'',grant.token)).status,200);
+ const listed=await(await fetch(base+'/hp-objekte/verbindungen',{headers:{cookie:admin}})).json();assert.equal(JSON.stringify(listed).includes(grant.token),false);assert.match(listed.verbindungen[0].fehler[0].meldung,/ODBC_42S22/);
+ assert.equal((await post(path+'/abgleich',{...body,records:[],padding:'x'.repeat(270000)},'',grant.token)).status,400);
+ await post('/hp-objekte/verbindungen/'+grant.id+'/trennen',{},admin);assert.equal((await post(path+'/status',body,'',grant.token)).status,401);
+});

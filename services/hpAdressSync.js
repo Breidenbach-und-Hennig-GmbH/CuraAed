@@ -84,7 +84,7 @@ function service(db,{now=()=>Date.now()}={}) {
   },
   async list(owner){const rows=await db.all('SELECT id,name,datenbank,aktiv,ablauf_ms,zuletzt_gesehen,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id) AS anzahl,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id AND m.status IN (\'konflikt\',\'unklar\',\'fehler\')) AS probleme FROM hp_adress_verbindungen v WHERE benutzer_id=?',[owner]);for(const v of rows){v.importfehler=await db.all('SELECT hp_nummer,meldung,gesehen_am FROM hp_adress_importfehler WHERE verbindung_id=? ORDER BY hp_nummer',[v.id]);}return rows;},
   async report(id,token,error){return db.transaktion(async tx=>{await auth(tx,id,token);const message=error instanceof ValidationError?error.message:'Interner Abgleichfehler'+(typeof error.code==='string'&&/^SQLITE_[A-Z_]+$/.test(error.code)?' ('+error.code+')':'')+'.';await tx.run('INSERT OR REPLACE INTO hp_adress_importfehler VALUES (?,?,?,?)',[id,0,message,iso()]);});},
-  async disconnect(owner,id){await db.run('UPDATE hp_adress_verbindungen SET aktiv=0 WHERE id=? AND benutzer_id=?',[id,owner]);return {ok:true};},
+  async disconnect(owner,id){return db.transaktion(async tx=>{await tx.run('UPDATE hp_objekt_importe SET aktiv=0 WHERE verbindung_id IN (SELECT id FROM hp_adress_verbindungen WHERE id=? AND benutzer_id=?)',[id,owner]);await tx.run('UPDATE hp_adress_verbindungen SET aktiv=0 WHERE id=? AND benutzer_id=?',[id,owner]);return {ok:true};});},
   async resolve(address,input){return db.transaktion(async tx=>{
    const m=await tx.get('SELECT * FROM hp_adress_zuordnung WHERE adresse_id=?',[address]);
    if(!m||!['konflikt','fehler','unklar'].includes(m.status)||!m.remote)fail('Bitte zuerst einen aktuellen HP-Abgleich abwarten.');
@@ -178,4 +178,3 @@ function service(db,{now=()=>Date.now()}={}) {
  };
 }
 module.exports={service,fields,record,local,metadata,validateSave,revision,fingerprint};
-

@@ -10,7 +10,7 @@ const WARMWASSER = ['zentral über Heizung', 'dezentral (Durchlauferhitzer)', 'B
 const GARAGENARTEN = ['keine', 'Tiefgarage', 'Einzelgaragen', 'Carports', 'Außenstellplätze', 'Duplexparker'];
 
 /** Objekt-Typ im Klartext (HausPerfekt: „Mehrfamilienhaus eines Eigentümers"). */
-const objektTypText = (o) => o.objekt_art || (o.objekttyp === 'WEG' ? 'Wohnungseigentümergemeinschaft (WEG)' : 'Mehrfamilienhaus eines Eigentümers');
+const objektTypText = (o) => o.objekt_art || (o.objekttyp === 'HP' ? 'HP-Typ noch nicht zugeordnet' : o.objekttyp === 'WEG' ? 'Wohnungseigentümergemeinschaft (WEG)' : 'Mehrfamilienhaus eines Eigentümers');
 
 async function objektFormular(objekt) {
   const bearb = !!objekt;
@@ -21,7 +21,7 @@ async function objektFormular(objekt) {
     { grid: 3, felder: [
       { name: 'nummer', label: bearb ? 'Objekt-Nr.' : 'Objekt-Nr. (leer = automatisch)', value: o.nummer, placeholder: 'z. B. 21350' },
       { name: 'bezeichnung', label: 'Bezeichnung', required: true, value: o.bezeichnung, placeholder: 'z. B. ACKERSTRAßE 77' },
-      { name: 'objekttyp', label: 'Verwaltungsart', type: 'select', options: [{ value: 'WEG', label: 'WEG-Verwaltung' }, { value: 'MIETE', label: 'Mietverwaltung' }], value: o.objekttyp || 'WEG' },
+      { name: 'objekttyp', label: 'Verwaltungsart', type: 'select', options: [{ value: 'WEG', label: 'WEG-Verwaltung' }, { value: 'MIETE', label: 'Mietverwaltung' }, {value:'HP',label:'HP-Typ noch nicht zugeordnet'}], value: o.objekttyp || 'WEG' },
     ] },
     { grid: 3, felder: [
       { name: 'strasse', label: 'Straße', value: o.strasse },
@@ -1135,9 +1135,10 @@ function objektBankDialog(o) {
 async function verteilerForm(o, s, danach) {
   let daten;
   try {
-    daten = s ? await API.get('/verteiler/' + s.id)
+    daten = s ? await API.get('/verteiler/' + s.id+(s.jahr?'?jahr='+s.jahr:''))
       : { anteile: (await API.get(`/objekte/${o.id}/einheiten`)).map((e) => ({ einheit_id: e.id, nummer: e.nummer, bezeichnung: e.bezeichnung, lage: e.lage, anteil: null })) };
   } catch (e) { fehler(e); return; }
+  if(daten.hp_jahresstand){await hpJahresanteile(o,daten);return;}
   const { form, werte, inputs } = formular([
     { grid: 3, felder: [
       { name: 'kuerzel', label: 'VerteilerSchl.', required: true, value: daten.kuerzel, placeholder: 'z. B. 200 oder SWA' },
@@ -1198,13 +1199,19 @@ async function verteilerForm(o, s, danach) {
 
 const verteilerSpalten = [
   { label: 'VerteilerSchl.', class: 'nowrap', render: (s) => s.kuerzel },
+  { label:'Jahr',render:s=>s.jahr||'—' },
   { label: 'Bezeichnung', render: (s) => s.bezeichnung },
-  { label: 'Anteil', class: 'zahl nowrap', render: (s) => (s.abweichung
+  { label: 'Anteil', class: 'zahl nowrap', render: (s) => s.jahr?String(s.anteil??'—').replace('.',','):(s.abweichung
     ? el('span', { class: 'hp-warn', title: `Summe der Einheiten ${zahlDe(s.summe_einheiten)} weicht vom Gesamtanteil ab`, text: `⚠ ${zahlDe(s.anteil)}` })
     : zahlDe(s.anteil)) },
 ];
 
-function verteilerDialog(o) {
+async function verteilerDialog(o) {
+  try{const years=await API.get(`/objekte/${o.id}/verteiler-jahre`);if(years.length){
+    const choice=el('select',{'aria-label':'Buchungsjahr'},[...years.map(y=>el('option',{value:String(y),text:String(y)})),el('option',{value:'undatiert',text:'Undatierte lokale Werte'})]),list=el('div'),info=el('p',{role:'status'});
+    const draw=async()=>{try{const rows=await API.get(`/objekte/${o.id}/verteiler?jahr=`+choice.value);list.replaceChildren(raster([...verteilerSpalten,{label:'Einheiten',render:s=>s.einheiten_anzahl}],rows,{onOpen:s=>verteilerForm(o,s,draw),leer:'Keine Schlüssel für dieses Jahr.'}));}catch(e){info.textContent=e.message;}};
+    choice.addEventListener('change',draw);modal({titel:`Verteilerschlüssel – ${o.nummer}`,wide:true,inhalt:el('div',{},[el('label',{},['Buchungsjahr ',choice]),list,info]),footer:close=>[el('button',{text:'Schließen',onclick:close})]});await draw();return;
+  }}catch(e){fehler(e);return;}
   listenFenster({
     titel: `Verteilerschlüssel – Objekt ${o.nummer} ${o.bezeichnung}`,
     neuText: 'Neuer Verteilerschlüssel',
@@ -1675,4 +1682,3 @@ async function telefonEingang(vorgabe = {}, k = null, danach = null) {
   m.box.classList.add('tel-fenster');
   (vorgabe.adresse || k ? f.bemerkung : f.adrName).focus();
 }
-

@@ -29,7 +29,7 @@ async function hpAdressBereich(lauf,desktop) {
     if(!await bestaetigen('Den Namens- und Postanschriftabgleich für '+v.datenbank+' dauerhaft freigeben? Die bestehende Kopplung bleibt erhalten. Über „Adressabgleich trennen“ kannst du die Freigabe jederzeit widerrufen.'))return;
     try{await API.post('/hp-adressen/verbindungen/'+v.id+'/dauerhaft',{zustimmung:true});status.textContent='Dauerhafte Freigabe gespeichert. Der laufende Connector benötigt keine neuen Kopplungsdaten.';await load();}catch(e){status.textContent=e.message;}
    }}));
-   list.append(el('button',{text:'Adressabgleich trennen',onclick:async()=>{if(await bestaetigen('Adressabgleich für diesen Kundenbestand beenden?')){await API.post('/hp-adressen/verbindungen/'+v.id+'/trennen',{});load();}}}));
+   list.append(el('button',{text:'Adressabgleich trennen',onclick:async()=>{if(await bestaetigen('Adressabgleich für diesen Kundenbestand beenden? Ein zugehöriger Objektimport wird ebenfalls widerrufen.')){await API.post('/hp-adressen/verbindungen/'+v.id+'/trennen',{});load();}}}));
    if(v.importfehler?.length)list.append(el('p',{text:'Diese HP-Adressen wurden nicht übernommen. Andere Adressen werden weiter abgeglichen.'}),el('ul',{},v.importfehler.map(e=>el('li',{text:(e.hp_nummer?'HP '+e.hp_nummer:'Verbindung')+': '+e.meldung}))));
   }
  }catch(e){status.textContent=e.message;}}
@@ -52,4 +52,3 @@ async function hpAdressBereich(lauf,desktop) {
   }}),el('button',{text:'Adressabgleich-Status aktualisieren',onclick:load}),status,list,
  ]));await load();
 }
-
