@@ -24,6 +24,24 @@ async function holenPerName(db, benutzername) {
   return db.get('SELECT * FROM benutzer WHERE benutzername = ?', [benutzername]);
 }
 
+function pruefeKuerzel(value) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string') throw new V.ValidationError('Das Kürzel darf nur 1 bis 3 Buchstaben (A–Z) enthalten.');
+  const text = value.trim();
+  if (!text) return null;
+  if (!/^[a-zA-Z]{1,3}$/.test(text)) throw new V.ValidationError('Das Kürzel darf nur 1 bis 3 Buchstaben (A–Z) enthalten.');
+  return text.toUpperCase();
+}
+
+async function mitKuerzelPruefung(fn) {
+  try { return await fn(); } catch (e) {
+    if (e.code === 'SQLITE_CONSTRAINT' && /benutzer\.kuerzel/.test(e.message)) {
+      throw new V.ValidationError('Dieses Kürzel ist bereits vergeben.', 409);
+    }
+    throw e;
+  }
+}
+
 async function anlegen(db, data) {
   const benutzername = V.requireStr(data.benutzername, 'Benutzername').toLowerCase();
   const name = V.requireStr(data.name, 'Name');
@@ -34,11 +52,12 @@ async function anlegen(db, data) {
   const rolle = V.oneOf(data.rolle, V.BENUTZER_ROLLEN, 'Rolle', 'mitarbeiter');
   const vorhanden = await holenPerName(db, benutzername);
   if (vorhanden) throw new V.ValidationError('Benutzername bereits vergeben.', 409);
+  const kuerzel = pruefeKuerzel(data.kuerzel);
   const hash = await bcrypt.hash(passwort, BCRYPT_KOSTEN);
-  const r = await db.run(
-    `INSERT INTO benutzer (benutzername, passwort_hash, name, email, rolle) VALUES (?,?,?,?,?)`,
-    [benutzername, hash, name, V.str(data.email), rolle]
-  );
+  const r = await mitKuerzelPruefung(() => db.run(
+    `INSERT INTO benutzer (benutzername, passwort_hash, name, email, rolle, kuerzel) VALUES (?,?,?,?,?,?)`,
+    [benutzername, hash, name, V.str(data.email), rolle, kuerzel]
+  ));
   return holen(db, r.lastID);
 }
 
@@ -48,10 +67,11 @@ async function aktualisieren(db, id, data) {
   const name = V.requireStr(data.name, 'Name');
   const rolle = V.oneOf(data.rolle, V.BENUTZER_ROLLEN, 'Rolle', b.rolle);
   const aktiv = data.aktiv === undefined ? b.aktiv : V.bool(data.aktiv);
-  await db.run(
-    "UPDATE benutzer SET name=?, email=?, rolle=?, aktiv=?, geaendert_am=datetime('now') WHERE id=?",
-    [name, V.str(data.email), rolle, aktiv, id]
-  );
+  const kuerzel = data.kuerzel === undefined ? b.kuerzel : pruefeKuerzel(data.kuerzel);
+  await mitKuerzelPruefung(() => db.run(
+    "UPDATE benutzer SET name=?, email=?, rolle=?, aktiv=?, kuerzel=?, geaendert_am=datetime('now') WHERE id=?",
+    [name, V.str(data.email), rolle, aktiv, kuerzel, id]
+  ));
   return holen(db, id);
 }
 

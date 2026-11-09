@@ -1814,6 +1814,7 @@ async function benutzerMaske() {
       unten: [abschnitt(`Mitarbeiter-Konten (${daten.length})`, raster([
         { label: 'Name', render: (b) => el('strong', { text: b.name }) },
         { label: 'Benutzername', render: (b) => b.benutzername },
+        { label: 'HP-Kürzel', render: (b) => b.kuerzel || '–' },
         { label: 'Rolle', render: (b) => L.benutzerRolle[b.rolle] || b.rolle },
         { label: 'E-Mail', render: (b) => b.email },
         { label: 'Status', render: (b) => (b.aktiv ? badge('aktiv', 'badge-aktiv') : badge('gesperrt', 'badge-inaktiv')) },

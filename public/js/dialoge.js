@@ -492,6 +492,7 @@ function benutzerFormular(b) {
     { grid: 2, felder: [
       { name: 'name', label: 'Name', required: true, value: b?.name },
       { name: 'email', label: 'E-Mail', type: 'email', value: b?.email },
+      { name: 'kuerzel', label: 'HP-Sachbearbeiterkürzel', value: b?.kuerzel, hint: 'Wie in HausPerfekt, z. B. FD. Maximal 3 Großbuchstaben (A–Z), eindeutig. Optional.' },
     ] },
   ];
   if (!bearb) felder.push({ grid: 2, felder: [
@@ -502,7 +503,13 @@ function benutzerFormular(b) {
     { name: 'rolle', label: 'Rolle', type: 'select', options: opt(L.benutzerRolle), value: b?.rolle || 'mitarbeiter' },
     bearb ? { name: 'aktiv', label: 'Status', type: 'select', options: [{ value: '1', label: 'aktiv' }, { value: '0', label: 'gesperrt' }], value: String(b?.aktiv ?? 1) } : { name: '_', label: '', value: '' },
   ] });
-  const { form, werte } = formular(felder);
+  const { form, werte, inputs } = formular(felder);
+  inputs.kuerzel.maxLength = 3;
+  inputs.kuerzel.pattern = '[A-Z]{1,3}';
+  inputs.kuerzel.setAttribute('autocapitalize', 'characters');
+  inputs.kuerzel.addEventListener('input', () => {
+    inputs.kuerzel.value = inputs.kuerzel.value.replace(/[a-z]/g, (c) => c.toUpperCase());
+  });
   modal({
     titel: bearb ? 'Benutzer bearbeiten' : 'Neuer Benutzer',
     inhalt: form,
@@ -510,9 +517,10 @@ function benutzerFormular(b) {
       el('button', { text: 'Abbrechen', onclick: close }),
       el('button', { class: 'btn-primary', text: 'Speichern', onclick: async () => {
         try {
+          if (!form.reportValidity()) return;
           const v = werte();
-          if (bearb) await API.put('/benutzer/' + b.id, { name: v.name, email: v.email, rolle: v.rolle, aktiv: v.aktiv });
-          else await API.post('/benutzer', { benutzername: v.benutzername, passwort: v.passwort, name: v.name, email: v.email, rolle: v.rolle });
+          if (bearb) await API.put('/benutzer/' + b.id, { name: v.name, email: v.email, kuerzel: v.kuerzel, rolle: v.rolle, aktiv: v.aktiv });
+          else await API.post('/benutzer', { benutzername: v.benutzername, passwort: v.passwort, name: v.name, email: v.email, kuerzel: v.kuerzel, rolle: v.rolle });
           toast('Gespeichert', 'success'); close(); neuLaden();
         } catch (e) { fehler(e); }
       } }),
