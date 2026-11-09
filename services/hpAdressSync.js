@@ -11,8 +11,12 @@ function record(v) {
  if(!v || !Number.isSafeInteger(v.nummer) || v.nummer<1 || v.nummer>2147483647)fail('Ungültige HP-Adressnummer.',400);
  const out={nummer:v.nummer};
  for(const [k,max] of Object.entries(fields)) {
-  if(typeof v[k]!=='string'||v[k].length>max||/[\x00-\x1f\x7f]/.test(v[k])||v[k]!==v[k].trimEnd())fail('Ungültiges HP-Adressfeld: '+k,400);
-  if(encoding.decode(encoding.encode(v[k],'cp850'),'cp850')!==v[k])fail('Zeichen im HP-Adressfeld nicht darstellbar: '+k,400);
+  if(typeof v[k]!=='string')fail('Ungültiges HP-Adressfeld: '+k+' – Textwert fehlt.',400);
+  if(v[k].length>max)fail('Ungültiges HP-Adressfeld: '+k+' – '+v[k].length+' Zeichen; maximal '+max+' erlaubt.',400);
+  const control=/[\x00-\x1f\x7f]/.exec(v[k]);
+  if(control)fail('Ungültiges HP-Adressfeld: '+k+' – Steuerzeichen U+'+control[0].charCodeAt(0).toString(16).toUpperCase().padStart(4,'0')+'.',400);
+  if(v[k]!==v[k].trimEnd())fail('Ungültiges HP-Adressfeld: '+k+' – abschließendes Leer-/Abstandszeichen.',400);
+  if(encoding.decode(encoding.encode(v[k],'cp850'),'cp850')!==v[k])fail('Zeichen im HP-Adressfeld nicht darstellbar: '+k+' – Wert passt nicht zur geprüften HP-Codepage CP850.',400);
   out[k]=v[k];
  }
  return out;

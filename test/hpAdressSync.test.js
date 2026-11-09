@@ -2,6 +2,12 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {openDatabase}=require('../db'),users=require('../services/benutzer'),adressen=require('../services/adressen');
 const {service,record}=require('../services/hpAdressSync');
+test('HP-Importdiagnose: nennt Feld und Grund ohne den Adresswert offenzulegen',()=>{
+ const r={nummer:1,anrede:'',vorname:'',name1:'Test',zusatz:'',strasse:'',land:'DE',plz:'',ort:''};
+ assert.throws(()=>record({...r,anrede:'Vertraulich\n'}),e=>e.message.includes('anrede')&&e.message.includes('U+000A')&&!e.message.includes('Vertraulich'));
+ assert.throws(()=>record({...r,name1:'x'.repeat(31)}),/31 Zeichen; maximal 30/);
+ assert.throws(()=>record({...r,ort:'Test\u00a0'}),/Abstandszeichen/);
+});
 
 test('HP-Adressen: dauerhafte Freigabe erhält Token und Zuordnungen, überlebt Zeitablauf und bleibt widerrufbar',async t=>{
  const f=await fixture(t);const original=await f.db.get('SELECT * FROM hp_adress_verbindungen WHERE id=?',[f.c.id]);
