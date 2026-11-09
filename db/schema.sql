@@ -1,4 +1,6 @@
 -- Hausverwaltung – Datenbankschema (Stufe 1)
+-- Basisdefinitionen. openDatabase() wendet anschließend db/migrate.js an;
+-- HP-Strukturen ab user_version 5 sind in db/hpStrukturen.js definiert.
 -- WEG-/Mietverwaltung: Objekte, Einheiten, zentrale Adressdatenbank,
 -- rollenbasierte Zuordnungen (zeitlich nachvollziehbar) und Dokumentenarchiv.
 
@@ -456,7 +458,8 @@ CREATE TABLE IF NOT EXISTS sachkonto_werte (
 
 -- ---------------------------------------------------------------------------
 -- Personenkonten (HausPerfekt „Personenkonto zur Wohnung", Strg+P in der Wohnung):
--- je Personenfunktion (Eigentümer/Mieter einer Einheit) genau ein Konto.
+-- bisheriger Hauptbezug je Personenfunktion; Migration 5 ergänzt direkte Bezüge
+-- und weitere Funktionszuordnungen, ohne vorhandene Hauptbezüge zu entfernen.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS personenkonten (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -547,4 +550,3 @@ CREATE TABLE IF NOT EXISTS hp_adress_importfehler (
  PRIMARY KEY(verbindung_id,hp_nummer)
 );
 CREATE INDEX IF NOT EXISTS hp_adress_sync_status ON hp_adress_zuordnung(verbindung_id,status,unterwegs_ms);
-

@@ -103,13 +103,18 @@ async function openDatabase(filePath) {
     const inst = new sqlite3.Database(filePath, (err) => (err ? reject(err) : resolve(inst)));
   });
   const db = new Database(raw);
-  // Gemeinsamer Speicher: DELETE-Journal statt WAL (siehe Plattform-Hinweis).
-  await db.run('PRAGMA journal_mode = DELETE');
-  await db.run('PRAGMA foreign_keys = ON');
-  const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-  await db.exec(schema);
-  await require('./migrate').migrieren(db, filePath);
-  return db;
+  try {
+    // Gemeinsamer Speicher: DELETE-Journal statt WAL (siehe Plattform-Hinweis).
+    await db.run('PRAGMA journal_mode = DELETE');
+    await db.run('PRAGMA foreign_keys = ON');
+    const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+    await db.exec(schema);
+    await require('./migrate').migrieren(db, filePath);
+    return db;
+  } catch (error) {
+    await db.close().catch(() => {});
+    throw error;
+  }
 }
 
 module.exports = { Database, openDatabase };
