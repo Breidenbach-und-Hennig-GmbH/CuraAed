@@ -187,6 +187,8 @@ async function migrieren(db, filePath) {
     await db.run('PRAGMA user_version = 4');
     if (filePath && filePath !== ':memory:') console.log(`[MIGRATION] ${codes.length} Personenfunktions-Codes aus HausPerfekt übernommen.`);
   }
+  // ---- 5) HP-Objekte, Einheiten, Konten und Jahresverteilung vorbereiten ---
+  await require('./hpStrukturen').migrieren(db, filePath);
 }
 
 module.exports = { migrieren };

@@ -6,7 +6,9 @@ Der Bericht enthält 1.044 Tabellen mit 14.451 Definitionen. Davon sind 2.376 De
 
 Die Dateien `HP-CuraAed-Feldmatrix.csv` und `.json` enthalten Feldnamen, HP-Typcode, Breite, Offset, mögliche lokale Zielfelder und Prüfhinweise. Ein passendes Zielfeld beweist weder identische Fachbedeutung noch einen bereits implementierten Abgleich. „Fehlt oder gesondert zu prüfen“ ist keine Anzahl zwingend neu anzulegender Spalten: darunter fallen auch Quellschlüssel, Ableitungen und fachlich noch ungeklärte Felder.
 
-## Nachgewiesene Lücken
+## Nachgewiesene Lücken im Ausgangsstand
+
+Die folgende Tabelle und die lokale Feldmatrix beschreiben den Ausgangsstand vor Migration 5. Die inzwischen ergänzten Strukturen für Objekte, Einheiten, Konten und Jahresverteilung sind in [hp-datenstrukturen.md](hp-datenstrukturen.md) beschrieben. Das ist noch keine vollständige Masken- oder Importanbindung.
 
 | Bereich | Beleg in HP | Konsequenz für CuraAed |
 | --- | --- | --- |
