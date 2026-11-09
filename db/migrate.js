@@ -20,6 +20,7 @@ async function spalten(db, tabelle) {
  *    Objekten, Einheiten und Adressen zugeordnet werden kann.
  */
 async function migrieren(db, filePath) {
+  const sBenutzer = await spalten(db, 'benutzer');
   const sObjekte = await spalten(db, 'objekte');
   const sEinheiten = await spalten(db, 'einheiten');
   const sAdressen = await spalten(db, 'adressen');
@@ -28,7 +29,7 @@ async function migrieren(db, filePath) {
   const dokAltesFormat = sDokumente.has('objekt_id');
   const brauchtSpalten = !sObjekte.has('nummer') || !sEinheiten.has('nummer') || !sAdressen.has('nummer')
     || !sAdressen.has('geburtstag') || !sAdressen.has('ampel') || !sAdressen.has('versand_standard')
-    || !sObjekte.has('objekt_art');
+    || !sObjekte.has('objekt_art') || !sBenutzer.has('kuerzel');
 
   if ((dokAltesFormat || brauchtSpalten) && filePath && filePath !== ':memory:') {
     // Konsistente Sicherung vor dem Umbau.
@@ -37,6 +38,10 @@ async function migrieren(db, filePath) {
     await db.run('VACUUM INTO ?', [ziel]);
     console.log('[MIGRATION] Sicherung erstellt:', ziel);
   }
+
+  // HP-Sachbearbeiterkürzel ausdrücklich hinterlegen; vorhandene Konten bleiben erhalten.
+  if (!sBenutzer.has('kuerzel')) await db.run("ALTER TABLE benutzer ADD COLUMN kuerzel TEXT CHECK (kuerzel IS NULL OR (length(kuerzel) BETWEEN 1 AND 3 AND kuerzel NOT GLOB '*[^A-Z]*'))");
+  await db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_benutzer_kuerzel ON benutzer(kuerzel) WHERE kuerzel IS NOT NULL');
 
   // ---- 1) Nummern-Spalten ---------------------------------------------
   if (!sObjekte.has('nummer')) await db.run('ALTER TABLE objekte ADD COLUMN nummer TEXT');

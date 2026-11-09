@@ -490,8 +490,8 @@ function baueApi(db, uploadDir, options = {}) {
   }));
   // Aktive Mitarbeiter (nur Name) – z. B. für „zuständig" bei Wiedervorlagen
   router.get('/mitarbeiter', h(async (req, res) =>
-    res.json((await db.all("SELECT id, name FROM benutzer WHERE aktiv = 1 AND rolle IN ('admin','mitarbeiter') ORDER BY name COLLATE NOCASE"))
-      .map((m) => ({ ...m, kuerzel: kuerzelAus(m.name) })))));
+    res.json((await db.all("SELECT id, name, kuerzel FROM benutzer WHERE aktiv = 1 AND rolle IN ('admin','mitarbeiter') ORDER BY name COLLATE NOCASE"))
+      .map((m) => ({ ...m, kuerzel: m.kuerzel || kuerzelAus(m.name) })))));
 
   // ===================== Zuordnungen (Rollen) ===========================
   router.post(

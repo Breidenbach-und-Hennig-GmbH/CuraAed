@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS benutzer (
   passwort_hash TEXT NOT NULL,
   name          TEXT NOT NULL,
   email         TEXT,
+  kuerzel       TEXT CHECK (kuerzel IS NULL OR (length(kuerzel) BETWEEN 1 AND 3 AND kuerzel NOT GLOB '*[^A-Z]*')),
   -- interne Rollen: admin | mitarbeiter | leser
   -- vorbereitet (Stufe „Kundenzugang"): eigentuemer | mieter
   rolle         TEXT NOT NULL DEFAULT 'mitarbeiter',
