@@ -26,7 +26,18 @@ Vom Benutzer benannte und am 9. November 2026 lesend in der HP-Oberfläche gepr�
 - **4010:** unter „nur aktive“ gefunden; Spalte „Beendet am“ leer. Die Objektmaske zeigt kein Beendigungsdatum.
 - **4020:** unter „nur beendete“ gefunden; Spalte „Beendet am“ zeigt `31.12.19`. Nach Öffnen bestätigt die Objektmaske in roter Schrift „Beendet am: 31.12.19“ (31. Dezember 2019).
 
-Damit sind fachlicher Status und Maskenanzeige beider Referenzobjekte belegt. Die zugrunde liegenden Datenbankwerte wurden dabei nicht ausgelesen. Als Kandidaten sind `OB_Obj.anzeigen_ja_nein` und `FI_Obj.FI_beendet` vorhanden. Ihre Zuordnung zur beobachteten Anzeige und die Datumscodierung bleiben zu bestätigen, bevor ein automatischer Filter aktiviert wird. Ein bloßer Unterschied zweier Werte beweist die allgemeine Statusregel noch nicht. Unklare Objekte dürfen vor Klärung nicht automatisch importiert werden. Die Suche funktioniert über „Suche“ und direkte Eingabe der Nummer mit Zifferntasten; Einfügen per Zwischenablage löst in dieser Liste keine Nummernsuche aus.
+Der anschließend vom Benutzer bereitgestellte Bericht `curaaed-hp-object-status-v1` bestätigt die Rohwerte für HPSERVSD (erstellt am 9. November 2026 um 20:04:33 UTC):
+
+| Objekt | HP-Anzeige | `OB_Obj.anzeigen_ja_nein` (BIT) | `FI_Obj.FI_beendet` (INTEGER) |
+| --- | --- | --- | --- |
+| 4010 | aktiv, kein Enddatum | false | 0 |
+| 4020 | beendet am 31.12.2019 | false | 737424 |
+
+`anzeigen_ja_nein` unterscheidet die geprüften Status nicht und wird nicht als Aktivfilter verwendet. `FI_beendet` ist der durch beide Beispiele gestützte Status-/Datumsbezug. 737424 entspricht dem Gregorianischen Ordinaltag 31.12.2019 (Tag 1 = 01.01.0001), passend zur HP-Anzeige. Diese Zuordnung ist bei diesem Feld/Beispiel belegt, nicht pauschal für jedes INTEGER-Feld in HP.
+
+`lib/hpObjektstatus.js` bereitet die Auswertung vor: exakt numerische 0 als aktiv; vergangenes gültiges Ordinaldatum als beendet; fehlende/falsch typisierte Werte sowie heutige/künftige Beendigungen bis zur fachlichen Klärung vom Import zurückstellen. Ein fehlender `FI_Obj`-Datensatz darf nicht durch `COALESCE(...,0)` als aktiv erscheinen. Die Auswertung verändert keine Daten und ist noch an keinen Live-Import angeschlossen. Beendigung am Stichtag, geplante Beendigung und abweichende Kundeninstallationen sind durch diese zwei Datensätze nicht verifiziert.
+
+Die Suche funktioniert über „Suche“ und direkte Eingabe der Nummer mit Zifferntasten; Einfügen per Zwischenablage löst in dieser Liste keine Nummernsuche aus.
 
 `OB_Obj.NICHT_VERWENDET` wird nicht als Enddatum interpretiert. `CON_OB_Obj.beendet_am` liegt in einer anderen Tabelle und ist ohne belegte Datenpflege keine verlässliche Grundlage für den Stammobjektfilter. Auch das Einheitenfeld `gilt_bis_Datum` ist kein Beweis für ein Ende der Objektverwaltung.
 
@@ -46,7 +57,7 @@ Frühere Meldungen zu `anrede` und `name1` sind durch den Metadatenbericht nicht
 
 ## Reihenfolge der Umsetzung
 
-1. Die bereits geprüfte Maskenanzeige bei 4010/4020 den tatsächlichen Datenbankwerten zuordnen; Datum-/Zahlenformate und relevante HP-Schlüsseltabellen belegen.
+1. Status-/Datumszuordnung für 4010/4020 ist belegt und als isolierte Auswertung mit Regressionstests vorbereitet. Weitere Datum-/Zahlenformate und relevante HP-Schlüsseltabellen vor deren Import prüfen; heutige/künftige Beendigungen nicht ungeprüft freigeben.
 2. Fehlende lokale Strukturen und Quellbindungen mit rückwärtsverträglichen Migrationen ergänzen; vorhandene lokale Daten und Adresskopplungen erhalten.
 3. Zuerst lesenden Import aktueller Objekte mit Einheiten, Funktionen, Konten und jahresbezogenen Verteilerschlüsseln prüfen. Bank- und ZIS-Strukturen separat verifizieren.
 4. Änderungsabgleich, Konflikte und Wiederanlauf prüfen; Rückschreibungen nur nach feldbezogener Prüfung aktivieren. Keine Finanzbuchungen oder Mandatsaktionen durch Stammdatenabgleich.
@@ -55,5 +66,8 @@ Frühere Meldungen zu `anrede` und `name1` sind durch den Metadatenbericht nicht
 
 SHA-256 des unveränderten Eingangsberichts:
 `aa7d2c8dea288bc62a4efbdd517332d94e98c244430471d8c5b47afe5ca57956`
+
+SHA-256 des unveränderten ergänzenden Statusberichts:
+`83908b7bc2434a867e28ba667cf1c3ba5e73e66fce1d81bc20e725682713ff46`
 
 Die Feldmatrix wurde lokal erzeugt; alle dort benannten CuraAed-Zielfelder wurden gegen eine leere, vollständig migrierte lokale Datenbank geprüft. Der Originalbericht wurde nicht in GitHub hochgeladen. Es erfolgte keine Änderung am laufenden HP- oder CuraAed-Datenbestand. Die Prüfung belegt Strukturunterschiede, keine bereits abgeschlossene Synchronisierung oder verifizierte fachliche Schreibregeln.
