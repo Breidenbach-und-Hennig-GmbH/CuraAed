@@ -11,6 +11,7 @@ internal static class HPAddressTests
   var response=j.Deserialize<Dictionary<string,object>>("{\"jobs\":[]}");Check(response["jobs"] is System.Collections.ArrayList);
   bool rejected=false;try{new HPAddressClient("HPSD","HPTEST","{\"id\":\"00000000-0000-0000-0000-000000000000\",\"token\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"scope\":\"test\",\"datenbank\":\"HPTEST\"}");}catch{rejected=true;}Check(rejected);
   Console.WriteLine("Adressconnector: Feldgrenzen, CP850, Versionsvergleich, JSON-Protokoll und getrennte Freigabe erfolgreich geprüft.");
+  string synthetic="synthetic-test-credential-no-real-secret";var encrypted=HPAddressProfile.Protect(synthetic);Check(System.Text.Encoding.UTF8.GetString(encrypted).IndexOf(synthetic,StringComparison.Ordinal)<0);Check(HPAddressProfile.Unprotect(encrypted)==synthetic);encrypted[encrypted.Length-1]^=1;bool corruptRejected=false;try{HPAddressProfile.Unprotect(encrypted);}catch{corruptRejected=true;}Check(corruptRejected);Console.WriteLine("DPAPI: Windows-Kontobindung, verschlüsselter Roundtrip und beschädigte Daten geprüft.");
  }
 }
 

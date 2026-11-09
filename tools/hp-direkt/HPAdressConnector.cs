@@ -5,6 +5,7 @@ using System.Data.Odbc;
 using System.Drawing;
 using System.IO;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -100,16 +101,30 @@ internal sealed class HPAddressClient
   while(pending.Count>0){Post("ergebnis",pending.Peek());pending.Dequeue();}
  }
 }
+internal static class HPAddressProfile
+{
+ static readonly byte[] Entropy=Encoding.UTF8.GetBytes("CuraAed.HPAddressProfile.v1");
+ static string FileName {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"CuraAed","HPAdressconnector","verbindung.dpapi");}}
+ internal static byte[] Protect(string plain){return ProtectedData.Protect(Encoding.UTF8.GetBytes(plain),Entropy,DataProtectionScope.CurrentUser);}
+ internal static string Unprotect(byte[] encrypted){return Encoding.UTF8.GetString(ProtectedData.Unprotect(encrypted,Entropy,DataProtectionScope.CurrentUser));}
+ internal static Dictionary<string,object> Load(){if(!File.Exists(FileName))return null;var info=new FileInfo(FileName);if(info.Length>32768)throw new InvalidOperationException();var p=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(Unprotect(File.ReadAllBytes(FileName)));new HPAddressClient(Convert.ToString(p["dsn"]),Convert.ToString(p["database"]),Convert.ToString(p["pairing"]));return p;}
+ internal static void Save(string source,string database,string pairing){new HPAddressClient(source,database,pairing);var bytes=Protect(new JavaScriptSerializer().Serialize(new{dsn=source,database=database,pairing=pairing}));Directory.CreateDirectory(Path.GetDirectoryName(FileName));string temporary=FileName+".new";File.WriteAllBytes(temporary,bytes);if(File.Exists(FileName))File.Replace(temporary,FileName,null);else File.Move(temporary,FileName);}
+ internal static void Forget(){if(File.Exists(FileName))File.Delete(FileName);if(File.Exists(FileName+".new"))File.Delete(FileName+".new");}
+}
 internal sealed class HPAddressForm:Form
 {
  readonly TextBox dsn=new TextBox{Width=110},db=new TextBox{Width=140},pair=new TextBox{Width=700,UseSystemPasswordChar=true};
  readonly CheckBox consent=new CheckBox{AutoSize=true,Text="Namens- und Postanschriften des gesamten HP-Kundenbestands mit CuraAed abgleichen und zurückschreiben."};
+ readonly CheckBox remember=new CheckBox{AutoSize=true,Text="Verbindung für dieses Windows-Konto verschlüsselt speichern (freiwillig)."};
+ readonly Button forget=new Button{AutoSize=true,Text="Gespeicherte Verbindung entfernen"};
  readonly Button start=new Button{Text="Adressabgleich starten",AutoSize=true},stop=new Button{Text="Abgleich beenden",AutoSize=true,Enabled=false};
  readonly TextBox log=new TextBox{Multiline=true,ReadOnly=true,Dock=DockStyle.Fill,ScrollBars=ScrollBars.Vertical};CancellationTokenSource cancel;Task worker;bool closing;
- internal HPAddressForm(){Text="CuraAed – HP-Adressabgleich";Width=1000;Height=650;var top=new FlowLayoutPanel{Dock=DockStyle.Top,Height=210,Padding=new Padding(12)};
+ internal HPAddressForm(){Text="CuraAed – HP-Adressabgleich";Width=1000;Height=650;var top=new FlowLayoutPanel{Dock=DockStyle.Top,Height=245,Padding=new Padding(12)};
  top.Controls.Add(new Label{Text="ODBC-Quelle",AutoSize=true});top.Controls.Add(dsn);top.Controls.Add(new Label{Text="HP-Datenbank",AutoSize=true});top.Controls.Add(db);top.SetFlowBreak(db,true);
- top.Controls.Add(new Label{Text="Geschützte Kopplungsdaten aus CuraAed (JSON)",AutoSize=true});top.SetFlowBreak(top.Controls[top.Controls.Count-1],true);top.Controls.Add(pair);top.SetFlowBreak(pair,true);top.Controls.Add(consent);top.SetFlowBreak(consent,true);top.Controls.Add(start);top.Controls.Add(stop);top.SetFlowBreak(stop,true);top.Controls.Add(new Label{Text="Läuft bei geöffnetem Fenster. Kein Dienst, kein Autostart, keine Speicherung des Schlüssels.",AutoSize=true});Controls.Add(log);Controls.Add(top);
- start.Click+=async delegate{HPAddressClient c;if(!consent.Checked)return;try{c=new HPAddressClient(dsn.Text.Trim(),db.Text.Trim(),pair.Text);}catch{MessageBox.Show(this,"Adresskopplung und Datenquelle prüfen. Testkopplungsdaten gelten hier nicht.");return;}start.Enabled=false;stop.Enabled=true;dsn.Enabled=db.Enabled=pair.Enabled=consent.Enabled=false;pair.Clear();cancel=new CancellationTokenSource();worker=Task.Run(()=>c.Run(cancel.Token,Log));try{await worker;}catch{Log("Abgleich angehalten. HP-Verbindung prüfen.");}finally{cancel.Dispose();cancel=null;stop.Enabled=false;start.Enabled=true;dsn.Enabled=db.Enabled=pair.Enabled=consent.Enabled=true;if(closing)Close();}};
+ top.Controls.Add(new Label{Text="Geschützte Kopplungsdaten aus CuraAed (JSON)",AutoSize=true});top.SetFlowBreak(top.Controls[top.Controls.Count-1],true);top.Controls.Add(pair);top.SetFlowBreak(pair,true);top.Controls.Add(consent);top.SetFlowBreak(consent,true);top.Controls.Add(remember);top.Controls.Add(forget);top.SetFlowBreak(forget,true);top.Controls.Add(start);top.Controls.Add(stop);top.SetFlowBreak(stop,true);top.Controls.Add(new Label{Text="Läuft bei geöffnetem Fenster. Dauerhafte Freigabe in CuraAed aktivieren. Kein Dienst oder Autostart.",AutoSize=true});Controls.Add(log);Controls.Add(top);
+ try{var saved=HPAddressProfile.Load();if(saved!=null){dsn.Text=Convert.ToString(saved["dsn"]);db.Text=Convert.ToString(saved["database"]);pair.Text=Convert.ToString(saved["pairing"]);remember.Checked=true;Log("Verschlüsselte Verbindung geladen. Freigabe prüfen und Abgleich starten.");}}catch{Log("Gespeicherte Verbindung konnte für dieses Windows-Konto nicht geladen werden. Neu koppeln oder gespeicherte Verbindung entfernen.");}
+ forget.Click+=delegate{try{HPAddressProfile.Forget();pair.Clear();remember.Checked=false;Log("Gespeicherte Verbindung entfernt. Laufende Freigabe in CuraAed bei Bedarf ebenfalls trennen.");}catch{MessageBox.Show(this,"Gespeicherte Verbindung konnte nicht entfernt werden.");}};
+ start.Click+=async delegate{HPAddressClient c;if(!consent.Checked)return;try{if(pair.Text.Length==0&&remember.Checked){var saved=HPAddressProfile.Load();if(saved!=null&&dsn.Text.Trim()==Convert.ToString(saved["dsn"])&&db.Text.Trim()==Convert.ToString(saved["database"]))pair.Text=Convert.ToString(saved["pairing"]);}c=new HPAddressClient(dsn.Text.Trim(),db.Text.Trim(),pair.Text);}catch{MessageBox.Show(this,"Adresskopplung und Datenquelle prüfen. Testkopplungsdaten gelten hier nicht.");return;}try{if(remember.Checked)HPAddressProfile.Save(dsn.Text.Trim(),db.Text.Trim(),pair.Text);else HPAddressProfile.Forget();}catch{MessageBox.Show(this,"Verbindung konnte nicht sicher gespeichert oder entfernt werden. Kein Abgleich gestartet.");return;}start.Enabled=false;stop.Enabled=true;dsn.Enabled=db.Enabled=pair.Enabled=consent.Enabled=remember.Enabled=forget.Enabled=false;pair.Clear();cancel=new CancellationTokenSource();worker=Task.Run(()=>c.Run(cancel.Token,Log));try{await worker;}catch{Log("Abgleich angehalten. HP-Verbindung prüfen.");}finally{cancel.Dispose();cancel=null;stop.Enabled=false;start.Enabled=true;dsn.Enabled=db.Enabled=pair.Enabled=consent.Enabled=remember.Enabled=forget.Enabled=true;if(closing)Close();}};
  stop.Click+=delegate{if(cancel!=null)cancel.Cancel();};FormClosing+=delegate(object s,FormClosingEventArgs e){if(worker!=null&&!worker.IsCompleted){e.Cancel=true;closing=true;if(cancel!=null)cancel.Cancel();}};}
  void Log(string text){if(InvokeRequired){try{BeginInvoke(new Action<string>(Log),text);}catch{}return;}if(log.Lines.Length>100)log.Clear();log.AppendText(DateTime.Now.ToString("HH:mm:ss")+" "+text+Environment.NewLine);}
  [STAThread]static void Main(){ServicePointManager.SecurityProtocol=SecurityProtocolType.Tls12;Application.EnableVisualStyles();Application.Run(new HPAddressForm());}

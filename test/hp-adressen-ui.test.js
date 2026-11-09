@@ -1,6 +1,13 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {JSDOM}=require('jsdom');const tick=()=>new Promise(r=>setImmediate(r));
+test('Adressabgleich-UI: bestehende Zeitfreigabe nur nach Bestätigung unbefristet, keine neue Kopplung',async t=>{
+ const dom=new JSDOM('<div id="desktop"></div><div id="modal-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example/'});t.after(()=>dom.window.close());const w=dom.window,calls=[];let expiry=Date.now()+100000;
+ w.API={get:async()=>({verbindungen:[{id:'existing',name:'Eigener Bestand',datenbank:'HPTEST',aktiv:1,ablauf_ms:expiry,anzahl:10,probleme:0}]}),post:async(url,body)=>{calls.push({url,body});expiry=0;return {ok:true};}};
+ for(const file of ['ui','kern','hp-adressen'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());vm.runInContext('S.lauf=1;S.benutzer={rolle:"admin"};',dom.getInternalVMContext());await w.hpAdressBereich(1,w.document.getElementById('desktop'));
+ const button=text=>[...w.document.querySelectorAll('button')].find(b=>b.textContent===text);button('Dauerhaft freigeben').click();await tick();assert.equal(calls.length,0);button('Abbrechen').click();await tick();assert.equal(calls.length,0);
+ button('Dauerhaft freigeben').click();await tick();button('Bestätigen').click();await tick();await tick();assert.equal(calls.length,1);assert.equal(calls[0].url,'/hp-adressen/verbindungen/existing/dauerhaft');assert.equal(calls[0].body.zustimmung,true);assert.match(w.document.body.textContent,/Dauerhaft freigegeben/);assert.ok(!w.document.body.textContent.includes('1970'));assert.ok(button('Adressabgleich trennen'));
+});
 test('Adressabgleich-UI: eigene Freigabe, verdeckte Daten, explizite Kopieraktion und Löschen beim Schließen',async t=>{
  const dom=new JSDOM('<div id="desktop"></div><div id="modal-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example/'});t.after(()=>dom.window.close());const w=dom.window,calls=[];let copied='';Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async x=>{copied=x;}}});
  w.API={get:async()=>({verbindungen:[]}),post:async(url,body)=>{calls.push({url,body});return {id:'synthetic',token:'synthetic-secret'};}};

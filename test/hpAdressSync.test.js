@@ -2,6 +2,30 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {openDatabase}=require('../db'),users=require('../services/benutzer'),adressen=require('../services/adressen');
 const {service,record}=require('../services/hpAdressSync');
+test('HP-Importdiagnose: nennt Feld und Grund ohne den Adresswert offenzulegen',()=>{
+ const r={nummer:1,anrede:'',vorname:'',name1:'Test',zusatz:'',strasse:'',land:'DE',plz:'',ort:''};
+ assert.throws(()=>record({...r,anrede:'Vertraulich\n'}),e=>e.message.includes('anrede')&&e.message.includes('U+000A')&&!e.message.includes('Vertraulich'));
+ assert.throws(()=>record({...r,name1:'x'.repeat(31)}),/31 Zeichen; maximal 30/);
+ assert.throws(()=>record({...r,ort:'Test\u00a0'}),/Abstandszeichen/);
+});
+
+test('HP-Adressen: dauerhafte Freigabe erhält Token und Zuordnungen, überlebt Zeitablauf und bleibt widerrufbar',async t=>{
+ const f=await fixture(t);const original=await f.db.get('SELECT * FROM hp_adress_verbindungen WHERE id=?',[f.c.id]);
+ await assert.rejects(f.svc.permanent(f.user.id,f.c.id,{zustimmung:false}),e=>e.status===400);
+ await assert.rejects(f.svc.permanent(f.user.id+1,f.c.id,{zustimmung:true}),e=>e.status===404);
+ await f.svc.permanent(f.user.id,f.c.id,{zustimmung:true});const saved=await f.db.get('SELECT * FROM hp_adress_verbindungen WHERE id=?',[f.c.id]);assert.equal(saved.token_hash,original.token_hash);assert.equal(saved.ablauf_ms,0);
+ f.advance(366*24*3600000);await service(f.db,{now:()=>Date.now()+366*24*3600000}).scan(f.c.id,f.c.token,{datenbank:'HPTEST',records:[f.r]});
+ assert.equal((await adressen.holen(f.db,f.a.id)).hp_sync.aktiv,true);assert.equal((await f.svc.list(f.user.id))[0].ablauf_ms,0);assert.equal((await f.db.all('SELECT * FROM hp_adress_zuordnung')).length,1);
+ await f.svc.disconnect(f.user.id,f.c.id);await assert.rejects(f.scan([]),e=>e.status===401);
+});
+test('HP-Adressen: neue dauerhafte Kopplung und Schlüsselrotation erhalten unbefristete Dauer; befristete Freigaben laufen weiter ab',async t=>{
+ const f=await fixture(t);const input={name:'Büro',datenbank:'HPTEST',zustimmung:true,dauerhaft:true};
+ await assert.rejects(f.svc.create(f.user.id,{...input,dauerhaft:'ja'}),e=>e.status===400);
+ const permanent=await f.svc.create(f.user.id,input);assert.equal(permanent.id,f.c.id);assert.equal(permanent.ablauf_ms,0);await assert.rejects(f.scan([]),e=>e.status===401);
+ const rotated=await f.svc.create(f.user.id,{name:'Büro',datenbank:'HPTEST',zustimmung:true});assert.equal(rotated.ablauf_ms,0);assert.notEqual(rotated.token,permanent.token);
+ f.advance(10*24*3600000);await f.svc.scan(rotated.id,rotated.token,{datenbank:'HPTEST',records:[]});
+ const bounded=await f.svc.create(f.user.id,{...input,dauerhaft:false});assert.notEqual(bounded.ablauf_ms,0);f.advance(8*3600000);await assert.rejects(f.svc.scan(bounded.id,bounded.token,{datenbank:'HPTEST',records:[]}),e=>e.status===401);
+});
 
 test('HP-Adressen: fehlerhafte Bestandsdaten halten nicht die gesamte Leseseite an und werden gezielt nachgeprüft',async t=>{
  const f=await fixture(t);const broken={...f.r,nummer:100,name1:'Test\n'};const good={...f.r,nummer:101,name1:'Weiterer Test'};
