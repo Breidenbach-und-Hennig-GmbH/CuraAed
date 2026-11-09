@@ -7,6 +7,7 @@ internal static class HPAddressTests
  public static void Main(){
   var j=new JavaScriptSerializer();var r=j.Deserialize<Dictionary<string,object>>("{\"nummer\":65937,\"anrede\":\"Herr\",\"vorname\":\"Jörg\",\"name1\":\"Müller\",\"zusatz\":\"\",\"strasse\":\"Test 1\",\"land\":\"DE\",\"plz\":\"12345\",\"ort\":\"Köln\"}");
   Check(HPAddressClient.Valid(r));Check(HPAddressClient.Same(r,j.Deserialize<Dictionary<string,object>>(j.Serialize(r))));
+  Check(HPAddressClient.Fingerprint(r)=="952062ac5ba53f2fa432a4a8bb144c4613774b205a35016de908d5e22e1ec34f");
   var other=j.Deserialize<Dictionary<string,object>>(j.Serialize(r));other["ort"]="Andere";Check(!HPAddressClient.Same(r,other));other["ort"]=new string('x',31);Check(!HPAddressClient.Valid(other));other["ort"]="🏠";Check(!HPAddressClient.Valid(other));other["ort"]="Neu\n";Check(!HPAddressClient.Valid(other));
   var response=j.Deserialize<Dictionary<string,object>>("{\"jobs\":[]}");Check(response["jobs"] is System.Collections.ArrayList);
   bool rejected=false;try{new HPAddressClient("HPSD","HPTEST","{\"id\":\"00000000-0000-0000-0000-000000000000\",\"token\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"scope\":\"test\",\"datenbank\":\"HPTEST\"}");}catch{rejected=true;}Check(rejected);

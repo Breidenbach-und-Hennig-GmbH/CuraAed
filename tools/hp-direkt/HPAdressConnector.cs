@@ -32,6 +32,7 @@ internal sealed class HPAddressClient
  OdbcConnection Open(){var b=new OdbcConnectionStringBuilder();b.Dsn=dsn;var c=new OdbcConnection(b.ConnectionString);try{c.Open();if(!String.Equals(c.Database,database,StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException();return c;}catch{c.Dispose();throw;}}
  static Dictionary<string,object> FromReader(OdbcDataReader r){var a=new Dictionary<string,object>{{"nummer",Convert.ToInt32(r["AdrNr"])}};for(int i=0;i<Keys.Length;i++)a.Add(Keys[i],Convert.ToString(r[Columns[i]]).TrimEnd(' '));return a;}
  internal static bool Same(Dictionary<string,object> a,Dictionary<string,object> b){if(a==null||b==null||Convert.ToInt32(a["nummer"])!=Convert.ToInt32(b["nummer"]))return false;foreach(string k in Keys)if(!String.Equals(Convert.ToString(a[k]),Convert.ToString(b[k]),StringComparison.Ordinal))return false;return true;}
+ internal static string Fingerprint(Dictionary<string,object> r){var text=new StringBuilder();var keys=new List<string>{"nummer"};keys.AddRange(Keys);foreach(string k in keys){string value=k=="nummer"?Convert.ToInt32(r[k]).ToString(System.Globalization.CultureInfo.InvariantCulture):Convert.ToString(r[k]);text.Append(Encoding.UTF8.GetByteCount(value).ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(':').Append(value);}using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(text.ToString()))).Replace("-","").ToLowerInvariant();}
  internal static bool Valid(Dictionary<string,object> a)
  {
   if(a==null||!a.ContainsKey("nummer")||Convert.ToInt32(a["nummer"])<1)return false;
@@ -78,7 +79,13 @@ internal sealed class HPAddressClient
   while(!stop.IsCancellationRequested){try{
    while(pending.Count>0){Post("ergebnis",pending.Peek());pending.Dequeue();}
    if(stop.IsCancellationRequested)return;
-   var page=Page(cursor);var response=Post("abgleich",new{datenbank=database,records=page});
+   var page=Page(cursor);var hashes=new List<Dictionary<string,object>>();foreach(var a in page)hashes.Add(new Dictionary<string,object>{{"nummer",a["nummer"]},{"hash",Fingerprint(a)}});
+   var comparison=Post("vergleich",new{datenbank=database,fingerprints=hashes});object protocol,rawNeeded;
+   if(!comparison.TryGetValue("protokoll",out protocol)||Convert.ToString(protocol)!="adress-delta-v1"||!comparison.TryGetValue("benoetigt",out rawNeeded)||!(rawNeeded is System.Collections.ArrayList))throw new InvalidOperationException();
+   var needed=new HashSet<int>();foreach(object n in (System.Collections.ArrayList)rawNeeded)if(!needed.Add(Convert.ToInt32(n)))throw new InvalidOperationException();
+   var changed=new List<Dictionary<string,object>>();foreach(var a in page)if(needed.Contains(Convert.ToInt32(a["nummer"])))changed.Add(a);
+   if(changed.Count!=needed.Count)throw new InvalidOperationException();
+   var response=changed.Count>0?Post("abgleich",new{datenbank=database,records=changed}):new Dictionary<string,object>{{"jobs",new System.Collections.ArrayList()}};
    // Alle gelieferten Aufträge erhalten genau einen Ausführungsversuch. Bei Abbruch keine SQL-Wiederholung.
    var jobs=response["jobs"] as System.Collections.ArrayList;
    if(jobs==null)throw new InvalidOperationException();
@@ -91,7 +98,7 @@ internal sealed class HPAddressClient
     result.Add("id",Convert.ToString(j["id"]));pending.Enqueue(result);log("Adressauftrag: "+result["status"]+". SQL wird nicht wiederholt.");
    }
    while(pending.Count>0){Post("ergebnis",pending.Peek());pending.Dequeue();}
-   cursor=page.Count<50?0:Convert.ToInt32(page[page.Count-1]["nummer"]);log("Adressabgleich verbunden; "+page.Count+" Adressen geprüft. Nächste Seite folgt automatisch.");
+   cursor=page.Count<50?0:Convert.ToInt32(page[page.Count-1]["nummer"]);log("Adressabgleich verbunden; "+page.Count+" lokal geprüft, "+changed.Count+" neue/geänderte Datensätze übertragen. Nächste Seite folgt automatisch.");
    if(cursor!=0&&!stop.IsCancellationRequested)continue;
   }catch(WebException ex){var r=ex.Response as HttpWebResponse;int code=r==null?0:(int)r.StatusCode;if(r!=null)r.Dispose();if(code==401||code==403||code==404||code==409){log("Abgleich angehalten (HTTP "+code+"). Freigabe und Zuordnung in CuraAed prüfen.");return;}log("Verbindung unterbrochen. Ausstehende Ergebnisse werden erneut gemeldet; keine erneute SQL-Ausführung.");}
   catch{log("Lokaler Abgleichfehler. Keine automatische Wiederholung eines Schreibauftrags.");return;}

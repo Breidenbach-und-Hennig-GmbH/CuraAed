@@ -37,6 +37,8 @@ async function hpAdressBereich(lauf,desktop) {
   el('h2',{text:'Adressmasken automatisch mit HP abgleichen'}),
   el('p',{text:'Anrede, Vorname, Name/Firma, Zusatz und Postanschrift werden bei laufendem Windows-Connector automatisch abgeglichen. HP-Adressen erscheinen in den normalen Adressmasken. Telefon, E-Mail, Bankdaten, Neuanlage und Löschung in HP sind noch nicht angebunden. Eine CuraAed-Installation gehört genau zu einem HP-Kundenbestand.'}),
   el('a',{href:'/downloads/HP-Adressconnector.exe',download:'HP-Adressconnector.exe',text:'HP-Adressconnector für Windows herunterladen'}),
+  el('p',{text:'Der neue Connector überträgt nach dem Erstabgleich nur neue oder geänderte vollständige Adressen. Zum Erkennen von HP-Änderungen prüft er den lokalen Bestand weiterhin über Fingerabdrücke.'}),
+  el('p',{},[el('a',{href:'/downloads/HP-Strukturpruefung.exe',download:'HP-Strukturpruefung.exe',text:'HP-Feldprüfung für Objekte und weitere Datenbereiche herunterladen (nur Metadaten)'})]),
   el('button',{text:'Adressabgleich koppeln / Freigabe erneuern',onclick:()=>{
    const f=formular([[{name:'name',label:'Name des Kundenbestands',required:true},{name:'datenbank',label:'HP-Datenbank',required:true}]]),consent=el('input',{type:'checkbox'}),info=el('p',{role:'status'});let secret,busy=false;
    const duration=el('select',{'aria-label':'Freigabedauer'},[el('option',{value:'dauerhaft',text:'Dauerhaft · bis zum Widerruf'}),el('option',{value:'acht',text:'Zeitlich begrenzt · acht Stunden'})]);
