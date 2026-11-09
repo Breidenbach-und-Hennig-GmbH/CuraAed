@@ -11,20 +11,28 @@ const { anzeigename } = require('./adressen');
 const ROLLEN_MIT_PKTO = ['eigentuemer', 'mieter'];
 
 const heute = () => new Date().toISOString().slice(0, 10);
-const aktiv = (z, tag = heute()) => (!z.gueltig_von || z.gueltig_von <= tag) && (!z.gueltig_bis || z.gueltig_bis >= tag);
+const aktiv = (z, tag = heute()) => !z.inaktiv && (!z.gueltig_von || z.gueltig_von <= tag) && (!z.gueltig_bis || z.gueltig_bis >= tag);
 
 const SELECT = `
-  SELECT p.id AS pkto_id, p.nummer AS pkto_nummer, p.ref_nr, p.bemerkung, p.sachbearbeiter_id,
-         z.id AS zuordnung_id, z.rolle, z.pfkt_code, pc.bezeichnung AS pfkt_bezeichnung, z.gueltig_von, z.gueltig_bis, z.adresse_id, z.einheit_id,
+  SELECT p.id AS pkto_id, p.nummer AS pkto_nummer, p.kontoname, p.aktenzeichen, p.ref_nr, p.bemerkung, p.sachbearbeiter_id,
+         EXISTS(SELECT 1 FROM hp_personenkonto_zuordnung m WHERE m.personenkonto_id=p.id) AS hp_importiert,
+         z.id AS zuordnung_id, z.rolle, z.pfkt_code, z.inaktiv, pc.bezeichnung AS pfkt_bezeichnung, z.gueltig_von, z.gueltig_bis,
+         COALESCE(p.adresse_id,z.adresse_id) AS adresse_id, COALESCE(p.einheit_id,z.einheit_id) AS einheit_id,
          a.nummer AS adresse_nummer, a.adresstyp, a.anrede, a.vorname, a.nachname, a.firmenname,
          e.nummer AS einheit_nummer, e.bezeichnung AS einheit_bezeichnung, e.lage, e.flaeche_qm,
          o.id AS objekt_id, o.nummer AS objekt_nummer, o.bezeichnung AS objekt_bezeichnung, o.strasse AS objekt_strasse,
          b.benutzername AS sb_kuerzel, b.name AS sb_name
-  FROM rollen_zuordnungen z
-  JOIN adressen a ON a.id = z.adresse_id
-  JOIN einheiten e ON e.id = z.einheit_id
-  JOIN objekte o ON o.id = e.objekt_id
-  LEFT JOIN personenkonten p ON p.zuordnung_id = z.id
+  FROM (
+    SELECT p.id AS konto, COALESCE(p.zuordnung_id,(SELECT f.zuordnung_id FROM personenkonto_funktionen f JOIN rollen_zuordnungen rz ON rz.id=f.zuordnung_id WHERE f.personenkonto_id=p.id ORDER BY COALESCE(rz.inaktiv,0),rz.gueltig_bis IS NULL DESC,rz.gueltig_von DESC,rz.id DESC LIMIT 1)) AS funktion FROM personenkonten p
+    UNION ALL
+    SELECT NULL,z.id FROM rollen_zuordnungen z WHERE NOT EXISTS(SELECT 1 FROM personenkonten p WHERE p.zuordnung_id=z.id)
+      AND NOT EXISTS(SELECT 1 FROM personenkonto_funktionen f WHERE f.zuordnung_id=z.id)
+  ) link
+  LEFT JOIN personenkonten p ON p.id=link.konto
+  LEFT JOIN rollen_zuordnungen z ON z.id=link.funktion
+  LEFT JOIN adressen a ON a.id = COALESCE(p.adresse_id,z.adresse_id)
+  LEFT JOIN einheiten e ON e.id = COALESCE(p.einheit_id,z.einheit_id)
+  JOIN objekte o ON o.id = COALESCE(p.objekt_id,z.objekt_id,e.objekt_id)
   LEFT JOIN pfkt_codes pc ON pc.code = z.pfkt_code
   LEFT JOIN benutzer b ON b.id = p.sachbearbeiter_id`;
 
@@ -51,7 +59,7 @@ function monatlich(sollwerte, tag = heute()) {
 }
 
 function anreichern(rows) {
-  return rows.map((r) => ({ ...r, name: anzeigename(r), aktiv: aktiv(r), mit_pkto: ROLLEN_MIT_PKTO.includes(r.rolle) }));
+  return rows.map((r) => ({ ...r, name: r.kontoname || (r.adresse_id ? anzeigename(r) : 'HP-Konto '+r.pkto_nummer), aktiv: aktiv(r), mit_pkto: !!r.pkto_id || ROLLEN_MIT_PKTO.includes(r.rolle) }));
 }
 
 async function mitSummen(db, rows) {
@@ -60,11 +68,11 @@ async function mitSummen(db, rows) {
 }
 
 async function nachEinheit(db, einheitId) {
-  const rows = anreichern(await db.all(`${SELECT} WHERE z.einheit_id = ? ORDER BY z.rolle, z.gueltig_bis IS NULL DESC, z.gueltig_von DESC`, [einheitId]));
+  const rows = anreichern(await db.all(`${SELECT} WHERE COALESCE(p.einheit_id,z.einheit_id) = ? ORDER BY z.rolle, z.gueltig_bis IS NULL DESC, z.gueltig_von DESC`, [einheitId]));
   return mitSummen(db, rows);
 }
 async function nachAdresse(db, adresseId) {
-  return mitSummen(db, anreichern(await db.all(`${SELECT} WHERE z.adresse_id = ? ORDER BY o.nummer, e.nummer`, [adresseId])));
+  return mitSummen(db, anreichern(await db.all(`${SELECT} WHERE COALESCE(p.adresse_id,z.adresse_id) = ? ORDER BY o.nummer, e.nummer`, [adresseId])));
 }
 async function nachObjekt(db, objektId) {
   return mitSummen(db, anreichern(await db.all(`${SELECT} WHERE o.id = ? AND p.id IS NOT NULL ORDER BY p.nummer`, [objektId])));
@@ -135,11 +143,20 @@ async function holen(db, id) {
     db.get('SELECT * FROM adressen WHERE id = ?', [k.adresse_id]),
     db.get('SELECT * FROM adress_bank WHERE adresse_id = ? ORDER BY standard DESC, id LIMIT 1', [k.adresse_id]),
     db.all('SELECT * FROM adress_telefone WHERE adresse_id = ? ORDER BY id', [k.adresse_id]),
-    db.all(`SELECT s.kuerzel, s.bezeichnung, v.anteil FROM einheit_verteilung v JOIN verteilerschluessel s ON s.id = v.schluessel_id
-            WHERE v.einheit_id = ? ORDER BY CASE WHEN s.kuerzel GLOB '[0-9]*' THEN 0 ELSE 1 END, CAST(s.kuerzel AS INTEGER), s.kuerzel`, [k.einheit_id]),
+    kontoVerteiler(db,k),
     db.all('SELECT * FROM pkto_sollwerte WHERE personenkonto_id = ? ORDER BY gilt_ab DESC, id DESC', [id]),
   ]);
-  return { ...k, adresse, bank: bank || null, telefone, verteiler, sollwerte, soll: monatlich(sollwerte), offene_posten: 0 };
+  return { ...k, adresse:adresse||null, bank: bank || null, telefone, verteiler, sollwerte, soll: monatlich(sollwerte), offene_posten: k.hp_importiert?null:0 };
+}
+
+async function kontoVerteiler(db,k){
+ const {jahr}=await db.get('SELECT MAX(jahr) AS jahr FROM verteilerschluessel_jahre WHERE objekt_id=?',[k.objekt_id]);
+ if(jahr!==null)return db.all(`SELECT s.kuerzel,j.bezeichnung,j.jahr,p.anteil_dezimal AS anteil,u.anteil_dezimal AS einheitsanteil
+   FROM verteilerschluessel s JOIN verteilerschluessel_jahre j ON j.schluessel_id=s.id
+   LEFT JOIN personenkonto_verteilung_jahre p ON p.schluessel_id=s.id AND p.jahr=j.jahr AND p.personenkonto_id=?
+   LEFT JOIN einheit_verteilung_jahre u ON u.schluessel_id=s.id AND u.jahr=j.jahr AND u.einheit_id=?
+   WHERE s.objekt_id=? AND j.jahr=? ORDER BY s.kuerzel`,[k.pkto_id,k.einheit_id,k.objekt_id,jahr]);
+ return db.all(`SELECT s.kuerzel,s.bezeichnung,v.anteil FROM einheit_verteilung v JOIN verteilerschluessel s ON s.id=v.schluessel_id WHERE v.einheit_id=? ORDER BY s.kuerzel`,[k.einheit_id]);
 }
 
 async function aendern(db, id, data) {
@@ -153,6 +170,7 @@ async function aendern(db, id, data) {
 }
 
 async function loeschen(db, id) {
+  if(await db.get('SELECT 1 FROM hp_personenkonto_zuordnung WHERE personenkonto_id=?',[id]))throw new V.ValidationError('Zugeordnetes HP-Personenkonto nicht lokal löschen.',409);
   // Sobald es Buchungen gibt, dürfen Konten mit Buchungen nicht mehr gelöscht werden.
   const r = await db.run('DELETE FROM personenkonten WHERE id = ?', [id]);
   if (!r.changes) throw new V.ValidationError('Personenkonto nicht gefunden.', 404);

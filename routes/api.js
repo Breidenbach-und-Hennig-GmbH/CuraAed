@@ -115,6 +115,7 @@ function baueApi(db, uploadDir, options = {}) {
   // Seine Browser-Routen erzwingen innerhalb des Routers Administratorrechte.
   router.use('/hp-direkt', require('./hausperfektDirekt').baueHpDirektRouter(db, options.hpDirekt));
   router.use('/hp-adressen', require('./hpAdressSync')(db, options.hpDirekt));
+  router.use('/hp-objekte', require('./hpObjektImport')(db, options.hpDirekt));
 
   // Alle folgenden Routen erfordern eine Anmeldung.
   router.use(auth.erfordereLogin);
@@ -205,11 +206,12 @@ function baueApi(db, uploadDir, options = {}) {
     h(async (req, res) => res.json(await zuordnungenSvc.nachObjekt(db, req.params.id)))
   );
   // Objektmaske: Verteilerschlüssel, Bankkonten, Kennzahlen, Z.I.S, Bild
-  router.get('/objekte/:id/verteiler', h(async (req, res) => res.json(await verteilerSvc.liste(db, req.params.id))));
+  router.get('/objekte/:id/verteiler', h(async (req, res) => res.json(await verteilerSvc.liste(db, req.params.id,req.query))));
+  router.get('/objekte/:id/verteiler-jahre', h(async (req, res) => res.json(await verteilerSvc.jahre(db,req.params.id))));
   router.post('/objekte/:id/verteiler', auth.erfordereSchreibrecht,
     h(async (req, res) => res.status(201).json(await verteilerSvc.anlegen(db, req.params.id, req.body || {}))));
   router.get('/verteiler/:vid', h(async (req, res) => {
-    const v = await verteilerSvc.holen(db, req.params.vid);
+    const v = await verteilerSvc.holen(db, req.params.vid,req.query);
     if (!v) return res.status(404).json({ fehler: 'Verteilerschlüssel nicht gefunden.' });
     res.json(v);
   }));
@@ -663,4 +665,3 @@ function baueApi(db, uploadDir, options = {}) {
 }
 
 module.exports = { baueApi };
-

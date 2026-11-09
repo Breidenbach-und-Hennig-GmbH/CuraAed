@@ -20,8 +20,26 @@ async function objektVorhanden(db, objektId) {
   if (!(await db.get('SELECT id FROM objekte WHERE id = ?', [objektId]))) throw new V.ValidationError('Objekt nicht gefunden.', 404);
 }
 
-async function liste(db, objektId) {
+async function jahre(db,objektId) {
+  await objektVorhanden(db,objektId);
+  return (await db.all('SELECT DISTINCT jahr FROM verteilerschluessel_jahre WHERE objekt_id=? ORDER BY jahr DESC',[objektId])).map(r=>r.jahr);
+}
+async function gewaehltesJahr(db,objektId,value) {
+  if(value==='undatiert')return null;
+  if(value!==undefined&&value!==null&&value!==''){
+    if(!/^\d{1,4}$/.test(String(value))||Number(value)<1)throw new V.ValidationError('Ungültiges Buchungsjahr.');
+    return Number(value);
+  }
+  const r=await db.get('SELECT MAX(jahr) AS jahr FROM verteilerschluessel_jahre WHERE objekt_id=?',[objektId]);return r.jahr??null;
+}
+async function liste(db, objektId,options={}) {
   await objektVorhanden(db, objektId);
+  const jahr=await gewaehltesJahr(db,objektId,options.jahr);
+  if(jahr!==null){const rows=await db.all(`SELECT s.*,j.bezeichnung,j.jahr,j.gesamt_dezimal,
+    (SELECT COUNT(*) FROM einheit_verteilung_jahre v WHERE v.schluessel_id=s.id AND v.jahr=j.jahr) AS einheiten_anzahl
+    FROM verteilerschluessel s JOIN verteilerschluessel_jahre j ON j.schluessel_id=s.id WHERE s.objekt_id=? AND j.jahr=? ORDER BY s.kuerzel`,[objektId,jahr]);
+    return rows.map(r=>({...r,gesamt:r.gesamt_dezimal===null?null:Number(r.gesamt_dezimal),anteil:r.gesamt_dezimal,abweichung:false,hp_jahresstand:true}));
+  }
   const rows = await db.all(
     `SELECT s.*, (SELECT COUNT(*) FROM einheit_verteilung v WHERE v.schluessel_id = s.id) AS einheiten_anzahl,
             (SELECT SUM(v.anteil) FROM einheit_verteilung v WHERE v.schluessel_id = s.id) AS summe_einheiten
@@ -38,9 +56,17 @@ async function liste(db, objektId) {
   }));
 }
 
-async function holen(db, id) {
+async function holen(db, id,options={}) {
   const s = await db.get('SELECT * FROM verteilerschluessel WHERE id = ?', [id]);
   if (!s) return null;
+  const jahr=await gewaehltesJahr(db,s.objekt_id,options.jahr);
+  if(jahr!==null){const j=await db.get('SELECT * FROM verteilerschluessel_jahre WHERE schluessel_id=? AND jahr=?',[id,jahr]);if(!j)return null;
+    const cursor=Number(options.nach||0);if(!Number.isSafeInteger(cursor)||cursor<0)throw new V.ValidationError('Ungültige Seitenauswahl.');
+    const rows=await db.all(`SELECT e.id AS einheit_id,e.nummer,e.bezeichnung,e.lage,v.anteil_dezimal
+      FROM einheiten e LEFT JOIN einheit_verteilung_jahre v ON v.einheit_id=e.id AND v.schluessel_id=? AND v.jahr=?
+      WHERE e.objekt_id=? AND e.id>? ORDER BY e.id LIMIT 201`,[id,jahr,s.objekt_id,cursor]);
+    const more=rows.length>200;return {...s,...j,hp_jahresstand:true,anteile:rows.slice(0,200),naechste_seite:more?rows[199].einheit_id:null};
+  }
   s.anteile = await db.all(
     `SELECT e.id AS einheit_id, e.nummer, e.bezeichnung, e.lage, v.anteil
      FROM einheiten e LEFT JOIN einheit_verteilung v ON v.einheit_id = e.id AND v.schluessel_id = ?
@@ -102,6 +128,7 @@ async function anlegen(db, objektId, data) {
 }
 
 async function aktualisieren(db, id, data) {
+  if(await db.get('SELECT 1 FROM hp_verteilerschluessel_zuordnung WHERE schluessel_id=?',[id]))throw new V.ValidationError('Dieser HP-Jahresstand wird durch den lesenden Import gepflegt. Bearbeitung ist noch nicht freigegeben.',409);
   const s = await db.get('SELECT * FROM verteilerschluessel WHERE id = ?', [id]);
   if (!s) throw new V.ValidationError('Verteilerschlüssel nicht gefunden.', 404);
   const w = werte(data);
@@ -114,8 +141,9 @@ async function aktualisieren(db, id, data) {
 }
 
 async function loeschen(db, id) {
+  if(await db.get('SELECT 1 FROM hp_verteilerschluessel_zuordnung WHERE schluessel_id=?',[id]))throw new V.ValidationError('Zugeordneten HP-Verteilerschlüssel nicht lokal löschen.',409);
   const r = await db.run('DELETE FROM verteilerschluessel WHERE id = ?', [id]);
   if (!r.changes) throw new V.ValidationError('Verteilerschlüssel nicht gefunden.', 404);
 }
 
-module.exports = { liste, holen, anlegen, aktualisieren, loeschen };
+module.exports = { liste, holen, anlegen, aktualisieren, loeschen, jahre };

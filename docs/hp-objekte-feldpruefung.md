@@ -1,6 +1,6 @@
 # HausPerfekt → CuraAed: Ergebnis der Strukturprüfung
 
-Stand: 9. November 2026. Quelle ist der vom Benutzer bereitgestellte lokale Metadatenbericht für HPSERVSD, Format `curaaed-hp-metadata-v1`. Es wurden keine HP-Datensätze geändert. Die Objektübernahme ist noch nicht implementiert oder aktiviert.
+Stand: 9. November 2026. Quelle ist der vom Benutzer bereitgestellte lokale Metadatenbericht für HPSERVSD, Format `curaaed-hp-metadata-v1`. Es wurden keine HP-Datensätze geändert. Der inzwischen implementierte lesende Objektimport ist in [hp-objektimport.md](hp-objektimport.md) beschrieben; Freigabe und erster Lauf auf dem HP-Server stehen noch aus.
 
 Der Bericht enthält 1.044 Tabellen mit 14.451 Definitionen. Davon sind 2.376 Definitionen vom Typ 255; sie sind nicht als normale Datenfelder in die Vergleichsmatrix eingegangen. Für die angefragten Bereiche wurden 320 Felder aus 19 Tabellen gegen 14 lokale CuraAed-Tabellen einschließlich ausgeführter Datenbankmigrationen geprüft.
 

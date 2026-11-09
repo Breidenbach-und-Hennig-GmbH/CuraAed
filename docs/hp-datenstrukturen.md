@@ -2,6 +2,8 @@
 
 Stand: 9. November 2026. Migration `user_version=5`, implementiert in `db/hpStrukturen.js`. Diese Erweiterung schafft die Speicherstrukturen; sie startet keinen HP-Import und erteilt keine zusätzlichen Connector-Rechte. Die bestehenden Masken verwenden weiterhin ihre bisherigen Felder und undatierten Verteilungswerte. Die Jahresauswahl und Übertragung werden separat angeschlossen.
 
+Die inzwischen ergänzte Migration 6 und die separate Importfreigabe verbinden diese Strukturen mit dem [lesenden Objektimport](hp-objektimport.md) und der Jahresauswahl. Ohne aktivierte Kopplung und laufenden Connector wird weiterhin nichts aus HP übernommen.
+
 ## Ergänzte Bereiche
 
 | Bereich | Neue Struktur |

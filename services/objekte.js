@@ -120,10 +120,12 @@ async function aktualisieren(db, id, data) {
 async function setzeArchiviert(db, id, archiviert) {
   const vorhanden = await holen(db, id);
   if (!vorhanden) throw new V.ValidationError('Objekt nicht gefunden.', 404);
-  await db.run(
-    "UPDATE objekte SET archiviert=?, geaendert_am=datetime('now') WHERE id=?",
-    [V.bool(archiviert), id]
-  );
+  await db.transaktion(async tx=>{
+    const source=await tx.get('SELECT verwaltungsstatus FROM hp_objekt_zuordnung WHERE objekt_id=?',[id]);
+    if(source?.verwaltungsstatus==='beendet'&&!V.bool(archiviert))throw new V.ValidationError('Das Objekt ist in HP beendet und kann hier nicht aktiviert werden.',409);
+    await tx.run("UPDATE objekte SET archiviert=?, geaendert_am=datetime('now') WHERE id=?",[V.bool(archiviert),id]);
+    await tx.run('UPDATE hp_import_objektstatus SET auto_archiviert=0 WHERE (verbindung_id,hp_objnr) IN (SELECT verbindung_id,hp_objnr FROM hp_objekt_zuordnung WHERE objekt_id=?)',[id]);
+  });
   return holen(db, id);
 }
 

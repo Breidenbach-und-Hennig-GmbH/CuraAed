@@ -130,7 +130,7 @@ test('dateibasierter Umbau erstellt lesbare Sicherung vor Änderungen und übers
     try { assert.equal((await backup.get('PRAGMA user_version')).user_version,4); assert.equal((await backup.get('SELECT betrag FROM pkto_sollwerte WHERE id=9')).betrag,123.45); }
     finally {await backup.close();}
     db=await openDatabase(file);
-    assert.equal((await db.get('PRAGMA user_version')).user_version,5);
+    assert.equal((await db.get('PRAGMA user_version')).user_version,6);
     assert.equal((await db.get('SELECT COUNT(*) AS n FROM personenkonten')).n,1);
     assert.equal((await fs.readdir(dir)).filter(f=>f.startsWith('sicherung-vor-hp-strukturen-')).length,1);
     assert.deepEqual(await db.all('PRAGMA foreign_key_check'),[]);

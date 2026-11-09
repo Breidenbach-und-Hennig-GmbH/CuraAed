@@ -1,0 +1,463 @@
+{
+  "datasets": [
+    {
+      "art": "objekt",
+      "keys": [
+        "ObjNr"
+      ],
+      "fields": [
+        "ObjNr",
+        "Suchbegr",
+        "ObjTyp",
+        "ObjStr",
+        "Land",
+        "PLZ",
+        "Ort",
+        "Baujahr",
+        "ZustVerkauf",
+        "ZustVerm",
+        "Heizungsart",
+        "WWArt",
+        "Garagenart",
+        "M_llGefArt",
+        "ObjGr1",
+        "ObjGr2",
+        "ObjGr3",
+        "ObjGr4",
+        "ObjGr5",
+        "ObjektID",
+        "GebBezeichnung",
+        "ObjektAlias",
+        "SB",
+        "Team",
+        "Objekttyp2",
+        "Objektstrasse_2",
+        "BuchhalterDesh",
+        "BuchhalterReserve",
+        "ObjTypText",
+        "Zustellpostamt",
+        "VSchlFREI",
+        "anzeigen_ja_nein"
+      ]
+    },
+    {
+      "art": "objektzahlen",
+      "keys": [
+        "ObjNr"
+      ],
+      "fields": [
+        "ObjNr",
+        "AnzGeb",
+        "AnzEin"
+      ]
+    },
+    {
+      "art": "gebaeude",
+      "keys": [
+        "IndGeb"
+      ],
+      "fields": [
+        "IndGeb",
+        "BezGeb"
+      ]
+    },
+    {
+      "art": "jahr",
+      "keys": [
+        "FIBJ_BJ"
+      ],
+      "fields": [
+        "FIBJ_BJ",
+        "FIBJ_BjVon",
+        "FIBJ_BjBis",
+        "FIBJ_gebBis",
+        "FIBJ_SB",
+        "FIBJ_Wahrung",
+        "FIBJ_VorstAbzQuote"
+      ]
+    },
+    {
+      "art": "einheit",
+      "keys": [
+        "WhgNr"
+      ],
+      "fields": [
+        "WhgNr",
+        "SuchBegr",
+        "WhgLage",
+        "IndGeb",
+        "IndBauteil",
+        "WhgTyp",
+        "WG_VSchl1",
+        "WG_VSchl2",
+        "WG_VSchl3",
+        "WG_VSchl4",
+        "WG_VSchl5",
+        "Whg_JN",
+        "GewEinhJN",
+        "TeilEigJN",
+        "BewKat",
+        "MwStoptJN",
+        "gefJN",
+        "MittelGetilgtJN",
+        "BindBis",
+        "WG_VwArt",
+        "WG_m2Fl",
+        "WG_GarNr",
+        "WG_StellPlNr",
+        "MEA",
+        "gilt_bis_Datum",
+        "Datum_Frei",
+        "MI_MinolFolgeNrHeizA",
+        "MIMinolWhgNr",
+        "DTA_OrdBgr13",
+        "CB_mit_Text_Frei",
+        "CB_mit_Text_Frei_1",
+        "CB_mit_Text_Frei_2"
+      ]
+    },
+    {
+      "art": "funktion",
+      "keys": [
+        "lfdNrDatensatz"
+      ],
+      "fields": [
+        "lfdNrDatensatz",
+        "PFKt",
+        "WhgNr",
+        "DatVon",
+        "DatBis",
+        "AdrNr",
+        "KEY_Firma",
+        "Info",
+        "PKto",
+        "FI_MieterPKto",
+        "PFktArtEigMiet",
+        "ST_SchlAustriaPKto",
+        "inaktiv",
+        "inaktivBis",
+        "MobileEnde",
+        "DatOptvon",
+        "DatOptbis",
+        "DatOptausueb"
+      ]
+    },
+    {
+      "art": "konto",
+      "keys": [
+        "PKtoNr"
+      ],
+      "fields": [
+        "PKtoNr",
+        "WhgNr",
+        "AdrNr",
+        "PKtoName",
+        "RefKtoNr",
+        "AK_Aktenzeichen"
+      ]
+    },
+    {
+      "art": "schluessel",
+      "keys": [
+        "BJ",
+        "VerteilerSchl"
+      ],
+      "fields": [
+        "BJ",
+        "VerteilerSchl",
+        "Typ_PW",
+        "SchlTxt",
+        "AbrObjAntSum",
+        "TabArt",
+        "Ger_teArt"
+      ]
+    },
+    {
+      "art": "einheitsanteil",
+      "keys": [
+        "Buchungsjahr",
+        "WhgNr",
+        "VSchl"
+      ],
+      "fields": [
+        "Buchungsjahr",
+        "WhgNr",
+        "VSchl",
+        "WhgAnteile"
+      ]
+    },
+    {
+      "art": "kontenanteil",
+      "keys": [
+        "BJ",
+        "PKtoNr",
+        "VSchl"
+      ],
+      "fields": [
+        "BJ",
+        "PKtoNr",
+        "VSchl",
+        "AntPers"
+      ]
+    },
+    {
+      "art": "personenwert",
+      "keys": [
+        "BJ",
+        "PKtoNr",
+        "VSchl",
+        "DatAnders"
+      ],
+      "fields": [
+        "BJ",
+        "PKtoNr",
+        "VSchl",
+        "DatAnders",
+        "Info",
+        "AnzPers",
+        "AnzTag"
+      ]
+    },
+    {
+      "art": "personenjahr",
+      "keys": [
+        "BJ",
+        "PKtoNr",
+        "VSchl",
+        "DatAnders"
+      ],
+      "fields": [
+        "BJ",
+        "PKtoNr",
+        "VSchl",
+        "DatAnders",
+        "BJ_Ubergreif"
+      ]
+    }
+  ],
+  "vectors": [
+    {
+      "art": "objekt",
+      "objnr": 4010,
+      "werte": {
+        "ObjNr": "4010",
+        "Suchbegr": "Größe & <Test>",
+        "ObjTyp": null,
+        "ObjStr": null,
+        "Land": null,
+        "PLZ": null,
+        "Ort": null,
+        "Baujahr": null,
+        "ZustVerkauf": null,
+        "ZustVerm": null,
+        "Heizungsart": null,
+        "WWArt": null,
+        "Garagenart": null,
+        "M_llGefArt": null,
+        "ObjGr1": null,
+        "ObjGr2": null,
+        "ObjGr3": null,
+        "ObjGr4": null,
+        "ObjGr5": null,
+        "ObjektID": null,
+        "GebBezeichnung": null,
+        "ObjektAlias": null,
+        "SB": null,
+        "Team": null,
+        "Objekttyp2": null,
+        "Objektstrasse_2": null,
+        "BuchhalterDesh": null,
+        "BuchhalterReserve": null,
+        "ObjTypText": null,
+        "Zustellpostamt": null,
+        "VSchlFREI": null,
+        "anzeigen_ja_nein": null
+      },
+      "key": "4:4010",
+      "hash": "b502bec932b91d66f4271dbefbfde30c2baef7fdc1750d91db04b7188be6b4e7"
+    },
+    {
+      "art": "objektzahlen",
+      "objnr": 4010,
+      "werte": {
+        "ObjNr": "4010",
+        "AnzGeb": null,
+        "AnzEin": null
+      },
+      "key": "4:4010",
+      "hash": "046bfa9336c969d2aedc31fc5dd5f8e6c0a468e03945f7ae1325c111383223b5"
+    },
+    {
+      "art": "gebaeude",
+      "objnr": 4010,
+      "werte": {
+        "IndGeb": "1",
+        "BezGeb": null
+      },
+      "key": "1:1",
+      "hash": "8308116acb43b6858af1c22101aee78c5bce9fca35be4239647080260213d56b"
+    },
+    {
+      "art": "jahr",
+      "objnr": 4010,
+      "werte": {
+        "FIBJ_BJ": "1",
+        "FIBJ_BjVon": null,
+        "FIBJ_BjBis": null,
+        "FIBJ_gebBis": null,
+        "FIBJ_SB": null,
+        "FIBJ_Wahrung": null,
+        "FIBJ_VorstAbzQuote": null
+      },
+      "key": "1:1",
+      "hash": "aafbc62256020dfa0dded7cd2d7eddd8d7a9f586fe2b32820b2228ec11200ed9"
+    },
+    {
+      "art": "einheit",
+      "objnr": 4010,
+      "werte": {
+        "WhgNr": "1",
+        "SuchBegr": null,
+        "WhgLage": null,
+        "IndGeb": null,
+        "IndBauteil": null,
+        "WhgTyp": null,
+        "WG_VSchl1": null,
+        "WG_VSchl2": null,
+        "WG_VSchl3": null,
+        "WG_VSchl4": null,
+        "WG_VSchl5": null,
+        "Whg_JN": null,
+        "GewEinhJN": null,
+        "TeilEigJN": null,
+        "BewKat": null,
+        "MwStoptJN": null,
+        "gefJN": null,
+        "MittelGetilgtJN": null,
+        "BindBis": null,
+        "WG_VwArt": null,
+        "WG_m2Fl": null,
+        "WG_GarNr": null,
+        "WG_StellPlNr": null,
+        "MEA": null,
+        "gilt_bis_Datum": null,
+        "Datum_Frei": null,
+        "MI_MinolFolgeNrHeizA": null,
+        "MIMinolWhgNr": null,
+        "DTA_OrdBgr13": null,
+        "CB_mit_Text_Frei": null,
+        "CB_mit_Text_Frei_1": null,
+        "CB_mit_Text_Frei_2": null
+      },
+      "key": "1:1",
+      "hash": "e82c3d86533ad8328b2dc134e4c1bbadbc6c229b5e1fb5c185e6a8d36c025b9f"
+    },
+    {
+      "art": "funktion",
+      "objnr": 4010,
+      "werte": {
+        "lfdNrDatensatz": "1",
+        "PFKt": null,
+        "WhgNr": null,
+        "DatVon": null,
+        "DatBis": null,
+        "AdrNr": null,
+        "KEY_Firma": null,
+        "Info": "Größe & <Test>",
+        "PKto": null,
+        "FI_MieterPKto": null,
+        "PFktArtEigMiet": null,
+        "ST_SchlAustriaPKto": null,
+        "inaktiv": null,
+        "inaktivBis": null,
+        "MobileEnde": null,
+        "DatOptvon": null,
+        "DatOptbis": null,
+        "DatOptausueb": null
+      },
+      "key": "1:1",
+      "hash": "9ecb32775d4e34bdfbeeca46dc41ec7040475642b454aa4526df907ead814ad5"
+    },
+    {
+      "art": "konto",
+      "objnr": 4010,
+      "werte": {
+        "PKtoNr": "1",
+        "WhgNr": null,
+        "AdrNr": null,
+        "PKtoName": null,
+        "RefKtoNr": null,
+        "AK_Aktenzeichen": null
+      },
+      "key": "1:1",
+      "hash": "4e61347b7df75c8e15b514ba514904eba94bee25995318b65609619dbcec82a5"
+    },
+    {
+      "art": "schluessel",
+      "objnr": 4010,
+      "werte": {
+        "BJ": "1",
+        "VerteilerSchl": "Ä&<",
+        "Typ_PW": null,
+        "SchlTxt": null,
+        "AbrObjAntSum": null,
+        "TabArt": null,
+        "Ger_teArt": null
+      },
+      "key": "1:14:Ä&<",
+      "hash": "345017436e9985ab38d91c4038b60386802d9504a8b388bd2a9f6e861fc104bb"
+    },
+    {
+      "art": "einheitsanteil",
+      "objnr": 4010,
+      "werte": {
+        "Buchungsjahr": "1",
+        "WhgNr": "1",
+        "VSchl": "Ä&<",
+        "WhgAnteile": null
+      },
+      "key": "1:11:14:Ä&<",
+      "hash": "172abda227d988f73bb89e341553b7de21b1d9e326fb0645da99c4677fba2126"
+    },
+    {
+      "art": "kontenanteil",
+      "objnr": 4010,
+      "werte": {
+        "BJ": "1",
+        "PKtoNr": "1",
+        "VSchl": "Ä&<",
+        "AntPers": null
+      },
+      "key": "1:11:14:Ä&<",
+      "hash": "3bbef5972a1b8da371ace5b2108a82ba1837b2b12ea21a2d592dfb87cbb0de9f"
+    },
+    {
+      "art": "personenwert",
+      "objnr": 4010,
+      "werte": {
+        "BJ": "1",
+        "PKtoNr": "1",
+        "VSchl": "Ä&<",
+        "DatAnders": "0",
+        "Info": "Größe & <Test>",
+        "AnzPers": null,
+        "AnzTag": null
+      },
+      "key": "1:11:14:Ä&<1:0",
+      "hash": "f680cab800dea35cfdf13c25fbec9478abc0ae39258049594a34aff56b59e09d"
+    },
+    {
+      "art": "personenjahr",
+      "objnr": 4010,
+      "werte": {
+        "BJ": "1",
+        "PKtoNr": "1",
+        "VSchl": "Ä&<",
+        "DatAnders": "0",
+        "BJ_Ubergreif": null
+      },
+      "key": "1:11:14:Ä&<1:0",
+      "hash": "0bebc1e23481cd46d31643ffd20b2e4f5838b0703fd5af289349e25d47d54c0d"
+    }
+  ]
+}
