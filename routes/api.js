@@ -122,6 +122,7 @@ function baueApi(db, uploadDir, options = {}) {
   router.use('/plaud', require('./plaud').bauePlaudRouter(db, options.plaud));
   const hpRouter = require('./hausperfekt').baueHausperfektRouter(db, { ...options.hausperfekt, archivDir: path.join(uploadDir, 'hp-dms') });
   router.hpArchiv = hpRouter.archiv;
+  router.use('/eingangsrechnungen',require('./eingangsrechnungen').baueRouter(db,hpRouter.archiv,options.hausperfekt?.publicUrl));
   router.use('/hausperfekt', hpRouter);
   const vorgaengeRouter = require('./vorgaenge').baueRouter(db,{hp:hpRouter.service,archiv:hpRouter.archiv,publicUrl:options.hausperfekt?.publicUrl});
   router.use('/vorgaenge',vorgaengeRouter);

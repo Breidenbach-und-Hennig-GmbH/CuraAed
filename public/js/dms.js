@@ -142,9 +142,10 @@ async function dmsUebernahmeMaske(params = new URLSearchParams()) {
 function dmsVorschau(url, datei) {
   const content = el('div', { text: 'Datei wird in CuraAed geladen …', style:'min-height:50vh' });
   let open=true, loadingTask, renderTask;
-  modal({titel:datei.titel||datei.dateiname,inhalt:content,wide:true,
+  const preview=modal({titel:datei.titel||datei.dateiname,inhalt:content,wide:true,
     onClose:()=>{open=false;renderTask?.cancel();loadingTask?.destroy();},
     footer:close=>[el('a',{href:url,class:'btn',text:'Herunterladen'}),el('button',{text:'Schließen',onclick:close})]});
+  if(datei.hp||datei.original_name)preview.box.hpRechnungsDokument=datei;
   fetch(url+'?vorschau=1',{credentials:'same-origin'}).then(async response=>{
     if(!response.ok)throw new Error((await response.json()).fehler||'Datei nicht verfügbar.');
     if(!response.headers.get('content-type')?.includes('application/pdf')){

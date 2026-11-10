@@ -467,7 +467,7 @@ async function archivBearbeiten(id, reload) {
     document.createTextNode(`Datei: ${d.original_name} (${dateiGroesse(d.groesse)}) · erfasst am ${datum(d.erstellt_am)} · Quelle: ${L.quelle[d.quelle] || d.quelle}`),
   ]));
 
-  modal({
+  const archivDialog=modal({
     titel: schreiben ? 'Archiv-Eintrag bearbeiten' : 'Archiv-Eintrag',
     wide: true,
     inhalt: form,
@@ -483,6 +483,7 @@ async function archivBearbeiten(id, reload) {
       } }) : null,
     ],
   });
+  archivDialog.box.hpRechnungsDokument=d;
   form.addEventListener('submit', (e) => e.preventDefault());
 }
 

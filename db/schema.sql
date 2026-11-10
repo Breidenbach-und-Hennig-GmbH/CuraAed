@@ -574,3 +574,22 @@ CREATE INDEX IF NOT EXISTS dms_posteingang_sb ON dms_posteingang(sachbearbeiter,
 CREATE TABLE IF NOT EXISTS dms_posteingang_verlauf (id INTEGER PRIMARY KEY AUTOINCREMENT,dokument_id INTEGER NOT NULL REFERENCES dokumente(id) ON DELETE CASCADE,benutzer_id INTEGER REFERENCES benutzer(id),aktion TEXT NOT NULL,sachbearbeiter TEXT NOT NULL,erstellt_am TEXT NOT NULL DEFAULT (datetime('now')));
 
 CREATE TABLE IF NOT EXISTS dms_dokument_meta (dokument_id INTEGER PRIMARY KEY REFERENCES dokumente(id) ON DELETE CASCADE,oeffentlich INTEGER NOT NULL DEFAULT 0 CHECK(oeffentlich IN (0,1)),verfall_am TEXT,zugriffe INTEGER NOT NULL DEFAULT 0);
+
+CREATE TABLE IF NOT EXISTS eingangsrechnungen (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ dokument_schluessel TEXT NOT NULL UNIQUE,
+ erstellt_von INTEGER NOT NULL REFERENCES benutzer(id),
+ daten TEXT NOT NULL,
+ pruefungen TEXT NOT NULL DEFAULT '{}',
+ revision INTEGER NOT NULL DEFAULT 1,
+ erstellt_am TEXT NOT NULL DEFAULT (datetime('now')),
+ geaendert_am TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS rechnungs_verlauf (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ rechnung_id INTEGER NOT NULL REFERENCES eingangsrechnungen(id),
+ benutzer_id INTEGER NOT NULL REFERENCES benutzer(id),
+ vorher TEXT,
+ nachher TEXT NOT NULL,
+ erstellt_am TEXT NOT NULL DEFAULT (datetime('now'))
+);

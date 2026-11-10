@@ -176,6 +176,10 @@ function baueArchiv(db, directory, remote) {
     }
     return status(owner, connection);
   }
+  async function archiveDocument(owner,sourceId,fileId){
+    const r=await row(owner,sourceId,fileId);
+    return {id:'hp:'+sourceId+':'+fileId,hp:{quelle:sourceId,datei:Number(fileId),gesichert:!!r.speicher_name},titel:r.titel,original_name:r.dateiname,dokument_datum:r.datum,verknuepfungen:await links(r)};
+  }
   async function details(owner, sourceId, fileId) { return JSON.parse((await row(owner, sourceId, fileId)).details); }
   async function localFile(owner, sourceId, fileId) {
     const s = await owned(owner, sourceId);
@@ -186,6 +190,6 @@ function baueArchiv(db, directory, remote) {
     return store(owner, c.id, fileId);
   }
   // A process restart leaves the durable cursor intact; resume requires one click.
-  return { source, remember, store, archiveList, status, bind, start, stop, details, localFile };
+  return { source, remember, store, archiveList, archiveDocument, status, bind, start, stop, details, localFile };
 }
 module.exports = { baueArchiv };

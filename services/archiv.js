@@ -236,6 +236,7 @@ async function verknuepfungLoeschen(db, verknuepfungId) {
 }
 
 async function loeschen(db, id) {
+  if(await db.get('SELECT 1 FROM eingangsrechnungen WHERE dokument_schluessel=?',['archiv:'+id]))throw new V.ValidationError('Das Dokument ist mit einer Rechnung verknüpft und muss erhalten bleiben.',409);
   const d = await db.get('SELECT * FROM dokumente WHERE id = ?', [id]);
   if (!d) throw new V.ValidationError('Archiv-Eintrag nicht gefunden.', 404);
   await db.run('DELETE FROM dokumente WHERE id = ?', [id]);
