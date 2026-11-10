@@ -22,7 +22,7 @@ test('Dauerhaftes DMS: Zuordnung über HP-Quelle, unveränderte Datei nach Trenn
  const f=await fixture(t);const s=await f.svc.remember(f.owner,'mobile',f.detail);
  assert.equal((await f.svc.archiveList(f.owner,{adresseId:f.address})).eintraege.length,0);
  await f.svc.bind(f.owner,'mobile','direct');
- const list=await f.svc.archiveList(f.owner,{adresseId:f.address});assert.equal(list.eintraege.length,1);assert.equal(list.eintraege[0].verknuepfungen[0].ziel_id,f.address);
+ const list=await f.svc.archiveList(f.owner,{adresseId:f.address});assert.equal(list.eintraege.length,1);assert.equal(list.eintraege[0].kategorie,'rechnung');assert.equal((await f.svc.archiveList(f.owner,{adresseId:f.address,kategorie:'rechnung'})).eintraege.length,1);assert.equal((await f.svc.archiveList(f.owner,{adresseId:f.address,kategorie:'korrespondenz'})).eintraege.length,0);assert.equal(list.eintraege[0].verknuepfungen[0].ziel_id,f.address);
  assert.equal((await f.svc.archiveList(f.other)).eintraege.length,0);
  await assert.rejects(f.svc.localFile(f.other,s.id,9),e=>e.status===404);assert.equal(f.calls(),0);
  const original=await f.svc.store(f.owner,'mobile',9);assert.equal((await fs.readFile(original.path)).toString(),'%PDF-1.7');
