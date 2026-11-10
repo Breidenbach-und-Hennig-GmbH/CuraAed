@@ -25,7 +25,7 @@ function startMaske() {
       kachel('building', 'Objekte', 'Objektstammdaten, Verteilerschlüssel, Bankkonten', '#/objekte', 'Alt+S, O'),
       kachel('house', 'Wohnungen', 'Einheiten mit Eigentümern und Mietern', '#/einheiten', 'Alt+S, W'),
       kachel('user', 'Adressen', 'Personen und Firmen, Kontakte, Z.I.S, Wiedervorlagen', '#/adressen', 'Alt+S, A'),
-      kachel('file', 'Dokumente', 'Zentrales Archiv mit Zuordnung per Nummer', '#/archiv', 'Alt+S, D'),
+      kachel('file', 'Dokumente', 'DMS-Posteingang mit Sachbearbeiterauswahl', '#/dms', 'Alt+S, D'),
       darfSchreiben() ? kachel('settings', 'HP-Verbindung', 'Eigenes HP-Kundenkonto verbinden und Datenzugriff prüfen', '#/hausperfekt') : null,
     ]),
   ]));

@@ -651,7 +651,9 @@ function menueEintraege(dd, eintraege, onUnter) {
     } else {
       item.addEventListener('mouseenter', () => onUnter(null));
       item.addEventListener('click', () => {
+        const ausgang=offenesMenue?.ausgang;
         schliesseMenue();
+        if(ausgang?.isConnected)ausgang.focus();
         if (e.folgt) toast(`${e.text}: ${e.folgt}`);
         else if (ohneRecht) toast('Keine Schreibberechtigung.', 'error');
         else if (inaktiv) toast(e.grund || 'Im Moment nicht verfügbar.');
@@ -723,6 +725,7 @@ function oeffneMenue(idx, knopf, fokusErster) {
  * Liste unter der Kopfzeile – Alt+Buchstabe funktioniert so immer.
  */
 function oeffneListe(knopf, titel, eintraege, { idx = -1, fokusErster = false, rechts = false, oben = false } = {}) {
+  const ausgang=offenesMenue?.ausgang||document.activeElement;
   schliesseMenue();
   const dd = el('div', { class: 'hp-dropdown', role: 'menu', 'aria-label': titel });
   menueEintraege(dd, eintraege, oeffneUntermenue);
@@ -745,7 +748,7 @@ function oeffneListe(knopf, titel, eintraege, { idx = -1, fokusErster = false, r
   dd.style.left = Math.round(Math.max(4, Math.min(links, window.innerWidth - dd.offsetWidth - 4))) + 'px';
   knopf.classList.add('offen');
   knopf.setAttribute('aria-expanded', 'true');
-  offenesMenue = { idx, dd, knopf, sub: null };
+  offenesMenue = { idx, dd, knopf, sub: null, ausgang };
   if (fokusErster) dd.querySelector('.hp-menue-eintrag')?.focus();
 }
 
@@ -1451,6 +1454,10 @@ document.addEventListener('keydown', (ev) => {
     ev.preventDefault();
     aufNullSetzen(ev.target);
     return;
+  }
+  // Alt+S bleibt auch aus einem geöffneten Dokument erreichbar.
+  if(dialogOffen && ev.altKey && !ev.ctrlKey && !ev.metaKey && ev.code==='KeyS' && [...document.querySelectorAll('.modal')].at(-1)?.hpRechnungsDokument){
+    const idx=MENUE().findIndex(m=>m.alt==='s');ev.preventDefault();oeffneMenue(idx,document.querySelectorAll('.hp-menue-knopf')[idx],true);return;
   }
   if (offenesMenue || dialogOffen) return; // offene Menüs/Dialoge nicht stören
   // Alt+Buchstabe (auch Alt+Shift, falls der Browser Alt+Buchstabe selbst belegt) öffnet das Menü
