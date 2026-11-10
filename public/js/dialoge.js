@@ -376,7 +376,7 @@ function nummernFeld(typ, wert) {
 }
 
 function archivUpload(ktx, reload) {
-  const dateiInput = el('input', { type: 'file', id: 'f_datei', accept: '.pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.doc,.docx,.xls,.xlsx,.txt,.csv' });
+  const dateiInput = el('input', { type: 'file', id: 'f_datei', accept: '.pdf,.xml,.jpg,.jpeg,.png,.webp,.tif,.tiff,.doc,.docx,.xls,.xlsx,.txt,.csv' });
   const { form, werte } = formular([
     { felder: [{ name: 'titel', label: 'Titel (leer = Dateiname)', placeholder: 'z. B. Protokoll Eigentümerversammlung 2026' }] },
     { grid: 2, felder: [

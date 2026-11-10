@@ -49,17 +49,18 @@ function baueErkennung(db,{rechnungen,archiv,uploadDir,lesen=extract}){
   const resolved=await rechnungen.document(owner,ref),key=resolved.key,doc=resolved.dokument;let file;
   if(ref.typ==='archiv'){
    const r=await db.get('SELECT speicher_name,mime_type FROM dokumente WHERE id=?',[Number(ref.id)]);
-   if(!/^application\/pdf$|^image\//.test(r.mime_type))return{status:'nicht_unterstuetzt',rechnung:false,felder:{},hinweise:['Automatische Erkennung unterstützt PDFs und Bilder.']};
+   if(!/^application\/(pdf|xml)$|^text\/xml$|^image\//.test(r.mime_type)&&!/\.xml$/i.test(doc.original_name||''))return{status:'nicht_unterstuetzt',rechnung:false,felder:{},hinweise:['Automatische Erkennung unterstützt PDFs, Bilder und CII-Rechnungs-XML.']};
    file=path.join(uploadDir,path.basename(r.speicher_name));
   }else{if(!doc.hp.gesichert)throw new ValidationError('Bitte das Dokument zuerst dauerhaft in CuraAed übernehmen.',409);file=(await archiv.localFile(owner,ref.quelle,ref.id)).path;}
   const stat=await fs.stat(file).catch(()=>null);if(!stat)throw new ValidationError('Dokumentdatei nicht vorhanden.',404);
   if(stat.size>50*1024*1024)throw new ValidationError('Datei ist für die Erkennung zu groß.',413);
   const hash=crypto.createHash('sha256').update(await fs.readFile(file)).digest('hex'),cached=await db.get('SELECT ergebnis FROM rechnungs_erkennung WHERE dokument_schluessel=? AND datei_hash=?',[key,hash]);
-  if(cached)return JSON.parse(cached.ergebnis);
+  if(cached&&JSON.parse(cached.ergebnis).version===2)return JSON.parse(cached.ergebnis);
   if(active.has(key))return active.get(key);
   if(active.size)throw new ValidationError('Die Rechnungserkennung ist gerade belegt. Bitte gleich erneut versuchen.',503);
   const promise=(async()=>{
-   const data=await lesen(file),result=parseInvoice(data.text);
+   const data=await lesen(file),result=data.zugferd||parseInvoice(data.text);
+   result.version=2;
    result.status='fertig';result.methode=data.methode;result.seiten=data.seiten;result.hinweise.push(...(data.hinweise||[]));
    if(data.konfidenz!==undefined&&data.konfidenz<65)result.hinweise.push('Scan schwer lesbar – alle erkannten Angaben besonders sorgfältig prüfen.');
    // Bankdaten liefern nur einen Lieferantenhinweis, keine erfundene Kreditorenkontonummer.

@@ -52,6 +52,8 @@ function baueApi(db, uploadDir, options = {}) {
   });
   const ERLAUBTE_MIME = new Set([
     'application/pdf',
+    'application/xml',
+    'text/xml',
     'image/jpeg',
     'image/png',
     'image/webp',

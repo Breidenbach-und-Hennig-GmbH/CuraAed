@@ -4,3 +4,7 @@
 .cu-rechnung-spalte>span:empty{display:none}
 
 .cu-rechnung-erkannt{border:1px solid #cab8ee;border-left:4px solid var(--cu-violett,#7136cc);background:var(--cu-violett-hell,#f5f2fa);padding:12px 16px;border-radius:8px;margin-bottom:12px}.cu-rechnung-erkannt p{margin:6px 0}.cu-rechnung-erkannt ul{display:flex;flex-wrap:wrap;gap:4px 24px;margin:8px 0;padding-left:18px}.cu-rechnungsmaske input.cu-rechnung-auto{background:#f1e9ff;box-shadow:inset 3px 0 var(--cu-violett,#7136cc)}
+
+.cu-zugferd-daten{margin-top:12px;border-top:1px solid var(--cu-rand,#dcd5e9);padding-top:10px}.cu-zugferd-daten>summary{cursor:pointer;color:var(--cu-violett,#7136cc);font-weight:600}.cu-zugferd-daten .hp-panel{background:white;margin-top:10px}.cu-zugferd-daten .hp-tabelle-wrap{max-height:260px;overflow:auto}.cu-zugferd-daten h3{font-size:14px;margin:14px 0 6px}
+
+.cu-zugferd-daten .hp-zeile{grid-template-columns:180px minmax(0,1fr);column-gap:12px}.cu-zugferd-daten .hp-w1{overflow-wrap:anywhere}@media(max-width:600px){.cu-zugferd-daten .hp-zeile{grid-template-columns:1fr;gap:3px}}
