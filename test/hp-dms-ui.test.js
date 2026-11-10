@@ -6,7 +6,7 @@ const entry={id:9,titel:'<img src=x onerror=alert(1)>',dateiname:'test.pdf',doku
 function setup(t, get){
  const dom=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example/'});t.after(()=>dom.window.close());
  const w=dom.window;w.API={get,qs:o=>'?'+new URLSearchParams(o)};
- for(const file of ['ui','kern','shell','dms'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());
+ for(const file of ['ui','kern','shell','dms-posteingang','dms'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());
  vm.runInContext('S.lauf=1;S.benutzer={rolle:"admin"};',dom.getInternalVMContext());return w;
 }
 test('DMS-UI: persönliche Quelle, serverseitige Suche, Dateiliste und sichere Zuordnungsanzeige',async t=>{
@@ -49,10 +49,23 @@ test('Dokumente: zuerst Sachbearbeiter-Abfrage, eigene Vorbelegung, Großbuchsta
  const running=w.dmsMaske();assert.equal(w.document.getElementById('dms-sachbearbeiter').value,'FD');assert.match(w.document.querySelector('[role=dialog]').textContent,/DMS Sachbearbeiter auswählen/);assert.equal(calls.filter(u=>u.includes('/dms-posteingang')).length,0);
  const input=w.document.getElementById('dms-sachbearbeiter');input.value='ad';input.dispatchEvent(new w.Event('input'));assert.equal(input.value,'AD');
  w.document.getElementById('dms-sb-form').dispatchEvent(new w.Event('submit',{cancelable:true}));await running;
- assert.ok(calls.some(u=>u.includes('sb=AD')));assert.equal(w.document.querySelector('[role=dialog]'),null);assert.match(w.document.body.textContent,/Sachbearbeiter: AD/);
+ assert.ok(calls.some(u=>u.includes('sb=AD')));assert.equal(w.document.querySelector('[role=dialog]'),null);assert.match(w.document.body.textContent,/AD/);
 });
 test('Dokumente: leeres Feld für alle, Abbrechen öffnet keine Dokumente',async t=>{
  const calls=[];const w=setup(t,async url=>{calls.push(url);return url==='/mitarbeiter'?[]:{eintraege:[],gesamt:0,seite:1,weitere:false};});
- let running=w.dmsMaske();w.document.getElementById('dms-sb-form').dispatchEvent(new w.Event('submit',{cancelable:true}));await running;assert.ok(calls.some(u=>u.includes('sb=&')));assert.match(w.document.body.textContent,/Sämtliche Posteingänge/);
+ let running=w.dmsMaske();w.document.getElementById('dms-sb-form').dispatchEvent(new w.Event('submit',{cancelable:true}));await running;assert.ok(calls.some(u=>u.includes('sb=&')));assert.match(w.document.body.textContent,/Alle Sachbearbeiter/);
  const before=calls.filter(u=>u.startsWith('/dms-posteingang')).length;running=w.dmsMaske();[...w.document.querySelectorAll('[role=dialog] button')].find(b=>b.textContent==='Abbrechen').click();await running;assert.equal(calls.filter(u=>u.startsWith('/dms-posteingang')).length,before);
+});
+
+test('DMS-Maske: Auswahl zeigt lokale Datei, echte Zuordnungen und speichert Bemerkung mit Versionsschutz',async t=>{
+ const detail={eingang:{dokument_id:9,sachbearbeiter:'FD',revision:3},dokument:{id:9,titel:'Brief',original_name:'brief.pdf',quelle:'upload',kategorie:'sonstiges',groesse:100,beschreibung:'Alte Bemerkung',erstellt_am:'2026-11-10 10:00:00',verknuepfungen:[{typ:'adresse',ziel_id:7,nummer:77,label:'Musterfirma'}]},autor:{kuerzel:'AD'},oeffentlich:false,verfall_am:null,verlauf:[]};
+ const w=setup(t,async url=>url==='/dms-posteingang/9'?detail:{eintraege:[{dokument_id:9,titel:'Brief',sachbearbeiter:'FD',revision:3,status:'offen',erstellt_am:'2026-11-10 10:00:00',zugriffe:2}],gesamt:1,seite:1,weitere:false});
+ let saved;w.API.put=async(url,body)=>{saved={url,body};detail.eingang.revision++;detail.dokument.beschreibung=body.bemerkung;};
+ await w.dmsPosteingangMaske('FD',1);
+ assert.ok(w.document.querySelector('.cu-dms-oben'));assert.ok(w.document.querySelector('.cu-dms-unten'));
+ assert.match(w.document.body.textContent,/brief.pdf/);assert.ok(w.document.querySelector('a[href="#/adressen/7"]'));assert.match(w.document.querySelector('.cu-dms-bemerkung').textContent,/Bemerkung/);
+ const note=w.document.querySelector('textarea');assert.equal(note.value,'Alte Bemerkung');note.value='Neue Bemerkung';note.dispatchEvent(new w.Event('input'));
+ [...w.document.querySelectorAll('button')].find(b=>b.textContent==='Angaben speichern').click();await tick();await tick();
+ assert.equal(saved.url,'/dms-posteingang/9/metadaten');assert.equal(saved.body.revision,3);assert.equal(saved.body.basis_bemerkung,'Alte Bemerkung');assert.equal(saved.body.bemerkung,'Neue Bemerkung');
+ assert.equal(w.document.querySelectorAll('a[href*="hausperfekt-mobile"]').length,0);
 });

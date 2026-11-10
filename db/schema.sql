@@ -572,3 +572,5 @@ CREATE TABLE IF NOT EXISTS fach_import_fehler (quelle_id TEXT NOT NULL REFERENCE
 CREATE TABLE IF NOT EXISTS dms_posteingang (dokument_id INTEGER PRIMARY KEY REFERENCES dokumente(id) ON DELETE CASCADE,sachbearbeiter TEXT NOT NULL DEFAULT '',status TEXT NOT NULL CHECK(status IN ('offen','abgeschlossen')),revision INTEGER NOT NULL DEFAULT 1,erstellt_von INTEGER REFERENCES benutzer(id),erstellt_am TEXT NOT NULL DEFAULT (datetime('now')),geaendert_am TEXT NOT NULL DEFAULT (datetime('now')));
 CREATE INDEX IF NOT EXISTS dms_posteingang_sb ON dms_posteingang(sachbearbeiter,status);
 CREATE TABLE IF NOT EXISTS dms_posteingang_verlauf (id INTEGER PRIMARY KEY AUTOINCREMENT,dokument_id INTEGER NOT NULL REFERENCES dokumente(id) ON DELETE CASCADE,benutzer_id INTEGER REFERENCES benutzer(id),aktion TEXT NOT NULL,sachbearbeiter TEXT NOT NULL,erstellt_am TEXT NOT NULL DEFAULT (datetime('now')));
+
+CREATE TABLE IF NOT EXISTS dms_dokument_meta (dokument_id INTEGER PRIMARY KEY REFERENCES dokumente(id) ON DELETE CASCADE,oeffentlich INTEGER NOT NULL DEFAULT 0 CHECK(oeffentlich IN (0,1)),verfall_am TEXT,zugriffe INTEGER NOT NULL DEFAULT 0);

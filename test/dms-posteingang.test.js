@@ -11,3 +11,18 @@ test('DMS-Posteingang: eigene Zuordnung statt Archivautor, leeres Kürzel zeigt 
  await s.update(owner,1,{sachbearbeiter:'AD',status:'abgeschlossen',revision:2});assert.equal((await s.list()).gesamt,1);assert.equal((await s.list({alle:'1'})).gesamt,2);assert.ok(await db.get('SELECT 1 FROM dokumente WHERE id=1'));
  assert.equal(kuerzel('fd'),'FD');assert.throws(()=>kuerzel('ABCD'));assert.throws(()=>kuerzel('F1'));await assert.rejects(s.add(owner,{dokument_id:999,sachbearbeiter:''}),e=>e.status===404);
 });
+
+test('DMS-Details: Bemerkung, Kennzeichnung, Zuordnungen und konkurrierende Änderungen',async t=>{
+ const db=await openDatabase(':memory:');t.after(()=>db.close());await users.anlegen(db,{benutzername:'meta',name:'Meta',rolle:'admin',passwort:'test12345'});const owner=(await db.get('SELECT id FROM benutzer')).id;
+ await db.run("INSERT INTO dokumente(id,titel,kategorie,original_name,speicher_name,mime_type,groesse,quelle) VALUES(1,'Test','sonstiges','test.pdf','test.pdf','application/pdf',8,'upload')");
+ const s=bauePosteingang(db);await s.add(owner,{dokument_id:1,sachbearbeiter:'FD'});
+ const d=await s.detail(1);assert.equal(d.eingang.sachbearbeiter,'FD');assert.deepEqual(d.dokument.verknuepfungen,[]);assert.equal(d.verlauf[0].aktion,'eingang');
+ const body={revision:1,basis_bemerkung:'',bemerkung:'Rückruf vereinbaren',oeffentlich:true,verfall_am:'2030-02-28'};
+ await s.saveMeta(owner,1,body);const saved=await s.detail(1);assert.equal(saved.dokument.beschreibung,body.bemerkung);assert.equal(saved.oeffentlich,true);assert.equal(saved.verfall_am,'2030-02-28');assert.equal(saved.eingang.revision,2);
+ assert.equal((await s.list({suche:'Rückruf',sortierung:'titel'})).gesamt,1);assert.equal((await s.list({suche:'unbekannt'})).gesamt,0);
+ await assert.rejects(s.saveMeta(owner,1,body),e=>e.status===409);
+ await db.run("UPDATE dokumente SET beschreibung='Archiv geändert' WHERE id=1");
+ await assert.rejects(s.saveMeta(owner,1,{...body,revision:2,basis_bemerkung:body.bemerkung}),e=>e.status===409);
+ await assert.rejects(s.saveMeta(owner,1,{...body,revision:2,verfall_am:'2030-02-31'}));
+ await assert.rejects(s.list({sortierung:'ungueltig'}));
+});
