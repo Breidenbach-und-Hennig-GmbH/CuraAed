@@ -55,22 +55,43 @@ async function werte(db, data) {
 }
 const SPALTEN = ['objekt_id', 'nummer', 'name', 'datum', 'uhrzeit', 'art', 'ort', 'ort_strasse', 'ort_plz', 'ort_stadt', 'ort_beschreibung', 'status', 'notizen'];
 
+
+const ORTFELDER={ort:200,ort_strasse:200,ort_plz:20,ort_stadt:100,ort_beschreibung:2000};
+async function ortMerken(db,objektId,data){
+ const id=Number(objektId);
+ if(!Number.isSafeInteger(id)||id<1||!await db.get('SELECT id FROM objekte WHERE id=?',[id]))throw new V.ValidationError('Objekt nicht gefunden.',404);
+ const w={};for(const [k,max] of Object.entries(ORTFELDER)){if(data[k]!=null&&typeof data[k]!=='string')throw new V.ValidationError('Ungültige Ortsangabe.');w[k]=V.str(data[k],max)||'';}
+ if(!w.ort)throw new V.ValidationError('Bitte eine Bezeichnung für den Versammlungsort eingeben.');
+ const cols=Object.keys(ORTFELDER),values=cols.map(k=>w[k]);
+ await db.run('INSERT OR IGNORE INTO versammlungsorte(objekt_id,'+cols.join(',')+') VALUES(?,?,?,?,?,?)',[id,...values]);
+ return db.get('SELECT * FROM versammlungsorte WHERE objekt_id=? AND '+cols.map(k=>k+'=?').join(' AND '),[id,...values]);
+}
+async function orte(db,objektId){
+ const id=Number(objektId);if(!Number.isSafeInteger(id)||id<1||!await db.get('SELECT id FROM objekte WHERE id=?',[id]))throw new V.ValidationError('Objekt nicht gefunden.',404);
+ return db.all('SELECT * FROM versammlungsorte WHERE objekt_id=? ORDER BY ort COLLATE NOCASE,ort_strasse,ort_stadt,id',[id]);
+}
 async function anlegen(db, data, benutzerId) {
   const w = await werte(db, data);
-  const r = await db.run(
+  return db.transaktion(async tx=>{
+  const r = await tx.run(
     `INSERT INTO versammlungen (${SPALTEN.join(', ')}, erstellt_von) VALUES (${SPALTEN.map(() => '?').join(', ')}, ?)`,
     [...SPALTEN.map((s) => w[s]), benutzerId || null]
   );
-  return holen(db, r.lastID);
+  if(w.ort)await ortMerken(tx,w.objekt_id,w);
+  return holen(tx, r.lastID);
+  });
 }
 
 async function aktualisieren(db, id, data) {
   const bisher=await holen(db,id);
   if (!bisher) throw new V.ValidationError('Versammlung nicht gefunden.', 404);
   const w = await werte(db, {...bisher,...data});
-  await db.run(`UPDATE versammlungen SET ${SPALTEN.map((s) => `${s}=?`).join(', ')}, geaendert_am=datetime('now') WHERE id=?`,
+  return db.transaktion(async tx=>{
+  await tx.run(`UPDATE versammlungen SET ${SPALTEN.map((s) => `${s}=?`).join(', ')}, geaendert_am=datetime('now') WHERE id=?`,
     [...SPALTEN.map((s) => w[s]), id]);
-  return holen(db, id);
+  if(w.ort)await ortMerken(tx,w.objekt_id,w);
+  return holen(tx, id);
+  });
 }
 
 async function archivieren(db, id, archiviert) {
@@ -84,4 +105,4 @@ async function loeschen(db, id) {
   if (!r.changes) throw new V.ValidationError('Versammlung nicht gefunden.', 404);
 }
 
-module.exports = { ARTEN, STATUS, liste, holen, anlegen, aktualisieren, archivieren, loeschen };
+module.exports = { orte,ortMerken,ARTEN, STATUS, liste, holen, anlegen, aktualisieren, archivieren, loeschen };

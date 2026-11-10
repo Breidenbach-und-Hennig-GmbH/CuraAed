@@ -258,6 +258,8 @@ function baueApi(db, uploadDir, options = {}) {
     h(async (req, res) => res.json(await objektBankSvc.aktualisieren(db, req.params.bid, req.body || {}))));
   router.delete('/objektbank/:bid', auth.erfordereSchreibrecht,
     h(async (req, res) => { await objektBankSvc.loeschen(db, req.params.bid); res.json({ ok: true }); }));
+  router.get('/objekte/:id/versammlungsorte',h(async(req,res)=>res.json(await versammlungenSvc.orte(db,req.params.id))));
+  router.post('/objekte/:id/versammlungsorte',auth.erfordereSchreibrecht,h(async(req,res)=>res.status(201).json(await versammlungenSvc.ortMerken(db,req.params.id,req.body||{}))));
   // ETV – Eigentümerversammlungen
   router.get('/versammlungen', h(async (req, res) => {
     const t = (v) => (typeof v === 'string' ? v : '');
