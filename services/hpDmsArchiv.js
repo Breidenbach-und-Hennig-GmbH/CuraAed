@@ -178,8 +178,9 @@ function baueArchiv(db, directory, remote) {
   }
   async function details(owner, sourceId, fileId) { return JSON.parse((await row(owner, sourceId, fileId)).details); }
   async function localFile(owner, sourceId, fileId) {
-    const s = await owned(owner, sourceId), hit = await cached(owner, sourceId, fileId);
-    if (hit) return hit;
+    const s = await owned(owner, sourceId);
+    let hit;try{hit=await cached(owner,sourceId,fileId);}catch(e){if(!(e instanceof HpMobileError)||e.status!==404)throw e;}
+    if(hit)return hit;
     const c = await db.get('SELECT id FROM hp_mobile_verbindungen WHERE benutzer_id=? AND subdomain=?', [owner, s.subdomain]);
     if (!c) fail('Die Datei wurde noch nicht übernommen. Zum einmaligen Abruf die HP-Verbindung wiederherstellen.');
     return store(owner, c.id, fileId);

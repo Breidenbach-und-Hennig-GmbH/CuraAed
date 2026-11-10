@@ -6,7 +6,7 @@
 // credential storage must be provided by the integration layer before activation.
 const { isDeepStrictEqual } = require('node:util');
 const ORIGIN = 'https://api.hausperfekt-mobile.de';
-const READ_RESOURCES = new Set(['persons', 'addresses', 'buildings', 'units', 'documents', 'cis', 'syncs']);
+const READ_RESOURCES = new Set(['persons', 'addresses', 'buildings', 'units', 'documents', 'cis', 'syncs', 'records', 'tasks', 'craftsman_tasks', 'notes']);
 const PERSON_FIELDS = new Set(['salutation', 'title', 'firstname', 'lastname', 'birthdate', 'address', 'emails', 'phonenumbers', 'comment', 'confirm_data']);
 const ADDRESS_FIELDS = new Set(['street', 'zip', 'city', 'country']);
 
@@ -104,6 +104,16 @@ function baueHpMobileClient({ portalUrl, accessToken, fetchImpl = globalThis.fet
       const key = positiveId(id);
       await verify();
       return (await request('GET', resource + '/' + key)).data;
+    },
+    async fachListe(resource,page=1) {
+      if(!['records','tasks','craftsman_tasks','cis','notes'].includes(resource)||!Number.isSafeInteger(page)||page<1||page>1000000)throw new HpMobileError('Ungültiger Fachbereich oder Seite.',400);
+      await verify();return (await request('GET',resource+'?'+new URLSearchParams({pageNum:String(page),pageSize:'50',of:'id',od:'asc'}))).data;
+    },
+    async fachDetails(resource,id) {
+      if(!['records','tasks','craftsman_tasks','cis','notes'].includes(resource))throw new HpMobileError('Ungültiger Fachbereich.',400);
+      const key=positiveId(id);await verify();
+      const rel=['cis','tasks'].includes(resource)?'?'+new URLSearchParams({rel:'["units","persons","buildings","records","craftsman_tasks","documents.document_files"]'}):'';
+      return (await request('GET',resource+'/'+key+rel)).data;
     },
     async dmsListe({ page = 1, search = '', importieren = false } = {}) {
       if (!Number.isSafeInteger(page) || page < 1 || page > 1000000 || typeof search !== 'string' || search.length > 200) throw new HpMobileError('Ungültige DMS-Suche.', 400);

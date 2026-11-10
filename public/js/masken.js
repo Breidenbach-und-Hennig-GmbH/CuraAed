@@ -543,6 +543,8 @@ async function objektMaske(id, params) {
       ], einheiten, { onOpen: (e) => geheZu('#/einheiten/' + e.id), leer: 'Noch keine Einheiten angelegt.' }),
       [schreiben ? { text: 'Neu', titel: 'Neue Einheit anlegen', onclick: () => einheitFormular(o.id) } : null]));
     } catch (e) { fehler(e); }
+  } else if (tab === 'vorgaenge' || tab === 'hwa') {
+    vorgaengeListe(inhalt,{art:tab==='hwa'?'handwerker':'akte',kontext:{typ:'objekt',id:o.id},lauf});
   } else {
     const titel = { vorgaenge: 'Vorgänge/ Akten', hwa: 'HWA - Aufträge', energie: 'Energie' }[tab] || tab;
     inhalt.appendChild(abschnitt(titel, el('div', { class: 'hp-notizen', text: `${titel} folgen in einer späteren Ausbaustufe.` })));
@@ -656,7 +658,7 @@ async function einheitMaske(id, params) {
     archivListe(inhalt, { ktx: { typ: 'einheit', id: e.id }, kategorie: tab === 'korrespondenz' ? 'korrespondenz' : params.get('kategorie'), lauf });
   } else {
     const titel = tab === 'vorgaenge' ? 'Vorgänge/ Akten' : 'Handwerkeraufträge';
-    inhalt.appendChild(abschnitt(titel, el('div', { class: 'hp-notizen', text: `${titel} folgen in einer späteren Ausbaustufe.` })));
+    vorgaengeListe(inhalt,{art:tab==='handwerker'?'handwerker':'akte',kontext:{typ:'einheit',id:e.id},lauf});
   }
 
   zeigeAufDesktop(lauf, maskenFenster({
@@ -1053,6 +1055,8 @@ function zisAnsicht(a, ziel, lauf, objekt = null) {
   sucheEl.addEventListener('input', debounce(laden, 300));
 
   const zisOeffnen = async (e) => {
+    if(e.quelle==='vorgang')return geheZu('#/vorgaenge/'+e.id);
+    if(e.quelle==='hp_dokument')return dmsArchivOeffnen({titel:e.text,hp:e.hp});
     if (e.quelle === 'dokument') return archivBearbeiten(e.id, laden);
     if (e.quelle === 'wiedervorlage') return wiedervorlagenDialog(a);
     const adr = objekt ? await API.get('/adressen/' + e.adresse_id) : a;
@@ -1244,7 +1248,7 @@ async function adresseMaske(id, params) {
     historieAnsicht(a, inhalt, lauf);
   } else {
     const titel = tab === 'vorgaenge' ? 'Vorgänge/ Akten' : 'Handwerkeraufträge';
-    inhalt.appendChild(abschnitt(titel, el('div', { class: 'hp-notizen', text: `${titel} folgen in einer späteren Ausbaustufe.` })));
+    vorgaengeListe(inhalt,{art:tab==='handwerker'?'handwerker':'akte',kontext:{typ:'adresse',id:a.id},lauf});
   }
 
   zeigeAufDesktop(lauf, maskenFenster({
