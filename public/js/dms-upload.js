@@ -1,8 +1,8 @@
 'use strict';
 function dmsDateiEingang(root,{sachbearbeiter,aktuell,neuLaden}){
- const accept='.pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.doc,.docx,.xls,.xlsx,.txt,.csv';
+ const accept='.pdf,.xml,.jpg,.jpeg,.png,.webp,.tif,.tiff,.doc,.docx,.xls,.xlsx,.txt,.csv';
  const input=el('input',{type:'file',multiple:true,accept,'aria-label':'Dokumentdateien auswählen',class:'cu-dms-dateiwahl'});
- const hinweis=el('p',{class:'small muted',text:'PDF, Bilder, Word, Excel, Text oder CSV · maximal 50 MB je Datei'});
+ const hinweis=el('p',{class:'small muted',text:'ZUGFeRD-PDF und CII-XML werden automatisch gelesen · PDF, Bilder, Office · maximal 50 MB je Datei'});
  const queue=el('ul',{class:'cu-dms-upload-liste','aria-label':'Dateiübernahmen'}),meldung=el('p',{role:'status','aria-live':'polite'});
  const zone=el('section',{class:'cu-dms-dropzone','aria-label':'Dokumente hinzufügen'},[
   el('strong',{text:'Dokumente hierher ziehen'}),el('span',{text:'Eine oder mehrere Dateien direkt in den Posteingang übernehmen.'}),
@@ -32,7 +32,7 @@ function dmsDateiEingang(root,{sachbearbeiter,aktuell,neuLaden}){
     try{await API.post('/dms-posteingang',{dokument_id:job.saved.id,sachbearbeiter});}
     catch(e){if(e.status!==409)throw e;const d=await API.get('/dms-posteingang/'+job.saved.id);if(d.eingang?.dokument_id!==job.saved.id)throw e;}
     job.state='fertig';job.file=null;changed=true;
-    if(/\.(pdf|jpe?g|png|webp|tiff?)$/i.test(job.name))await erkennen(job);
+    if(/\.(pdf|xml|jpe?g|png|webp|tiff?)$/i.test(job.name))await erkennen(job);
    }catch(e){job.state='fehler';job.error=(job.saved?'Datei bereits gespeichert; Posteingangszuordnung fehlgeschlagen: ':'')+(e.message||'Übernahme fehlgeschlagen.');}
    if(aktuell())render(job);
   }}finally{running=false;if(aktuell()){const done=jobs.filter(j=>j.state==='fertig').length,failed=jobs.filter(j=>j.state==='fehler').length;meldung.textContent=done+' Datei(en) übernommen'+(failed?' · '+failed+' fehlgeschlagen':'');if(changed)await neuLaden();const auto=jobs.find(j=>j.state==='fertig'&&j.autoOpen&&!j.autoOpened&&j.erkennung?.rechnung);if(auto&&!document.querySelector('.modal')){auto.autoOpened=true;rechnungMaske(auto.saved).catch(fehler);}}}
@@ -42,7 +42,7 @@ function dmsDateiEingang(root,{sachbearbeiter,aktuell,neuLaden}){
   if(!selected.length){meldung.textContent='Bitte Dateien vom Computer hierher ziehen. Ordner werden nicht übernommen.';return;}
   for(const file of selected){
    const name=file.name||'Unbenannte Datei';
-   if(!/\.(pdf|jpe?g|png|webp|tiff?|docx?|xlsx?|txt|csv)$/i.test(name)||file.size>50*1024*1024||!file.size){queue.append(el('li',{class:'cu-dms-upload-fehler',text:name+': '+(!file.size?'Datei ist leer.':file.size>50*1024*1024?'Datei ist größer als 50 MB.':'Dateiformat wird nicht unterstützt.') }));continue;}
+   if(!/\.(pdf|xml|jpe?g|png|webp|tiff?|docx?|xlsx?|txt|csv)$/i.test(name)||file.size>50*1024*1024||!file.size){queue.append(el('li',{class:'cu-dms-upload-fehler',text:name+': '+(!file.size?'Datei ist leer.':file.size>50*1024*1024?'Datei ist größer als 50 MB.':'Dateiformat wird nicht unterstützt.') }));continue;}
    const job={file,name,autoOpen:selected.length===1,state:'wartet',row:el('li')};jobs.push(job);queue.append(job.row);render(job);
   }
   run();

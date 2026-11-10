@@ -475,6 +475,7 @@ const FIBU_GRUPPEN = [
 ];
 // Bereits vorhandene Funktionen, die aus dem FIBU-Menü erreichbar sind
 const FIBU_AKTIONEN = {
+  'ZUGFeRD': () => geheZu('#/dms'),
   'Objekt FIBU': () => objektFibuOeffnen(),
   'Stammdaten FIBU': () => objektFibuOeffnen(),
   'Objekt BJ anlegen': () => objektFibuOeffnen(),
