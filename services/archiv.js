@@ -146,6 +146,7 @@ async function liste(db, opts = {}) {
 
 async function holen(db, id) {
   const d = await db.get('SELECT * FROM dokumente WHERE id = ?', [id]);
+  if(d)d.dokumentenart=await require('./dokumentenarten').art(db,'archiv:'+id);
   if (!d) return undefined;
   const map = await verknuepfungenFuer(db, [d.id]);
   return { ...d, verknuepfungen: map.get(d.id) };
