@@ -7,7 +7,7 @@ const ORIGIN = 'https://api.hausperfekt-mobile.de';
 const dms = require('./hpDms');
 
 function baueHpVerbindungen(db, options = {}) {
-  const fetchImpl = options.fetchImpl || globalThis.fetch;
+  const fetchImpl = options.fetchImpl || require('../lib/hpFetch');
   const oauth = options.oauth || { clientId: process.env.HP_MOBILE_CLIENT_ID, clientSecret: process.env.HP_MOBILE_CLIENT_SECRET };
   const queues = new Map();
   let key;

@@ -19,3 +19,9 @@ Große Dateien werden auf Platte gestreamt, nicht vollständig im Server-RAM geh
 ## Grenzen der Ablösung
 
 Unabhängig sind nur tatsächlich gespeicherte Dateien und Metadaten. Noch nicht übernommene Dateien benötigen einmalig die bestehende HP-Anbindung. Die Gesamtzahl von rund 290.000 HP-Dateien bedeutet nicht, dass diese schon migriert sind. Speicherbedarf, Laufzeit und Fehler müssen im echten Bestand geprüft werden. Der direkte dauerhafte Archivabgleich vom HausPerfekt-Server sowie eine vollständige fachliche Funktionsparität mit HP-Mobile sind zusätzliche Ausbaustufen.
+
+## Render-Absturz am 10.11.2026
+
+Im Render-Protokoll um 09:47:14 (Europe/Berlin) beendete Node 24.22.1 den Prozess mit ERR_ASSERTION in Parser.finish / onHttpSocketEnd und assert(!this.paused). Dies entspricht dem bekannten Fehler nodejs/undici#5360, korrigiert durch #5474. Die HP-Verbindung nutzt deshalb explizit die separat gepinnte Undici-Version 8.12.4 statt der mit Node gebündelten fetch-Implementierung. Die Datei- und Quellprüfsummen bleiben bestehen. Unvollständige Antworten bleiben Fehler und werden nicht als gesicherte Dateien gewertet. Tests decken langsame Verbraucher, Content-Length, chunked, EOF, verkürzte Antworten und Abbruch ab; CI prüft Node 22 und 24.
+
+Quellen: https://github.com/nodejs/undici/issues/5360 und https://github.com/nodejs/undici/pull/5474 .

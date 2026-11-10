@@ -58,7 +58,7 @@ function personenAenderung(current, patch) {
   return { ...structuredClone(current), person_id: current.id, current_data: JSON.stringify(current), updated_data: JSON.stringify(updated) };
 }
 
-function baueHpMobileClient({ portalUrl, accessToken, fetchImpl = globalThis.fetch, timeoutMs = 20000 }) {
+function baueHpMobileClient({ portalUrl, accessToken, fetchImpl = require('../lib/hpFetch'), timeoutMs = 20000 }) {
   const subdomain = portalKennung(portalUrl);
   if (typeof accessToken !== 'string' || !accessToken || /[\r\n]/.test(accessToken)) throw new HpMobileError('Eine gültige HP-Anmeldung wird benötigt.', 401);
   let verification;
