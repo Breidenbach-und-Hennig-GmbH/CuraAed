@@ -1727,10 +1727,22 @@ async function versammlungForm(v, { kopie = false } = {}) {
       { grid: 3, felder: [
         { name: 'art', label: 'Art', type: 'select', value: x.art || 'praesenz', options: Object.entries(ETV_ART).map(([value, a]) => ({ value, label: a.text })) },
         { name: 'status', label: 'Status', type: 'select', value: kopie ? 'vorbereitung' : x.status || 'vorbereitung', options: Object.entries(ETV_STATUS).map(([value, a]) => ({ value, label: a.text })) },
-        { name: 'ort', label: 'Ort', value: x.ort, placeholder: 'z. B. Gemeindesaal, Raum 2' },
+
       ] },
+      { felder: [{name:'ort',label:'Bezeichnung / Raum',value:x.ort,placeholder:'z. B. Gemeindesaal, Raum 2'}] },
+      { grid:3,felder:[
+        {name:'ort_strasse',label:'Straße und Hausnummer',value:x.ort_strasse},
+        {name:'ort_plz',label:'Postleitzahl',value:x.ort_plz},
+        {name:'ort_stadt',label:'Ort',value:x.ort_stadt},
+      ] },
+      {felder:[{name:'ort_beschreibung',label:'Beschreibung des Versammlungsorts',type:'textarea',value:x.ort_beschreibung,hint:'z. B. Eingang, Etage oder Hinweise zur Anfahrt'}]},
       { felder: [{ name: 'notizen', label: 'Notizen', type: 'textarea', value: kopie ? '' : x.notizen }] },
     ],
+    nachAufbau:(inputs,form)=>{
+      const start=inputs.ort.closest('.field').parentElement,street=inputs.ort_strasse.closest('.field').parentElement,description=inputs.ort_beschreibung.closest('.field').parentElement;
+      const section=el('section',{'aria-label':'Versammlungsort',class:'cu-karte',style:'padding:16px;margin:12px 0'},[el('h3',{text:'Versammlungsort'})]);form.insertBefore(section,start);section.append(start,street,description);
+      for(const [key,max] of Object.entries({ort:200,ort_strasse:200,ort_plz:20,ort_stadt:100,ort_beschreibung:2000}))inputs[key].maxLength=max;
+    },
     speichern: (w) => (bearb ? API.put('/versammlungen/' + x.id, w) : API.post('/versammlungen', w)),
     loeschen: bearb ? () => API.del('/versammlungen/' + x.id) : null,
     loeschFrage: `Versammlung „${x.name}" endgültig löschen?`,
@@ -1760,6 +1772,7 @@ function etvMaske(params = new URLSearchParams()) {
         { label: 'Objekt-ID', class: 'nowrap', render: (v) => v.objekt_nummer },
         { label: 'Objekt', render: (v) => `${String(v.objekt_bezeichnung || '').toUpperCase()}${v.objekttyp === 'WEG' ? ' - WEG' : ''}` },
         { label: 'Datum', class: 'nowrap', render: etvDatum },
+        {label:'Versammlungsort',render:v=>el('span',{title:v.ort_beschreibung||'',text:[v.ort,v.ort_strasse,[v.ort_plz,v.ort_stadt].filter(Boolean).join(' ')].filter(Boolean).join(' · ')||'–'})},
         { label: 'Art', render: (v) => { const a = ETV_ART[v.art] || ETV_ART.praesenz; return el('span', { class: 'cu-etv-art', title: a.text, role: 'img', 'aria-label': a.text }, [icon(a.icon)]); } },
         { label: '', class: 'aktionen', render: (v) => (schreiben ? el('span', { class: 'cu-etv-aktionen' }, [
           aktionKnopf(tab === 'archiv' ? 'auslagern' : 'einlagern', tab === 'archiv' ? 'Aus dem Archiv holen' : 'Archivieren', async () => {

@@ -390,6 +390,10 @@ CREATE TABLE IF NOT EXISTS versammlungen (
   uhrzeit      TEXT,                            -- HH:MM
   art          TEXT NOT NULL DEFAULT 'praesenz',
   ort          TEXT,
+  ort_strasse TEXT,
+  ort_plz TEXT,
+  ort_stadt TEXT,
+  ort_beschreibung TEXT,
   status       TEXT NOT NULL DEFAULT 'vorbereitung',
   notizen      TEXT,
   archiviert   INTEGER NOT NULL DEFAULT 0,
