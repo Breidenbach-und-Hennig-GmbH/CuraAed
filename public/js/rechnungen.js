@@ -26,7 +26,7 @@ async function rechnungMaske(dokument){
  }
  function check(k,label){const i=el('input',{id:'rechnung-'+k,name:k,type:'checkbox',checked:values[k]});f[k]=i;
   const stamp=prüf[k],text=stamp?(stamp.sb||stamp.benutzer)+' · '+new Date(stamp.zeit).toLocaleString('de-DE'):'SB: – · Datum/Zeit: –';
-  return el('div',{class:'cu-rechnung-pruefung'},[el('label',{for:i.id,class:'check-inline'},[i,document.createTextNode(' '+label)]),el('span',{class:'small muted',text})]);
+  return el('div',{class:'cu-rechnung-pruefung'},[el('label',{for:i.id,class:'check-inline'},[i,document.createTextNode(' '+label)]),k==='abgrenzen'?null:el('span',{class:'small muted',text})]);
  }
  function card(cls,children){return el('section',{class:'cu-karte '+cls},children);}
  function addDays(date,n){if(!date||n===''||!/^\d{1,3}$/.test(n))return null;const d=new Date(date+'T12:00:00Z');if(Number.isNaN(d.valueOf()))return null;d.setUTCDate(d.getUTCDate()+Number(n));return d.toISOString().slice(0,10);}
