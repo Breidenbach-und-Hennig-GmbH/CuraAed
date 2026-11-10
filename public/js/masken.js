@@ -1711,6 +1711,8 @@ async function versammlungForm(v, { kopie = false } = {}) {
   try { objekte = await API.get('/objekte'); } catch (e) { fehler(e); return; }
   const bearb = !!(v && v.id) && !kopie;
   const x = v || {};
+  let gespeicherteOrte=[];
+  if(x.objekt_id)try{gespeicherteOrte=await API.get('/objekte/'+x.objekt_id+'/versammlungsorte');}catch(e){fehler(e);return;}
   formFenster({
     titel: bearb ? `Versammlung bearbeiten – ${x.name}` : kopie ? 'Versammlung kopieren' : 'Versammlung anlegen',
     felder: [
@@ -1742,6 +1744,55 @@ async function versammlungForm(v, { kopie = false } = {}) {
       const start=inputs.ort.closest('.field').parentElement,street=inputs.ort_strasse.closest('.field').parentElement,description=inputs.ort_beschreibung.closest('.field').parentElement;
       const section=el('section',{'aria-label':'Versammlungsort',class:'cu-karte',style:'padding:16px;margin:12px 0'},[el('h3',{text:'Versammlungsort'})]);form.insertBefore(section,start);section.append(start,street,description);
       for(const [key,max] of Object.entries({ort:200,ort_strasse:200,ort_plz:20,ort_stadt:100,ort_beschreibung:2000}))inputs[key].maxLength=max;
+
+      const ortFelder=['ort','ort_strasse','ort_plz','ort_stadt','ort_beschreibung'];
+      const auswahl=el('select',{id:'etv-ort-auswahl','aria-label':'Versammlungsort / Raum'});
+      const info=el('p',{class:'small muted',role:'status'});let ortVersion=0,orte=gespeicherteOrte;
+      inputs.ort.type='hidden';const wrap=inputs.ort.closest('.field');
+      wrap.querySelector('label').textContent='Versammlungsort / Raum';wrap.querySelector('label').htmlFor=auswahl.id;wrap.append(auswahl);
+      function uebernehmen(o){for(const key of ortFelder)inputs[key].value=o?.[key]||'';}
+      function optionen(current){
+        auswahl.replaceChildren(el('option',{value:'',text:inputs.objekt_id.value?'– Versammlungsort auswählen –':'– Zuerst Objekt wählen –'}));
+        for(const o of orte)auswahl.append(el('option',{value:String(o.id),text:[o.ort,o.ort_strasse,[o.ort_plz,o.ort_stadt].filter(Boolean).join(' '),o.ort_beschreibung].filter(Boolean).join(' · ')}));
+        if(current?.ort){
+          const found=orte.find(o=>ortFelder.every(k=>(o[k]||'')===(current[k]||'')));
+          if(found)auswahl.value=String(found.id);else{auswahl.append(el('option',{value:'aktuell',text:current.ort+' · Aktuelle Versammlung'}));auswahl.value='aktuell';}
+        }
+        auswahl.disabled=!inputs.objekt_id.value;
+        neuerOrt.disabled=!inputs.objekt_id.value;
+        info.textContent=inputs.objekt_id.value?'Orte werden ausschließlich für dieses Objekt gespeichert.':'Bitte zuerst ein Objekt wählen.';
+      }
+      auswahl.addEventListener('change',()=>uebernehmen(orte.find(o=>String(o.id)===auswahl.value)));
+      const neuerOrt=el('button',{type:'button',text:'Neuen Ort hinzufügen',onclick:()=>{
+        const objekt=inputs.objekt_id.value;if(!objekt)return;
+        const fields=[{name:'ort',label:'Bezeichnung / Raum',required:true},{name:'ort_strasse',label:'Straße und Hausnummer'},{name:'ort_plz',label:'Postleitzahl'},{name:'ort_stadt',label:'Ort'},{name:'ort_beschreibung',label:'Beschreibung',type:'textarea'}];
+        const neu=formular([{felder:fields}]);let busy=false;
+        for(const [key,input] of Object.entries(neu.inputs)){const label=neu.form.querySelector('label[for="'+input.id+'"]');input.id='etv-neu-'+key;if(label)label.htmlFor=input.id;}
+        for(const [key,max] of Object.entries({ort:200,ort_strasse:200,ort_plz:20,ort_stadt:100,ort_beschreibung:2000}))neu.inputs[key].maxLength=max;
+        const error=el('p',{role:'alert',class:'cu-rechnung-fehler'});neu.form.append(error);
+        let submit;
+        async function speichern(close){
+          if(busy||!neu.form.reportValidity())return;busy=true;submit.disabled=true;
+          try{
+            const o=await API.post('/objekte/'+objekt+'/versammlungsorte',neu.werte());
+            if(form.isConnected&&inputs.objekt_id.value===objekt){
+              ortVersion++;orte=orte.filter(r=>r.id!==o.id).concat(o);optionen(o);uebernehmen(o);
+            }
+            toast('Versammlungsort für dieses Objekt gespeichert','success');close();
+          }catch(e){error.textContent=e.message;}finally{busy=false;submit.disabled=false;}
+        }
+        const m=modal({titel:'Neuer Versammlungsort · Objekt '+(objekte.find(o=>String(o.id)===objekt)?.nummer||objekt),inhalt:neu.form,footer:close=>[el('button',{text:'Abbrechen',onclick:close}),submit=el('button',{text:'Ort speichern',class:'btn-primary',onclick:()=>speichern(close)})]});
+        neu.form.addEventListener('submit',e=>{e.preventDefault();speichern(m.close);});
+      }});
+      wrap.append(neuerOrt,info);
+      optionen(x);
+      inputs.objekt_id.addEventListener('change',async()=>{
+        const nr=++ortVersion,objekt=inputs.objekt_id.value;orte=[];uebernehmen(null);optionen(null);
+        if(!objekt)return;auswahl.disabled=true;neuerOrt.disabled=true;info.textContent='Versammlungsorte werden geladen …';
+        try{const rows=await API.get('/objekte/'+objekt+'/versammlungsorte');if(!form.isConnected||nr!==ortVersion)return;orte=rows;optionen(null);}
+        catch(e){if(nr===ortVersion&&form.isConnected){auswahl.disabled=true;neuerOrt.disabled=false;info.textContent='Orte konnten nicht geladen werden: '+e.message;}}
+      });
+
     },
     speichern: (w) => (bearb ? API.put('/versammlungen/' + x.id, w) : API.post('/versammlungen', w)),
     loeschen: bearb ? () => API.del('/versammlungen/' + x.id) : null,

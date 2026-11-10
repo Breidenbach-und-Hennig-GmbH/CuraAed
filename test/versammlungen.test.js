@@ -53,3 +53,18 @@ test('ETV-Migration: bestehender freier Versammlungsort bleibt unverändert, neu
  for(let i=0;i<2;i++)await require('../db/migrate').migrieren(db,':memory:');
  const restored=await vs.holen(db,old.id);assert.equal(restored.ort,'Altes Rathaus, Saal 3');assert.equal(restored.ort_stadt,null);assert.equal((await vs.liste(db)).length,1);
 });
+
+test('ETV-Ortslisten: je Objekt getrennt, dauerhaft nach Löschen einer Versammlung und ohne doppelte Einträge',async t=>{
+ const db=await openDatabase(':memory:');t.after(()=>db.close());
+ const a=await objekte.anlegen(db,{bezeichnung:'A'}),b=await objekte.anlegen(db,{bezeichnung:'B'});
+ const data={ort:'Rathaus',ort_strasse:'Testweg 12',ort_plz:'01234',ort_stadt:'Teststadt',ort_beschreibung:'Raum 2'};
+ const ort=await vs.ortMerken(db,a.id,data),again=await vs.ortMerken(db,a.id,data);
+ assert.equal(ort.id,again.id);assert.equal((await vs.orte(db,a.id)).length,1);assert.deepEqual(await vs.orte(db,b.id),[]);
+ const meeting=await vs.anlegen(db,{objekt_id:a.id,name:'ETV',datum:'2026-11-20',...data});
+ await vs.loeschen(db,meeting.id);assert.equal((await vs.orte(db,a.id))[0].ort_plz,'01234');
+ const other=await vs.ortMerken(db,b.id,{...data,ort_stadt:'Andere Stadt'});
+ assert.notEqual(other.id,ort.id);assert.equal((await vs.orte(db,a.id))[0].ort_stadt,'Teststadt');
+ await assert.rejects(vs.ortMerken(db,a.id,{ort:''}),/Bezeichnung/);
+ await assert.rejects(vs.ortMerken(db,999,data),/Objekt/);
+ await assert.rejects(vs.orte(db,'1.5'),/Objekt/);
+});

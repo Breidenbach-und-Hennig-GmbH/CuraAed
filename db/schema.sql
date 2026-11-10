@@ -607,3 +607,14 @@ CREATE TABLE IF NOT EXISTS rechnungs_erkennung (
 
 CREATE TABLE IF NOT EXISTS dokumentenarten (dokument_schluessel TEXT PRIMARY KEY,art TEXT NOT NULL DEFAULT 'DX');
 INSERT OR IGNORE INTO dokumentenarten(dokument_schluessel,art) SELECT dokument_schluessel,'RE' FROM eingangsrechnungen;
+
+CREATE TABLE IF NOT EXISTS versammlungsorte (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ objekt_id INTEGER NOT NULL REFERENCES objekte(id) ON DELETE CASCADE,
+ ort TEXT NOT NULL,
+ ort_strasse TEXT NOT NULL DEFAULT '',
+ ort_plz TEXT NOT NULL DEFAULT '',
+ ort_stadt TEXT NOT NULL DEFAULT '',
+ ort_beschreibung TEXT NOT NULL DEFAULT '',
+ UNIQUE(objekt_id,ort,ort_strasse,ort_plz,ort_stadt,ort_beschreibung)
+);
