@@ -15,7 +15,7 @@ async function rechnungMaske(dokument){
  if(document.querySelector('.cu-rechnungsmaske'))return;
  const doc=result.dokument,saved=result.rechnung,today=new Date().toLocaleDateString('sv-SE'),f={},prüf=saved?.pruefungen||{};
  const defaults={lieferantenkonto:'',bankverbindung:'000',rechnungs_nr:'',rechnungsbeleg:doc.titel||doc.original_name||'',rechnungsdatum:doc.dokument_datum?.slice(0,10)||'',eingangsdatum:today,betrag:'0,00',anerkannt:'0,00',hndl_re:'0,00',hndl_teil:'0,00',bagatellgrenze:'0,00',teilzahlung:'0,00',netto_tage:'',ziel1_tage:'',ziel2_tage:'',ziel1_skonto:'0,00',ziel2_skonto:'0,00',objekt_nr:doc.verknuepfungen?.find(r=>r.typ==='objekt')?.nummer||'',buchungskonto:'',bank_verb_nr:'000',steuerschluessel:'000',buchungstext:'',buchungstext2:'',buchungstext3:'',verwendungszweck1:'',verwendungszweck2:'',hwa_nr:'',akte:'',faelligkeit:'',fibu_bj:String(new Date().getFullYear()),notiz:'',rechnerisch_richtig:false,sachlich_richtig:false,zahlung_freigegeben:false,abgrenzen:false,zahlungsart:'ueberweisung'};
- const values={...defaults,...saved?.daten};let revision=saved?.revision||0,closed=false,busy=false;
+ const erkannt=result.erkennung?.rechnung?result.erkennung:null;const values={...defaults,...(!saved?erkannt?.felder:{}),...saved?.daten};let revision=saved?.revision||0,closed=false,busy=false;
  const form=el('form',{class:'cu-rechnungsmaske',autocomplete:'off'}),alert=el('p',{role:'alert',class:'cu-rechnung-fehler'}),nameInfo=el('span',{class:'small muted'}),calcHints={};
  const cents=v=>{const s=String(v);if(!/^-?\d{1,9}(,\d{1,2})?$/.test(s))return null;const [w,p='']=s.replace('-','').split(',');return(Number(w)*100+Number(p.padEnd(2,'0')))*(s.startsWith('-')?-1:1);};
  const euros=n=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(n/100);
@@ -51,6 +51,15 @@ async function rechnungMaske(dokument){
  const approve=card('cu-rechnung-freigabe',[el('div',{class:'cu-rechnung-spalte'},[input('faelligkeit','Fälligkeit','date'),check('abgrenzen','Buchung abgrenzen'),input('fibu_bj','FIBU-BJ','text',{inputmode:'numeric',maxlength:4})]),el('div',{class:'cu-rechnung-spalte'},[check('zahlung_freigegeben','zur Zahlung freigegeben')])]);
  const state=el('span',{text:saved?.daten.zahlung_freigegeben?'Zur Zahlung freigegeben · noch nicht ausgeführt':'Erfassung · noch nicht angewiesen'});
  const footer=card('cu-rechnung-status',[el('div',{},[el('strong',{text:'Bearbeitungsstand: '}),state,el('div',{class:'small muted',text:'angewiesen am: –'}),el('div',{class:'small muted',text:'Zahlungsart: '+(values.zahlungsart==='abbuchung'?'Abbuchung':'Überweisung')})]),el('div',{class:'cu-rechnung-nebenaktionen'},[el('button',{type:'button',text:'Z.I.S. / Notiz zur Rechnung',onclick:note}),el('button',{type:'button',text:'Tagesaktivität',disabled:true,title:'Tagesaktivität noch nicht angebunden.'}),el('button',{type:'button',text:'Wiedervorlage',onclick:()=>vorgangForm({art:'wiedervorlage',titel:'Rechnung: '+(f.rechnungs_nr.value||doc.titel),text:'Zum Dokument '+doc.original_name+(saved?' · Rechnung CA-R-'+saved.id:''),faellig_am:f.faelligkeit.value||null})})])]);
+ if(erkannt){
+ const labels={rechnungs_nr:'Rechnungs-Nr.',rechnungsdatum:'Rechnungsdatum',faelligkeit:'Fälligkeit',betrag:'Rechnungsbetrag',netto_tage:'Nettotage',verwendungszweck1:'Verwendungszweck',ziel1_tage:'Ziel 1',ziel2_tage:'Ziel 2',ziel1_skonto:'Skonto 1',ziel2_skonto:'Skonto 2'};
+ const banner=el('section',{class:'cu-rechnung-erkannt'},[el('strong',{text:saved?'Erkennung zum Beleg vorhanden · gespeicherte Rechnung unverändert':'Rechnungsdaten automatisch erkannt – bitte prüfen'}),el('p',{text:'Erkennung: '+(erkannt.methode||'Dokumenttext')+'. Keine Prüfung oder Zahlungsfreigabe übernommen.'})]);
+ banner.append(el('ul',{},Object.entries(erkannt.felder).filter(([k])=>k!=='verwendungszweck1').map(([k,v])=>el('li',{text:(labels[k]||k)+': '+v}))));
+ if(erkannt.hinweise?.length)banner.append(el('ul',{},erkannt.hinweise.map(text=>el('li',{text}))));
+ if(erkannt.lieferanten?.length)banner.append(el('p',{text:'Mögliche Lieferanten: '+erkannt.lieferanten.map(a=>a.name+' (Adr. '+a.nummer+')').join(', ')+'. Lieferantenkonto bitte prüfen.'}));
+ for(const k of Object.keys(erkannt.felder))if(!saved&&f[k]){f[k].classList.add('cu-rechnung-auto');f[k].title='Automatisch erkannt – bitte am Beleg prüfen. '+(erkannt.belege?.[k]||'');}
+ form.append(banner);
+ }
  form.append(header,el('p',{class:'small muted',text:'Dokument: '+(doc.original_name||doc.titel)}),alert,card('cu-rechnung-bereich',[left,right]),card('cu-rechnung-bereich',[books,refs]),approve,footer,f.notiz,f.teilzahlung);
  const konten=el('datalist',{id:'rechnung-konten'});f.buchungskonto.setAttribute('list','rechnung-konten');form.append(konten);
  let objectVersion=0;

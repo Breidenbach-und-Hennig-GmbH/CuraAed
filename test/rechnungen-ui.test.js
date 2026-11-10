@@ -43,3 +43,8 @@ test('Startseite: Dokumente öffnet das DMS mit Sachbearbeiterauswahl',t=>{
  const w=setup(t,async()=>({}));w.eval(fs.readFileSync(path.join(__dirname,'../public/js/masken.js'),'utf8')+'\nstartMaske();');
  const tile=[...w.document.querySelectorAll('a.cu-kachel')].find(a=>a.querySelector('strong').textContent==='Dokumente');assert.equal(tile.getAttribute('href'),'#/dms');
 });
+
+test('Rechnungserkennung überschreibt eine bereits gespeicherte Rechnung nicht',async t=>{
+ const w=setup(t,async()=>({dokument:doc,erkennung:{rechnung:true,felder:{rechnungs_nr:'OCR-NEU',betrag:'999,00'},hinweise:[]},rechnung:{id:2,revision:4,erstellt_am:'2026-11-10 10:00:00',daten:{rechnungs_nr:'MANUELL-42',betrag:'120,50'},pruefungen:{}}}));
+ await w.rechnungMaske(doc);assert.equal(w.document.getElementById('rechnung-rechnungs_nr').value,'MANUELL-42');assert.equal(w.document.getElementById('rechnung-betrag').value,'120,50');assert.match(w.document.querySelector('.cu-rechnung-erkannt').textContent,/unverändert/);
+});

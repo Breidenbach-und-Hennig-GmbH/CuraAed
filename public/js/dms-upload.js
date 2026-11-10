@@ -9,9 +9,18 @@ function dmsDateiEingang(root,{sachbearbeiter,aktuell,neuLaden}){
   el('button',{type:'button',text:'Dateien auswählen',onclick:()=>input.click()}),input,hinweis,meldung,queue]);
  let running=false,depth=0;const jobs=[];
  const hasFiles=e=>Array.from(e.dataTransfer?.types||[]).includes('Files');
+ async function erkennen(job){
+  if(job.erkennt)return;job.erkennt=true;job.ocrFehler='';if(aktuell())render(job);
+  try{job.erkennung=await API.post('/eingangsrechnungen/erkennen',{dokument:{typ:'archiv',id:job.saved.id}});}
+  catch(e){job.ocrFehler=e.message||'Rechnungsdaten konnten nicht erkannt werden.';}
+  finally{job.erkennt=false;if(aktuell())render(job);}
+ }
  function render(job){
-  job.row.replaceChildren(el('span',{text:job.name}),el('span',{text:job.state==='fertig'?'Im Posteingang':job.state==='laeuft'?'Wird übernommen …':job.error||'Wartet …'}));
+  const text=job.erkennt?'Rechnungsdaten werden erkannt …':job.state==='fertig'?(job.ocrFehler?'Im Posteingang · Erkennung fehlgeschlagen: '+job.ocrFehler:job.erkennung?.rechnung?'Rechnung erkannt – bitte prüfen':'Im Posteingang'):job.state==='laeuft'?'Wird übernommen …':job.error||'Wartet …';
+  job.row.replaceChildren(el('span',{text:job.name}),el('span',{text}));
   if(job.state==='fehler')job.row.append(el('button',{type:'button',class:'hp-mini',text:'Erneut versuchen',onclick:()=>{if(job.state!=='fehler')return;job.state='wartet';job.error='';render(job);run();}}));
+  if(job.erkennung?.rechnung)job.row.append(el('button',{type:'button',class:'hp-mini',text:'Rechnung prüfen',onclick:()=>rechnungMaske(job.saved).catch(fehler)}));
+  if(job.ocrFehler&&!job.erkennt)job.row.append(el('button',{type:'button',class:'hp-mini',text:'Erkennung erneut versuchen',onclick:async()=>{await erkennen(job);}}));
  }
  async function run(){
   if(running)return;running=true;let changed=false;
@@ -23,9 +32,10 @@ function dmsDateiEingang(root,{sachbearbeiter,aktuell,neuLaden}){
     try{await API.post('/dms-posteingang',{dokument_id:job.saved.id,sachbearbeiter});}
     catch(e){if(e.status!==409)throw e;const d=await API.get('/dms-posteingang/'+job.saved.id);if(d.eingang?.dokument_id!==job.saved.id)throw e;}
     job.state='fertig';job.file=null;changed=true;
+    if(/\.(pdf|jpe?g|png|webp|tiff?)$/i.test(job.name))await erkennen(job);
    }catch(e){job.state='fehler';job.error=(job.saved?'Datei bereits gespeichert; Posteingangszuordnung fehlgeschlagen: ':'')+(e.message||'Übernahme fehlgeschlagen.');}
    if(aktuell())render(job);
-  }}finally{running=false;if(aktuell()){const done=jobs.filter(j=>j.state==='fertig').length,failed=jobs.filter(j=>j.state==='fehler').length;meldung.textContent=done+' Datei(en) übernommen'+(failed?' · '+failed+' fehlgeschlagen':'');if(changed)await neuLaden();}}
+  }}finally{running=false;if(aktuell()){const done=jobs.filter(j=>j.state==='fertig').length,failed=jobs.filter(j=>j.state==='fehler').length;meldung.textContent=done+' Datei(en) übernommen'+(failed?' · '+failed+' fehlgeschlagen':'');if(changed)await neuLaden();const auto=jobs.find(j=>j.state==='fertig'&&j.autoOpen&&!j.autoOpened&&j.erkennung?.rechnung);if(auto&&!document.querySelector('.modal')){auto.autoOpened=true;rechnungMaske(auto.saved).catch(fehler);}}}
  }
  function add(files){
   if(!aktuell())return;const selected=Array.from(files||[]);
@@ -33,7 +43,7 @@ function dmsDateiEingang(root,{sachbearbeiter,aktuell,neuLaden}){
   for(const file of selected){
    const name=file.name||'Unbenannte Datei';
    if(!/\.(pdf|jpe?g|png|webp|tiff?|docx?|xlsx?|txt|csv)$/i.test(name)||file.size>50*1024*1024||!file.size){queue.append(el('li',{class:'cu-dms-upload-fehler',text:name+': '+(!file.size?'Datei ist leer.':file.size>50*1024*1024?'Datei ist größer als 50 MB.':'Dateiformat wird nicht unterstützt.') }));continue;}
-   const job={file,name,state:'wartet',row:el('li')};jobs.push(job);queue.append(job.row);render(job);
+   const job={file,name,autoOpen:selected.length===1,state:'wartet',row:el('li')};jobs.push(job);queue.append(job.row);render(job);
   }
   run();
  }

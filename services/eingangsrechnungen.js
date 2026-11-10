@@ -34,7 +34,7 @@ function baueRechnungen(db,archiv){
   return{key:'hp:'+ref.quelle+':'+Number(ref.id),dokument:await archiv.archiveDocument(owner,ref.quelle,Number(ref.id))};
  }
  function view(row){if(!row)return null;const daten=JSON.parse(row.daten);for(const k of [...MONEY,'ziel1_skonto','ziel2_skonto'])daten[k]=euro(daten[k]);return{...row,daten,pruefungen:JSON.parse(row.pruefungen)};}
- async function get(owner,ref){const doc=await document(owner,ref);return{dokument:doc.dokument,rechnung:view(await db.get('SELECT r.*,b.name AS erfasst_name,b.kuerzel AS erfasst_sb FROM eingangsrechnungen r LEFT JOIN benutzer b ON b.id=r.erstellt_von WHERE dokument_schluessel=?',[doc.key]))};}
+ async function get(owner,ref){const doc=await document(owner,ref);return{dokument:doc.dokument,erkennung:JSON.parse((await db.get('SELECT ergebnis FROM rechnungs_erkennung WHERE dokument_schluessel=?',[doc.key]))?.ergebnis||'null'),rechnung:view(await db.get('SELECT r.*,b.name AS erfasst_name,b.kuerzel AS erfasst_sb FROM eingangsrechnungen r LEFT JOIN benutzer b ON b.id=r.erstellt_von WHERE dokument_schluessel=?',[doc.key]))};}
  async function save(owner,b){
   const doc=await document(owner,b.dokument),daten=normalize(b.daten);if(!Number.isSafeInteger(b.revision)||b.revision<0)fail('Ungültige Version.');
   return db.transaktion(async tx=>{
@@ -53,6 +53,6 @@ function baueRechnungen(db,archiv){
    await tx.run('INSERT INTO rechnungs_verlauf(rechnung_id,benutzer_id,vorher,nachher) VALUES(?,?,?,?)',[id,owner,old?JSON.stringify({daten:JSON.parse(old.daten),pruefungen:JSON.parse(old.pruefungen)}):null,JSON.stringify({daten,pruefungen:checks})]);return{id,revision:(old?.revision||0)+1};
   });
  }
- return{get,save};
+ return{get,save,document};
 }
 module.exports={baueRechnungen,normalize,money,euro};
