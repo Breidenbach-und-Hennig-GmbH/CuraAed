@@ -128,6 +128,8 @@ function baueApi(db, uploadDir, options = {}) {
   const posteingang=require('../services/dmsPosteingang').bauePosteingang(db);
   router.use('/dms-posteingang',(req,res,next)=>{if(req.method==='GET')return next();let origin;try{origin=new URL(options.hausperfekt?.publicUrl||process.env.APP_PUBLIC_URL||process.env.RENDER_EXTERNAL_URL).origin;}catch{}if(!origin||req.get('origin')!==origin||!req.is('application/json'))return next(new ValidationError('Bitte den Posteingang aus CuraAed bearbeiten.',403));next();});
   router.get('/dms-posteingang',auth.erfordereSchreibrecht,h(async(req,res)=>res.set('Cache-Control','no-store').json(await posteingang.list(req.query))));
+  router.get('/dms-posteingang/:id',auth.erfordereSchreibrecht,h(async(req,res)=>res.set('Cache-Control','no-store').json(await posteingang.detail(req.params.id))));
+  router.put('/dms-posteingang/:id/metadaten',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await posteingang.saveMeta(req.benutzer.id,req.params.id,req.body))));
   router.post('/dms-posteingang',auth.erfordereSchreibrecht,h(async(req,res)=>res.status(201).json(await posteingang.add(req.benutzer.id,req.body))));
   router.put('/dms-posteingang/:id',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await posteingang.update(req.benutzer.id,req.params.id,req.body))));
   router.get('/dms-posteingang/:id/datei',auth.erfordereSchreibrecht,h(async(req,res)=>{
@@ -136,6 +138,7 @@ function baueApi(db, uploadDir, options = {}) {
     if(!fs.existsSync(file))throw new ValidationError('Datei nicht mehr vorhanden.',410);
     const handle=await fs.promises.open(file,'r'),prefix=Buffer.alloc(5);try{await handle.read(prefix,0,5,0);}finally{await handle.close();}
     res.set({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"sandbox; default-src 'none'; frame-ancestors 'self'"});
+    await db.run('INSERT INTO dms_dokument_meta(dokument_id,zugriffe) VALUES(?,1) ON CONFLICT(dokument_id) DO UPDATE SET zugriffe=zugriffe+1',[d.id]);
     if(req.query.vorschau==='1'&&prefix.toString()==='%PDF-')res.type('application/pdf').set('Content-Disposition','inline').sendFile(file);else res.download(file,d.original_name);
   }));
   async function zisLesen(req,typ) {
