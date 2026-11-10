@@ -20,6 +20,8 @@ async function spalten(db, tabelle) {
  *    Objekten, Einheiten und Adressen zugeordnet werden kann.
  */
 async function migrieren(db, filePath) {
+  const sVersammlungen=await spalten(db,'versammlungen');
+  for(const feld of ['ort_strasse','ort_plz','ort_stadt','ort_beschreibung'])if(!sVersammlungen.has(feld))await db.run('ALTER TABLE versammlungen ADD COLUMN '+feld+' TEXT');
   const sBenutzer = await spalten(db, 'benutzer');
   const sObjekte = await spalten(db, 'objekte');
   const sEinheiten = await spalten(db, 'einheiten');

@@ -15,9 +15,9 @@ async function liste(db, opts = {}) {
   const params = [V.bool(opts.archiv)];
   const suche = V.str(opts.suche, 100);
   if (suche) {
-    where.push('(v.name LIKE ? OR o.nummer LIKE ? OR o.bezeichnung LIKE ? OR v.ort LIKE ? OR CAST(v.nummer AS TEXT) = ?)');
+    where.push('(v.name LIKE ? OR o.nummer LIKE ? OR o.bezeichnung LIKE ? OR v.ort LIKE ? OR v.ort_strasse LIKE ? OR v.ort_plz LIKE ? OR v.ort_stadt LIKE ? OR v.ort_beschreibung LIKE ? OR CAST(v.nummer AS TEXT) = ?)');
     const like = `%${suche}%`;
-    params.push(like, like, like, like, suche);
+    params.push(like, like, like, like, like, like, like, like, suche);
   }
   if (opts.objekt_id) { where.push('v.objekt_id = ?'); params.push(Number(opts.objekt_id)); }
   const richtung = opts.sort === 'asc' ? 'ASC' : 'DESC';
@@ -45,11 +45,15 @@ async function werte(db, data) {
     uhrzeit,
     art: V.oneOf(data.art, ARTEN, 'Art', 'praesenz'),
     ort: V.str(data.ort, 200),
+    ort_strasse: V.str(data.ort_strasse,200),
+    ort_plz: V.str(data.ort_plz,20),
+    ort_stadt: V.str(data.ort_stadt,100),
+    ort_beschreibung: V.str(data.ort_beschreibung,2000),
     status: V.oneOf(data.status, STATUS, 'Status', 'vorbereitung'),
     notizen: V.str(data.notizen),
   };
 }
-const SPALTEN = ['objekt_id', 'nummer', 'name', 'datum', 'uhrzeit', 'art', 'ort', 'status', 'notizen'];
+const SPALTEN = ['objekt_id', 'nummer', 'name', 'datum', 'uhrzeit', 'art', 'ort', 'ort_strasse', 'ort_plz', 'ort_stadt', 'ort_beschreibung', 'status', 'notizen'];
 
 async function anlegen(db, data, benutzerId) {
   const w = await werte(db, data);
@@ -61,8 +65,9 @@ async function anlegen(db, data, benutzerId) {
 }
 
 async function aktualisieren(db, id, data) {
-  if (!(await holen(db, id))) throw new V.ValidationError('Versammlung nicht gefunden.', 404);
-  const w = await werte(db, data);
+  const bisher=await holen(db,id);
+  if (!bisher) throw new V.ValidationError('Versammlung nicht gefunden.', 404);
+  const w = await werte(db, {...bisher,...data});
   await db.run(`UPDATE versammlungen SET ${SPALTEN.map((s) => `${s}=?`).join(', ')}, geaendert_am=datetime('now') WHERE id=?`,
     [...SPALTEN.map((s) => w[s]), id]);
   return holen(db, id);
