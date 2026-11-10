@@ -6,7 +6,7 @@ const entry={id:9,titel:'<img src=x onerror=alert(1)>',dateiname:'test.pdf',doku
 function setup(t, get){
  const dom=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example/'});t.after(()=>dom.window.close());
  const w=dom.window;w.API={get,qs:o=>'?'+new URLSearchParams(o)};
- for(const file of ['ui','kern','shell','dms-posteingang','dms'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());
+ for(const file of ['ui','kern','shell','dms-upload','dms-posteingang','dms'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());
  vm.runInContext('S.lauf=1;S.benutzer={rolle:"admin"};',dom.getInternalVMContext());return w;
 }
 test('DMS-UI: persönliche Quelle, serverseitige Suche, Dateiliste und sichere Zuordnungsanzeige',async t=>{
@@ -68,4 +68,23 @@ test('DMS-Maske: Auswahl zeigt lokale Datei, echte Zuordnungen und speichert Bem
  [...w.document.querySelectorAll('button')].find(b=>b.textContent==='Angaben speichern').click();await tick();await tick();
  assert.equal(saved.url,'/dms-posteingang/9/metadaten');assert.equal(saved.body.revision,3);assert.equal(saved.body.basis_bemerkung,'Alte Bemerkung');assert.equal(saved.body.bemerkung,'Neue Bemerkung');
  assert.equal(w.document.querySelectorAll('a[href*="hausperfekt-mobile"]').length,0);
+});
+
+test('DMS Drag & Drop: mehrere Dateien, richtiger Sachbearbeiter und gezielter Wiederholungsversuch ohne Doppelupload',async t=>{
+ const w=setup(t,async()=>({})),root=w.document.createElement('div');w.document.body.append(root);let uploads=0,assignments=0,reloads=0,fail=true;
+ w.API.upload=async(p,fd)=>{assert.equal(p,'/archiv');assert.ok(fd.get('datei'));return{id:++uploads};};
+ w.API.post=async(p,b)=>{assert.equal(p,'/dms-posteingang');assert.equal(b.sachbearbeiter,'FD');assignments++;if(b.dokument_id===2&&fail)throw new Error('Zuordnung vorübergehend fehlgeschlagen');};
+ root.append(w.dmsDateiEingang(root,{sachbearbeiter:'FD',aktuell:()=>true,neuLaden:async()=>{reloads++;}}));
+ const files=[new w.File(['%PDF'],'eins.pdf',{type:'application/pdf'}),new w.File(['Text'],'zwei.txt',{type:'text/plain'})];
+ const drop=new w.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(drop,'dataTransfer',{value:{types:['Files'],files}});root.dispatchEvent(drop);assert.equal(drop.defaultPrevented,true);await tick();await tick();await tick();
+ assert.equal(uploads,2);assert.equal(assignments,2);assert.match(root.textContent,/eins.pdf/);assert.match(root.textContent,/Datei bereits gespeichert/);
+ fail=false;[...root.querySelectorAll('button')].find(b=>b.textContent==='Erneut versuchen').click();await tick();await tick();
+ assert.equal(uploads,2);assert.equal(assignments,3);assert.ok(root.textContent.includes('2 Datei(en) übernommen'));assert.ok(reloads>=1);
+});
+test('DMS Drag & Drop: Text und Links werden nicht importiert, leere und ungeeignete Dateien abgewiesen',async t=>{
+ const w=setup(t,async()=>({})),root=w.document.createElement('div');w.document.body.append(root);let uploads=0;w.API.upload=async()=>{uploads++;};
+ root.append(w.dmsDateiEingang(root,{sachbearbeiter:'',aktuell:()=>true,neuLaden:async()=>{}}));
+ const textDrop=new w.Event('drop',{cancelable:true});Object.defineProperty(textDrop,'dataTransfer',{value:{types:['text/plain'],files:[]}});root.dispatchEvent(textDrop);assert.equal(textDrop.defaultPrevented,false);
+ const files=[new w.File([],'leer.pdf'),new w.File(['x'],'programm.exe')],drop=new w.Event('drop',{cancelable:true});Object.defineProperty(drop,'dataTransfer',{value:{types:['Files'],files}});root.dispatchEvent(drop);await tick();
+ assert.equal(uploads,0);assert.match(root.textContent,/Datei ist leer/);assert.match(root.textContent,/Dateiformat wird nicht unterstützt/);
 });
