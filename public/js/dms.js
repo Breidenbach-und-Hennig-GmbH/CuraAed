@@ -1,5 +1,45 @@
 'use strict';
 
+function dmsSachbearbeiterDialog(vorbelegung = S.benutzer?.kuerzel || '') {
+  return new Promise(resolve => {
+    let entschieden=false,offen=true,mitarbeiter=[];
+    const feld=el('input',{id:'dms-sachbearbeiter',name:'sachbearbeiter','aria-label':'Sachbearbeiter',type:'text',maxlength:'3',autocomplete:'off',autocapitalize:'characters',value:vorbelegung,style:'width:6ch;text-transform:uppercase'}),
+      name=el('span'),meldung=el('p',{role:'alert',class:'small'}),form=el('form',{id:'dms-sb-form'},[
+        el('p',{style:'color:#2845bb',text:'Um den Inhalt sämtlicher Posteingänge einzusehen, lassen Sie das Sachbearbeiterfeld bitte frei.'}),
+        el('div',{style:'display:flex;align-items:center;gap:10px'},[el('label',{for:'dms-sachbearbeiter',text:'Sachbearbeiter'}),feld,name]),meldung]);
+    const anzeigen=()=>{const code=feld.value.trim().toUpperCase(),person=mitarbeiter.find(m=>m.kuerzel===code);name.textContent=code?(person?.name||(code===S.benutzer?.kuerzel?S.benutzer.name:'')):'Alle Posteingänge';};
+    const dialog=modal({titel:'DMS Sachbearbeiter auswählen',inhalt:form,onClose:()=>{offen=false;if(!entschieden)resolve(null);},footer:close=>[
+      el('button',{type:'submit',form:'dms-sb-form',class:'btn-primary',text:'OK'}),el('button',{type:'button',text:'Abbrechen',onclick:close})]});
+    feld.addEventListener('input',()=>{feld.value=feld.value.toUpperCase();meldung.textContent='';anzeigen();});
+    form.addEventListener('submit',event=>{event.preventDefault();const code=feld.value.trim().toUpperCase();if(!/^[A-Z]{0,3}$/.test(code)){meldung.textContent='Bitte höchstens drei Großbuchstaben oder ein leeres Feld eingeben.';return;}entschieden=true;dialog.close();resolve(code);});
+    anzeigen();feld.focus();feld.select();
+    API.get('/mitarbeiter').then(rows=>{if(offen){mitarbeiter=rows;anzeigen();}}).catch(()=>{});
+  });
+}
+async function dmsMaske() {
+  const lauf=S.lauf,root=el('section',{class:'cu-karte',style:'padding:20px;margin:16px auto;max-width:1250px'});
+  if(!zeigeAufDesktop(lauf,root))return;
+  if(!darfSchreiben()){root.append(el('p',{text:'Der DMS-Posteingang ist für Mitarbeiter und Administratoren verfügbar.'}));return;}
+  const sb=await dmsSachbearbeiterDialog();if(lauf!==S.lauf)return;
+  if(sb===null){geheZu('#/');return;}
+  S.kontext={typ:'dms',sachbearbeiter:sb};
+  root.append(el('h1',{text:'DMS-Posteingang'}),el('div',{class:'tel-plaud-knoepfe'},[el('strong',{text:sb?'Sachbearbeiter: '+sb:'Sämtliche Posteingänge'}),el('button',{text:'Sachbearbeiter wechseln',onclick:()=>geheZu('#/dms')})]),
+    el('p',{},[el('a',{href:'#/archiv',text:'Archiv öffnen'}),document.createTextNode(' · '),el('a',{href:'#/dms-uebernahme',text:'HP-Archiv übernehmen'})]),
+    el('p',{class:'hp-hinweis',text:'Hier stehen offene Dokumente des CuraAed-Posteingangs. Die bestehenden HP-Posteingänge sind noch nicht übernommen. Die HP-Archivübernahme bleibt separat erreichbar.'}));
+  const result=el('div'),status=el('p',{role:'status'}),alle=el('input',{type:'checkbox',id:'dms-alle'}),nav=el('div',{class:'tel-plaud-knoepfe'});let seite=1,version=0;
+  const prev=el('button',{text:'Vorherige Seite',disabled:true,onclick:()=>laden(seite-1)}),next=el('button',{text:'Nächste Seite',disabled:true,onclick:()=>laden(seite+1)});
+  root.append(el('div',{class:'tel-plaud-knoepfe'},[el('button',{text:'Dokument in den Posteingang laden',onclick:()=>archivUpload(null,async d=>{try{await API.post('/dms-posteingang',{dokument_id:d.id,sachbearbeiter:sb});laden(1);}catch(e){fehler(new Error('Die Datei ist im Archiv gespeichert; die Posteingangszuordnung ist fehlgeschlagen: '+e.message));}})}),el('label',{for:'dms-alle'},[alle,document.createTextNode(' abgeschlossene anzeigen')])]),status,result,nav);
+  nav.append(prev,next);alle.addEventListener('change',()=>laden(1));
+  async function aendern(d,code,state){try{await API.put('/dms-posteingang/'+d.dokument_id,{revision:d.revision,sachbearbeiter:code,status:state});laden(seite);}catch(e){fehler(e);}}
+  async function laden(page){const nr=++version;status.textContent='Posteingang wird geladen …';try{
+    const r=await API.get('/dms-posteingang'+API.qs({sb,seite:page,alle:alle.checked?'1':''}));if(lauf!==S.lauf||nr!==version)return;
+    result.replaceChildren(raster([{label:'Importdatum',render:d=>datum(d.erstellt_am)},{label:'Dokument',render:d=>d.titel},{label:'Sachbearbeiter',render:d=>d.sachbearbeiter||'Nicht zugewiesen'},{label:'Datei',render:d=>d.original_name},{label:'Status',render:d=>d.status==='offen'?'Offen':'Abgeschlossen'},
+      {label:'',render:d=>el('div',{class:'tel-plaud-knoepfe'},[el('button',{text:'Öffnen',onclick:()=>dmsVorschau('/api/dms-posteingang/'+d.dokument_id+'/datei',d)}),el('button',{text:'Zuordnungen',onclick:()=>archivBearbeiten(d.dokument_id,()=>laden(seite))}),el('button',{text:'Weiterleiten',onclick:async()=>{const code=await dmsSachbearbeiterDialog(d.sachbearbeiter);if(code!==null&&lauf===S.lauf)aendern(d,code,d.status);}}),el('button',{text:d.status==='offen'?'Abschließen':'Wieder öffnen',onclick:()=>aendern(d,d.sachbearbeiter,d.status==='offen'?'abgeschlossen':'offen')})])}],r.eintraege,{leer:'Keine offenen Posteingänge für diese Auswahl.'}));
+    seite=r.seite;prev.disabled=seite<=1;next.disabled=!r.weitere;status.textContent=r.gesamt+' Posteingänge · Seite '+seite;
+  }catch(e){if(lauf===S.lauf&&nr===version)status.textContent=e.message;}}
+  await laden(1);
+}
+
 function dmsPfad(verbindung, dateiId) {
   return '/hausperfekt/dms/' + encodeURIComponent(verbindung) + '/dokumente' + (dateiId ? '/' + encodeURIComponent(dateiId) : '');
 }
@@ -59,7 +99,7 @@ function dmsDetails(verbindung, datei) {
   }).catch(e => { if (offen && lauf === S.lauf) body.replaceChildren(el('p', { role: 'alert', text: e.message })); });
 }
 
-async function dmsMaske(params = new URLSearchParams()) {
+async function dmsUebernahmeMaske(params = new URLSearchParams()) {
   const lauf = S.lauf, root = el('div', { class: 'cu-karte', style: 'padding:20px;margin:16px auto;max-width:1250px' });
   if (!zeigeAufDesktop(lauf, root)) return;
   S.kontext = { typ: 'dms' };

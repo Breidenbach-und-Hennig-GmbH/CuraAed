@@ -1421,7 +1421,7 @@ async function archivMaske(params) {
         ['Zuordnung', 'über Objekt-, Einheit- und Adress-Nummern'],
       ], 'hp-such-panel')],
       seite: seitenleiste([
-        { text: 'HP-Archiv übernehmen', onclick: () => geheZu('#/dms') },
+        { text: 'HP-Archiv übernehmen', onclick: () => geheZu('#/dms-uebernahme') },
         { text: 'Hochladen', onclick: hochladenAktuell, gesperrt: schreibSperre() },
         ktx ? { text: 'Zurück', titel: 'Zurück zu ' + ktx.titel, onclick: () => geheZu(ktx.href) } : null,
         ktx ? { text: 'Alle Einträge', onclick: () => geheZu('#/archiv') } : null,
