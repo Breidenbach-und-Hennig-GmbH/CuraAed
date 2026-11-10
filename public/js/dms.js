@@ -4,8 +4,8 @@ function dmsPfad(verbindung, dateiId) {
   return '/hausperfekt/dms/' + encodeURIComponent(verbindung) + '/dokumente' + (dateiId ? '/' + encodeURIComponent(dateiId) : '');
 }
 function dmsDownloadKnopf(verbindung, datei) {
-  const button = el('button', { type: 'button', class: 'hp-mini', text: 'Herunterladen', disabled: datei.groesse > 64 * 1024 * 1024,
-    title: datei.groesse > 64 * 1024 * 1024 ? 'Dateien über 64 MB bitte in HP-Mobile herunterladen.' : 'Datei aus HP-Mobile herunterladen',
+  const button = el('button', { type: 'button', class: 'hp-mini', text: 'Herunterladen', disabled: false,
+    title: 'Datei in CuraAed sichern und herunterladen',
     onclick: async () => {
       button.disabled = true;
       try {
@@ -20,7 +20,7 @@ function dmsDownloadKnopf(verbindung, datei) {
         document.body.appendChild(link); link.click(); link.remove();
         setTimeout(() => URL.revokeObjectURL(url), 30000);
       } catch (e) { fehler(e); }
-      finally { button.disabled = datei.groesse > 64 * 1024 * 1024; }
+      finally { button.disabled = false; }
     } });
   return button;
 }
@@ -36,8 +36,7 @@ function dmsDetails(verbindung, datei) {
       ['Archivnummer', d.archivnummer ?? '–'], ['Dokumentart', d.dokumentart || '–'],
       ['Datum', datum(d.datum)], ['Sachbearbeiter', d.sachbearbeiter || '–'],
       ['Buchungsjahr', d.buchungsjahr || '–'], ['HP-Kundenbestand', verbindung.subdomain],
-    ]), el('p', {}, [el('a', { href: 'https://' + verbindung.subdomain + '.hausperfekt-mobile.de/documents/' + d.id,
-      target: '_blank', rel: 'noopener noreferrer', text: 'In HP-Mobile öffnen' })]),
+    ]), el('p', {}, [el('button', { type: 'button', text: 'In CuraAed ansehen', onclick: () => dmsVorschau('/api' + dmsPfad(verbindung.id, d.id) + '/download', d) })]),
     el('h3', { text: 'Dateien im Archiveintrag' }),
     raster([
       { label: 'Datei', render: f => f.titel || f.dateiname },
@@ -45,7 +44,7 @@ function dmsDetails(verbindung, datei) {
       { label: 'Größe', render: f => dateiGroesse(f.groesse) },
       { label: '', render: f => dmsDownloadKnopf(verbindung.id, f) },
     ], result.dateien, { leer: 'HP hat keine Dateiliste geliefert.' }),
-    el('p', { class: 'small muted', text: 'Dateien über 64 MB können direkt in HP-Mobile heruntergeladen werden.' }),
+    el('p', { class: 'small muted', text: 'Beim Öffnen oder Herunterladen wird die Datei dauerhaft in CuraAed gespeichert.' }),
     el('h3', { text: 'Zuordnungen in HP' }));
     let anzahl = 0;
     for (const gruppe of result.zuordnungen) {
@@ -54,7 +53,7 @@ function dmsDetails(verbindung, datei) {
       body.append(el('h4', { text: gruppe.titel + ' (' + gruppe.gesamt + ')' }),
         el('ul', {}, gruppe.eintraege.map(item => el('li', { text: [item.hpNummer ? 'HP ' + item.hpNummer : '',
           item.objektNummer ? 'Objekt ' + item.objektNummer : '', item.name].filter(Boolean).join(' · ') }))));
-      if (gruppe.gesamt > gruppe.eintraege.length) body.append(el('p', { text: 'HP liefert hier ' + gruppe.eintraege.length + ' von ' + gruppe.gesamt + ' Zuordnungen. Weitere Zuordnungen in HP-Mobile öffnen.' }));
+      if (gruppe.gesamt > gruppe.eintraege.length) body.append(el('p', { text: 'HP liefert hier ' + gruppe.eintraege.length + ' von ' + gruppe.gesamt + ' Zuordnungen. Die Übernahme dieser weiteren Zuordnungen ist noch nicht bestätigt.' }));
     }
     if (!anzahl) body.append(el('p', { text: 'HP-Mobile liefert für diesen Archiveintrag keine Zuordnungen.' }));
   }).catch(e => { if (offen && lauf === S.lauf) body.replaceChildren(el('p', { role: 'alert', text: e.message })); });
@@ -64,9 +63,9 @@ async function dmsMaske(params = new URLSearchParams()) {
   const lauf = S.lauf, root = el('div', { class: 'cu-karte', style: 'padding:20px;margin:16px auto;max-width:1250px' });
   if (!zeigeAufDesktop(lauf, root)) return;
   S.kontext = { typ: 'dms' };
-  const status = el('p', { role: 'status', 'aria-live': 'polite' });
-  root.append(el('h1', { text: 'DMS – HP-Mobile' }),
-    el('p', { text: 'Dokumente mit ihren Zuordnungen aus HausPerfekt. Dateien bleiben bei HP-Mobile und werden bei Bedarf heruntergeladen.' }),
+  const status = el('p', { role: 'status', 'aria-live': 'polite' }), uebernahme = el('div', { class: 'hp-hinweis' });
+  root.append(el('h1', { text: 'Dokumente – Übernahme aus HausPerfekt' }),
+    el('p', { text: 'Dokumente samt Zuordnungen dauerhaft in CuraAed übernehmen. Gesicherte Dateien bleiben auch ohne HP-Mobile erreichbar.' }),
     el('p', {}, [el('a', { href: '#/archiv', text: 'CuraAed-Archiv öffnen' }), document.createTextNode(' · '), el('a', { href: '#/hausperfekt', text: 'HP-Verbindung verwalten' })]), status);
   if (!darfSchreiben()) { status.textContent = 'Die persönliche HP-Verbindung ist für Administratoren und Mitarbeiter verfügbar.'; return; }
   const verbindung = el('select', { id: 'dms-verbindung', 'aria-label': 'HP-Kundenbestand' }),
@@ -78,12 +77,13 @@ async function dmsMaske(params = new URLSearchParams()) {
   let verbindungen = [], seite = 1, version = 0;
   const vorher = el('button', { type: 'button', text: 'Vorherige Seite', disabled: true, onclick: () => laden(seite - 1) });
   const weiter = el('button', { type: 'button', text: 'Nächste Seite', disabled: true, onclick: () => laden(seite + 1) });
-  navigation.append(vorher, weiter); root.append(form, liste, navigation);
+  navigation.append(vorher, weiter); root.append(form, uebernahme, liste, navigation);
   async function laden(neueSeite) {
     const nr = ++version, id = verbindung.value;
     liste.replaceChildren(); vorher.disabled = weiter.disabled = true;
     if (!id) { status.textContent = 'Bitte einen HP-Kundenbestand auswählen.'; return; }
     status.textContent = 'Dokumente werden aus HP-Mobile geladen …';
+    dmsUebernahme(uebernahme, id, suche.value.trim(), lauf);
     try {
       const result = await API.get(dmsPfad(id) + API.qs({ seite: neueSeite, suche: suche.value.trim() }));
       if (nr !== version || lauf !== S.lauf || id !== verbindung.value) return;
@@ -113,4 +113,46 @@ async function dmsMaske(params = new URLSearchParams()) {
     if (ausgew) verbindung.value = ausgew.id;
     await laden(1);
   } catch (e) { if (lauf === S.lauf) status.textContent = e.message; }
+}
+
+function dmsVorschau(url, datei) {
+  const content = el('div', { text: 'Datei wird in CuraAed gesichert …' });
+  let open = true, objectUrl;
+  modal({ titel: datei.titel || datei.dateiname, inhalt: content, wide: true,
+    onClose: () => { open = false; if(objectUrl) URL.revokeObjectURL(objectUrl); },
+    footer: close => [el('a', { href: url, class: 'btn', text: 'Herunterladen' }), el('button', { text: 'Schließen', onclick: close })] });
+  fetch(url + '?vorschau=1', { credentials: 'same-origin' }).then(async response => {
+    if(!response.ok) throw new Error((await response.json()).fehler || 'Datei nicht verfügbar.');
+    const blob = await response.blob();
+    if(!open) return;
+    if(response.headers.get('content-type')?.includes('application/pdf')) {
+      objectUrl = URL.createObjectURL(blob);
+      content.replaceChildren(el('iframe', { src: objectUrl, title: datei.titel || 'Dokumentvorschau', style: 'width:100%;height:70vh;border:0' }));
+    } else content.textContent = 'Die Datei ist in CuraAed gesichert. Dieses Dateiformat bitte herunterladen.';
+  }).catch(e => { if(open) content.textContent = e.message; });
+}
+function dmsArchivOeffnen(d) {
+  dmsVorschau('/api/hausperfekt/dms/archiv/' + encodeURIComponent(d.hp.quelle) + '/' + encodeURIComponent(d.hp.datei) + '/download', d);
+}
+async function dmsUebernahme(root, connection, search, lauf) {
+  const token = {}; root.dmsToken = token;
+  async function refresh() {
+    try {
+      const r = await API.get('/hausperfekt/dms/' + encodeURIComponent(connection) + '/uebernahme');
+      if(lauf !== S.lauf || root.dmsToken !== token) return;
+      const j = r.auftrag;
+      const text = el('p', { role: 'status', text: r.dateien + ' Dateien dauerhaft gesichert · ' + dateiGroesse(r.bytes) + ' · ' + r.metadaten + ' Dokumentzuordnungen übernommen' + (r.fehler ? ' · ' + r.fehler + ' Dateien mit Übernahmefehler' : '') + (j ? ' · ' + (j.status === 'laeuft' ? 'Übernahme läuft, Seite ' + j.seite : j.status === 'fertig' ? 'Durchlauf abgeschlossen' : 'Übernahme angehalten') + (j.meldung ? ': ' + j.meldung : '') : '') });
+      root.replaceChildren(text);
+      if(!r.direktId) {
+        const select = el('select', { 'aria-label': 'Zugehörige HP-Datenbank' }, [el('option', { value: '', text: 'HP-Datenbank auswählen' }), ...(r.direktQuellen || []).map(s=>el('option', { value:s.id, text:s.name + ' · ' + s.datenbank }))]);
+        root.append(el('p', { text: 'Für Adress-, Objekt- und Einheitenarchive den passenden HP-Kundenbestand verbinden. Nur dieselbe Verwaltung auswählen.' }), select, el('button', { type:'button', text:'Archivzuordnung verbinden', onclick:async()=>{try{if(!select.value) return; await API.post('/hausperfekt/dms/'+encodeURIComponent(connection)+'/zuordnen',{direktId:select.value});refresh();}catch(e){fehler(e);}} }));
+      }
+      const start = (suche) => async () => { try { await API.post('/hausperfekt/dms/'+encodeURIComponent(connection)+'/uebernahme',{suche}); refresh(); } catch(e){fehler(e);} };
+      root.append(el('button', { type:'button', text: j?.status === 'angehalten' ? 'Übernahme fortsetzen' : 'Gesamtes Archiv dauerhaft übernehmen', disabled:j?.status==='laeuft', onclick:start(j?.status==='angehalten' ? j.suche || '' : '') }));
+      if(j?.status==='laeuft') root.append(el('button',{type:'button',text:'Übernahme anhalten',onclick:async()=>{try{await API.post('/hausperfekt/dms/'+encodeURIComponent(connection)+'/anhalten',{});refresh();}catch(e){fehler(e);}}}));
+      if(search) root.append(el('button', { type:'button', text:'Suchtreffer dauerhaft übernehmen', disabled:j?.status==='laeuft', onclick:start(search) }));
+      if(j?.status==='laeuft') setTimeout(()=>{if(lauf===S.lauf && root.dmsToken===token)refresh();},3000);
+    } catch(e) { if(lauf===S.lauf && root.dmsToken===token) root.textContent=e.message; }
+  }
+  await refresh();
 }

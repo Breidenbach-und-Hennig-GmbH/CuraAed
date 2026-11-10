@@ -8,6 +8,20 @@ const pdf = Buffer.from('%PDF-1.7\nsynthetic test file');
 const file = () => ({ id: 9, container_id: 44, hp_id: 1, file_original_name: 'test.pdf', file_notes: '<b>Test</b>', file_size: pdf.length,
   file_checksum_md5: crypto.createHash('md5').update(pdf).digest('hex'), file_checksum_sha1: crypto.createHash('sha1').update(pdf).digest('hex'),
   ts: 1700000000, poc: 'FD', document_type: { name: 'Testart' }, document_container: { id: 44, hp_id: 1183031, comment: 'Testarchiv' } });
+
+test('DMS: große Dateien werden ohne 64-MB-Grenze auf Platte gestreamt und vollständig geprüft',async t=>{
+ const fs=require('node:fs/promises'),path=require('node:path'),os=require('node:os');
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'hp-stream-'));t.after(()=>fs.rm(dir,{recursive:true,force:true}));
+ const chunk=Buffer.alloc(1024*1024,65),sha=crypto.createHash('sha1');for(let i=0;i<65;i++)sha.update(chunk);
+ const raw={...file(),file_size:65*chunk.length,file_checksum_sha1:sha.digest('hex'),file_checksum_md5:null};
+ const f=fixture(url=>{
+   if(!url.endsWith('/binary'))return Response.json(raw);
+   let count=0;return new Response(new ReadableStream({pull(c){if(count++<65)c.enqueue(chunk);else c.close();}}));
+ });
+ const target=path.join(dir,'large.part');const result=await D.speichern(f.client,9,target,70*chunk.length);
+ assert.equal(result.size,65*chunk.length);assert.equal((await fs.stat(target)).size,result.size);assert.match(result.sha256,/^[a-f0-9]{64}$/);
+ await assert.rejects(D.speichern(f.client,9,path.join(dir,'small.part'),60*chunk.length),e=>e.status===507);
+});
 function fixture(respond, { tenant = 'kunde-a' } = {}) {
   const calls = [];
   const client = baueHpMobileClient({ portalUrl: 'https://kunde-a.hausperfekt-mobile.de/', accessToken: 'synthetic', fetchImpl: async (url, init) => {
@@ -69,7 +83,8 @@ test('DMS-API: Anmeldung, persönliche Verbindungen, Kundentrennung und sichere 
   const {openDatabase}=require('../db'),users=require('../services/benutzer'),{baueApp}=require('../lib/appFactory');
   const db=await openDatabase(':memory:');t.after(()=>db.close());
   for(const [benutzername,rolle] of [['eins','admin'],['zwei','mitarbeiter'],['leser','leser']])await users.anlegen(db,{benutzername,name:benutzername,rolle,passwort:'test12345'});
-  const calls=[];const app=baueApp(db,{hausperfekt:{publicUrl:'https://curaaed.example',oauth:{clientId:'test',clientSecret:'test'},fetchImpl:async(url,init)=>{
+  const archiveFs=require('node:fs/promises'), archiveDir=await archiveFs.mkdtemp(require('node:path').join(require('node:os').tmpdir(),'hp-api-'));t.after(()=>archiveFs.rm(archiveDir,{recursive:true,force:true}));
+  const calls=[];const app=baueApp(db,{uploadDir:archiveDir,hausperfekt:{publicUrl:'https://curaaed.example',oauth:{clientId:'test',clientSecret:'test'},fetchImpl:async(url,init)=>{
     calls.push({url,init});
     if(url.endsWith('/oauth/token'))return Response.json({access_token:'test',refresh_token:'test',expires_in:3600});
     if(url.endsWith('/whoami'))return Response.json({clientdatabases:[{subdomain:'kunde-a'}]});
@@ -97,4 +112,11 @@ test('DMS-API: Anmeldung, persönliche Verbindungen, Kundentrennung und sichere 
   assert.equal(response.headers.get('x-content-type-options'),'nosniff');assert.equal(response.headers.get('cache-control'),'no-store');
   assert.deepEqual(Buffer.from(await response.arrayBuffer()),pdf);
   assert.ok(calls.slice(count).every(c=>c.init.method==='GET'));
+  const info=await(await fetch(base+'/dms/'+connection.id+'/uebernahme',{headers:{cookie:one}})).json();assert.equal(info.dateien,1);assert.equal(info.bytes,pdf.length);
+  const localPath=base+'/dms/archiv/'+info.quelle+'/9/download';
+  assert.equal((await fetch(localPath,{headers:{cookie:two}})).status,404);
+  await fetch(base+'/verbindungen/'+connection.id+'/entfernen',{method:'POST',headers:{cookie:one,origin:'https://curaaed.example','content-type':'application/json'},body:'{}'});
+  const after=calls.length;
+  const preview=await fetch(localPath+'?vorschau=1',{headers:{cookie:one}});assert.equal(preview.status,200);assert.match(preview.headers.get('content-type'),/application\/pdf/);assert.deepEqual(Buffer.from(await preview.arrayBuffer()),pdf);assert.equal(calls.length,after);
+  const localList=await(await fetch(base.replace('/hausperfekt','')+'/archiv',{headers:{cookie:one}})).json();assert.equal(localList.eintraege.length,1);assert.equal(localList.eintraege[0].hp.gesichert,true);
 });

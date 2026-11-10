@@ -120,7 +120,9 @@ function baueApi(db, uploadDir, options = {}) {
   // Alle folgenden Routen erfordern eine Anmeldung.
   router.use(auth.erfordereLogin);
   router.use('/plaud', require('./plaud').bauePlaudRouter(db, options.plaud));
-  router.use('/hausperfekt', require('./hausperfekt').baueHausperfektRouter(db, options.hausperfekt));
+  const hpRouter = require('./hausperfekt').baueHausperfektRouter(db, { ...options.hausperfekt, archivDir: path.join(uploadDir, 'hp-dms') });
+  router.hpArchiv = hpRouter.archiv;
+  router.use('/hausperfekt', hpRouter);
 
   // ===================== Metadaten (für UI-Dropdowns) ===================
   const V = require('../lib/validation');
@@ -534,16 +536,18 @@ function baueApi(db, uploadDir, options = {}) {
     '/archiv',
     h(async (req, res) => {
       const q = req.query;
-      res.json(
-        await archivSvc.liste(db, {
+      const opts = {
           suche: q.suche,
           kategorie: q.kategorie,
           objektId: q.objekt,
           einheitId: q.einheit,
           adresseId: q.adresse,
           ohneZuordnung: q.ohneZuordnung === '1',
-        })
-      );
+      };
+      const local = await archivSvc.liste(db, opts);
+      const hp = req.benutzer.rolle === 'leser' ? { eintraege: [], mehr: false } : await router.hpArchiv.archiveList(req.benutzer.id, opts);
+      const rows = [...local.eintraege, ...hp.eintraege].sort((a,b)=>String(b.dokument_datum||'').localeCompare(String(a.dokument_datum||'')));
+      res.json({ eintraege: rows.slice(0,500), mehr: local.mehr || hp.mehr || rows.length>500 });
     })
   );
 

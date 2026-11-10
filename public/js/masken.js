@@ -1361,14 +1361,14 @@ function archivListe(ziel, { ktx, kategorie, ohne, lauf }) {
         { label: 'Zugeordnet zu', render: (d) => zuordnungChips(d.verknuepfungen) },
         { label: 'Datei', render: (d) => el('span', { class: 'dateiname', text: `${d.original_name} (${dateiGroesse(d.groesse)})` }) },
         { label: '', class: 'aktionen', render: (d) => el('span', { class: 'aktionen' }, [
-          el('a', { class: 'btn hp-mini', href: `/api/archiv/${d.id}/download`, title: 'Datei öffnen/herunterladen', text: 'Öffnen' }),
-          darfSchreiben() ? el('button', { type: 'button', class: 'hp-mini', text: 'Löschen', onclick: async () => {
+          el('a', { class: 'btn hp-mini', href: d.hp ? '#' : `/api/archiv/${d.id}/download`, title: 'Datei öffnen/herunterladen', text: 'Öffnen', onclick: d.hp ? (event) => { event.preventDefault(); dmsArchivOeffnen(d); } : undefined }),
+          darfSchreiben() && !d.hp ? el('button', { type: 'button', class: 'hp-mini', text: 'Löschen', onclick: async () => {
             if (await bestaetigen(`Archiv-Eintrag „${d.titel}" endgültig löschen? Die Datei wird ebenfalls entfernt.`, { danger: true, text: 'Löschen' })) {
               try { await API.del('/archiv/' + d.id); toast('Gelöscht', 'success'); laden(); } catch (e) { fehler(e); }
             }
           } }) : null,
         ]) },
-      ], res.eintraege, { onOpen: (d) => archivBearbeiten(d.id, laden), leer: 'Keine Archiv-Einträge gefunden.' });
+      ], res.eintraege, { onOpen: (d) => d.hp ? dmsArchivOeffnen(d) : archivBearbeiten(d.id, laden), leer: 'Keine Archiv-Einträge gefunden. HP-Dokumente müssen zuerst dauerhaft übernommen werden.' });
       const teile = [];
       if (res.mehr) teile.push(el('div', { class: 'hp-hinweis', text: 'Es werden die neuesten 500 Einträge angezeigt – bitte Suche oder Filter verfeinern.' }));
       if (ktx && ktx.typ === 'objekt') teile.push(el('div', { class: 'hp-hinweis', text: 'Enthält auch Einträge, die einzelnen Einheiten dieses Objekts zugeordnet sind.' }));
@@ -1417,7 +1417,7 @@ async function archivMaske(params) {
         ['Zuordnung', 'über Objekt-, Einheit- und Adress-Nummern'],
       ], 'hp-such-panel')],
       seite: seitenleiste([
-        { text: 'HP-Mobile DMS', onclick: () => geheZu('#/dms') },
+        { text: 'HP-Archiv übernehmen', onclick: () => geheZu('#/dms') },
         { text: 'Hochladen', onclick: hochladenAktuell, gesperrt: schreibSperre() },
         ktx ? { text: 'Zurück', titel: 'Zurück zu ' + ktx.titel, onclick: () => geheZu(ktx.href) } : null,
         ktx ? { text: 'Alle Einträge', onclick: () => geheZu('#/archiv') } : null,

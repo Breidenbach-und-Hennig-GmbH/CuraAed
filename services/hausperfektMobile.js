@@ -105,16 +105,28 @@ function baueHpMobileClient({ portalUrl, accessToken, fetchImpl = globalThis.fet
       await verify();
       return (await request('GET', resource + '/' + key)).data;
     },
-    async dmsListe({ page = 1, search = '' } = {}) {
+    async dmsListe({ page = 1, search = '', importieren = false } = {}) {
       if (!Number.isSafeInteger(page) || page < 1 || page > 1000000 || typeof search !== 'string' || search.length > 200) throw new HpMobileError('Ungültige DMS-Suche.', 400);
       await verify();
-      const q = new URLSearchParams({ pageNum: String(page), pageSize: '25', of: 'ts', od: 'desc', s: search, sm: '0', rel: '["document_container","document_type"]' });
+      const q = new URLSearchParams({ pageNum: String(page), pageSize: '25', of: importieren ? 'id' : 'ts', od: importieren ? 'asc' : 'desc', s: search, sm: '0', rel: '["document_container","document_type"]' });
       return (await request('GET', 'documents?' + q)).data;
     },
     async dmsContainer(id) {
       const key = positiveId(id);
       await verify();
       return (await request('GET', 'documentcontainer/' + key)).data;
+    },
+    async dmsStream(id, maxBytes) {
+      const key = positiveId(id); await verify();
+      let response;
+      try { response = await fetchImpl(ORIGIN + '/api/v1/documents/' + key + '/binary', {
+        method:'GET', redirect:'error', signal:AbortSignal.timeout(600000),
+        headers:{Authorization:'Bearer '+accessToken,'HPAPI-DOM':subdomain,Accept:'application/octet-stream'},
+      }); } catch { throw new HpMobileError('Der Dateiabruf wurde unterbrochen.',502); }
+      if(!response.ok) throw new HpMobileError('HP hat den Dateiabruf abgelehnt.',[401,403,404,429].includes(response.status)?response.status:502);
+      if(!response.body) throw new HpMobileError('HP hat keine Datei geliefert.',502);
+      if(Number(response.headers.get('content-length'))>maxBytes) { await response.body.cancel(); throw new HpMobileError('Für diese Datei reicht der freie Archivspeicher nicht aus.',507); }
+      return response.body;
     },
     async dmsDatei(id, maxBytes = 64 * 1024 * 1024) {
       const key = positiveId(id);
@@ -132,7 +144,7 @@ function baueHpMobileClient({ portalUrl, accessToken, fetchImpl = globalThis.fet
       }
       if (Number(response.headers.get('content-length')) > maxBytes) {
         await response.body?.cancel().catch(() => {});
-        throw new HpMobileError('Dateien über 64 MB bitte direkt in HP-Mobile herunterladen.', 413);
+        throw new HpMobileError('Die Datei überschreitet die aktuelle Übernahmegrenze von 64 MB. Sie wurde noch nicht gesichert.', 413);
       }
       if (!response.body) throw new HpMobileError('HP hat keine Datei geliefert.', 502);
       const reader = response.body.getReader(), chunks = [];
@@ -144,7 +156,7 @@ function baueHpMobileClient({ portalUrl, accessToken, fetchImpl = globalThis.fet
           length += value.byteLength;
           if (length > maxBytes) {
             await reader.cancel();
-            throw new HpMobileError('Dateien über 64 MB bitte direkt in HP-Mobile herunterladen.', 413);
+            throw new HpMobileError('Die Datei überschreitet die aktuelle Übernahmegrenze von 64 MB. Sie wurde noch nicht gesichert.', 413);
           }
           chunks.push(Buffer.from(value));
         }
