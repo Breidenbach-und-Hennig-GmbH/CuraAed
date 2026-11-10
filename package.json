@@ -15,10 +15,10 @@
     "express": "^4.21.2",
     "iconv-lite": "^0.6.3",
     "multer": "^2.4.0",
+    "pdfjs-dist": "6.5.438",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "jsdom": "26.1.0"
   }
 }
-

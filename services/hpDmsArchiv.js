@@ -3,6 +3,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { HpMobileError } = require('./hausperfektMobile');
+const CATEGORY = "CASE WHEN lower(f.art) LIKE '%abrechnung%' THEN 'abrechnung' WHEN lower(f.art) LIKE '%rechnung%' THEN 'rechnung' WHEN lower(f.art) LIKE '%protokoll%' THEN 'protokoll' WHEN lower(f.art) LIKE '%vertrag%' THEN 'vertrag' WHEN lower(f.art) LIKE '%schriftverkehr%' OR lower(f.art) LIKE '%outlook%' THEN 'korrespondenz' WHEN lower(f.art) LIKE '%foto%' OR lower(f.art) LIKE '%bild%' THEN 'foto' ELSE 'sonstiges' END";
 const fail = (message, status = 409) => { throw new HpMobileError(message, status); };
 
 // Sources intentionally do not reference the temporary OAuth connection. Removing
@@ -99,9 +100,9 @@ function baueArchiv(db, directory, remote) {
     return found;
   }
   async function archiveList(owner, q = {}) {
-    if (q.kategorie && q.kategorie !== 'sonstiges') return { eintraege: [], mehr: false };
     // Filter by source-scoped ERP mappings in SQL, never names or local IDs.
     let filter = '', args = [owner];
+    if(q.kategorie){filter+=' AND ('+CATEGORY+')=?';args.push(q.kategorie);}
     const relation = (mapping, match, target, value) => {
       filter += ` AND EXISTS(SELECT 1 FROM hp_dms_bezuege b JOIN ${mapping} m ON m.verbindung_id=s.direkt_id AND ${match} WHERE b.quelle_id=f.quelle_id AND b.datei_id=f.datei_id AND ${target})`;
       args.push(value);
@@ -114,9 +115,9 @@ function baueArchiv(db, directory, remote) {
     }
     if (q.ohneZuordnung) filter += ' AND NOT EXISTS(SELECT 1 FROM hp_dms_bezuege b WHERE b.quelle_id=f.quelle_id AND b.datei_id=f.datei_id)';
     if (q.suche) { filter += ' AND (f.titel LIKE ? OR f.dateiname LIKE ? OR EXISTS(SELECT 1 FROM hp_dms_bezuege b WHERE b.quelle_id=f.quelle_id AND b.datei_id=f.datei_id AND (b.name LIKE ? OR b.hp_nummer LIKE ?)))'; args.push(...Array(4).fill('%' + String(q.suche).slice(0, 200) + '%')); }
-    const rows = await db.all(`SELECT f.*,s.subdomain FROM hp_dms_dateien f JOIN hp_dms_quellen s ON s.id=f.quelle_id WHERE s.benutzer_id=?${filter} ORDER BY f.datum DESC,f.datei_id DESC LIMIT 501`, args);
+    const rows = await db.all(`SELECT f.*,s.subdomain,${CATEGORY} AS kategorie FROM hp_dms_dateien f JOIN hp_dms_quellen s ON s.id=f.quelle_id WHERE s.benutzer_id=?${filter} ORDER BY f.datum DESC,f.datei_id DESC LIMIT 501`, args);
     const result = [];
-    for (const r of rows.slice(0, 500)) result.push({ id: 'hp:' + r.quelle_id + ':' + r.datei_id, hp: { quelle: r.quelle_id, datei: r.datei_id, gesichert: !!r.speicher_name }, titel: r.titel, beschreibung: r.art + ' · ' + (r.speicher_name ? 'In CuraAed gespeichert' : 'Datei noch nicht übernommen'), original_name: r.dateiname, dokument_datum: r.datum, kategorie: 'sonstiges', groesse: r.groesse, verknuepfungen: await links(r) });
+    for (const r of rows.slice(0, 500)) result.push({ id: 'hp:' + r.quelle_id + ':' + r.datei_id, hp: { quelle: r.quelle_id, datei: r.datei_id, gesichert: !!r.speicher_name }, titel: r.titel, beschreibung: r.art + ' · ' + (r.speicher_name ? 'In CuraAed gespeichert' : 'Datei noch nicht übernommen'), original_name: r.dateiname, dokument_datum: r.datum, kategorie: r.kategorie, groesse: r.groesse, verknuepfungen: await links(r) });
     return { eintraege: result, mehr: rows.length > 500 };
   }
   async function status(owner, connection) {

@@ -116,20 +116,39 @@ async function dmsMaske(params = new URLSearchParams()) {
 }
 
 function dmsVorschau(url, datei) {
-  const content = el('div', { text: 'Datei wird in CuraAed gesichert …' });
-  let open = true, objectUrl;
-  modal({ titel: datei.titel || datei.dateiname, inhalt: content, wide: true,
-    onClose: () => { open = false; if(objectUrl) URL.revokeObjectURL(objectUrl); },
-    footer: close => [el('a', { href: url, class: 'btn', text: 'Herunterladen' }), el('button', { text: 'Schließen', onclick: close })] });
-  fetch(url + '?vorschau=1', { credentials: 'same-origin' }).then(async response => {
-    if(!response.ok) throw new Error((await response.json()).fehler || 'Datei nicht verfügbar.');
-    const blob = await response.blob();
-    if(!open) return;
-    if(response.headers.get('content-type')?.includes('application/pdf')) {
-      objectUrl = URL.createObjectURL(blob);
-      content.replaceChildren(el('iframe', { src: objectUrl, title: datei.titel || 'Dokumentvorschau', style: 'width:100%;height:70vh;border:0' }));
-    } else content.textContent = 'Die Datei ist in CuraAed gesichert. Dieses Dateiformat bitte herunterladen.';
-  }).catch(e => { if(open) content.textContent = e.message; });
+  const content = el('div', { text: 'Datei wird in CuraAed geladen …', style:'min-height:50vh' });
+  let open=true, loadingTask, renderTask;
+  modal({titel:datei.titel||datei.dateiname,inhalt:content,wide:true,
+    onClose:()=>{open=false;renderTask?.cancel();loadingTask?.destroy();},
+    footer:close=>[el('a',{href:url,class:'btn',text:'Herunterladen'}),el('button',{text:'Schließen',onclick:close})]});
+  fetch(url+'?vorschau=1',{credentials:'same-origin'}).then(async response=>{
+    if(!response.ok)throw new Error((await response.json()).fehler||'Datei nicht verfügbar.');
+    if(!response.headers.get('content-type')?.includes('application/pdf')){
+      if(open)content.textContent='Die Datei ist in CuraAed gesichert. Dieses Dateiformat bitte herunterladen.';return;
+    }
+    const bytes=new Uint8Array(await response.arrayBuffer()), pdfjs=await import('/pdfjs/build/pdf.mjs');
+    if(!open)return;
+    pdfjs.GlobalWorkerOptions.workerSrc='/pdfjs/build/pdf.worker.mjs';
+    loadingTask=pdfjs.getDocument({data:bytes,cMapUrl:'/pdfjs/cmaps/',cMapPacked:true,standardFontDataUrl:'/pdfjs/standard_fonts/',wasmUrl:'/pdfjs/wasm/',isEvalSupported:false,enableXfa:false});
+    const pdf=await loadingTask.promise;if(!open)return;
+    let number=1,version=0;
+    const canvas=el('canvas',{'aria-label':'PDF-Seite',style:'display:block;max-width:100%;margin:auto;background:white'}),
+      pageLabel=el('span',{'aria-live':'polite'}),view=el('div',{style:'max-height:68vh;overflow:auto;background:#eee;padding:8px'},[canvas]),
+      previous=el('button',{type:'button',text:'Vorherige Seite',onclick:()=>show(number-1)}),
+      next=el('button',{type:'button',text:'Nächste Seite',onclick:()=>show(number+1)});
+    content.replaceChildren(el('div',{class:'tel-plaud-knoepfe'},[previous,pageLabel,next]),view);
+    async function show(n){
+      if(n<1||n>pdf.numPages||!open)return;
+      number=n;const current=++version;const oldTask=renderTask;oldTask?.cancel();if(oldTask)await oldTask.promise.catch(()=>{});if(!open||version!==current)return;
+      pageLabel.textContent='Seite '+n+' / '+pdf.numPages;previous.disabled=n===1;next.disabled=n===pdf.numPages;
+      const page=await pdf.getPage(n);if(!open||version!==current)return;
+      const unscaled=page.getViewport({scale:1}),scale=Math.min(1.5,Math.max(280,view.clientWidth-16)/unscaled.width),ratio=Math.min(window.devicePixelRatio||1,2),viewport=page.getViewport({scale:scale*ratio});
+      canvas.width=viewport.width;canvas.height=viewport.height;canvas.style.width=(viewport.width/ratio)+'px';canvas.style.height=(viewport.height/ratio)+'px';
+      renderTask=page.render({canvasContext:canvas.getContext('2d'),viewport});
+      try{await renderTask.promise;}catch(e){if(e.name!=='RenderingCancelledException'&&open)content.textContent=e.message;}
+    }
+    await show(1);
+  }).catch(e=>{if(open)content.textContent='Die Vorschau konnte nicht geladen werden: '+e.message;});
 }
 function dmsArchivOeffnen(d) {
   dmsVorschau('/api/hausperfekt/dms/archiv/' + encodeURIComponent(d.hp.quelle) + '/' + encodeURIComponent(d.hp.datei) + '/download', d);

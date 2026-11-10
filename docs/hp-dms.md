@@ -1,6 +1,6 @@
 # Dauerhaftes CuraAed-DMS
 
-Das HP-Mobile-DMS wird in die dauerhafte CuraAed-Ablage übernommen. Keine Weiterleitung in HP-Mobile zum Öffnen erforderlich. PDF-Vorschau und Download erfolgen in CuraAed.
+Das HP-Mobile-DMS wird in die dauerhafte CuraAed-Ablage übernommen. Keine Weiterleitung in HP-Mobile zum Öffnen erforderlich. PDF-Vorschau und Download erfolgen in CuraAed. Der eigene PDF.js-Betrachter wird vom CuraAed-Server bereitgestellt, rendert die gewählte Seite selbst und benötigt weder ein Browser-PDF-Plugin noch einen externen Dokumentdienst. HP-Dokumentarten werden auf die lokalen Archivkategorien abgebildet.
 
 ## Speicherung und Zuordnung
 
