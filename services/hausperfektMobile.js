@@ -105,6 +105,54 @@ function baueHpMobileClient({ portalUrl, accessToken, fetchImpl = globalThis.fet
       await verify();
       return (await request('GET', resource + '/' + key)).data;
     },
+    async dmsListe({ page = 1, search = '' } = {}) {
+      if (!Number.isSafeInteger(page) || page < 1 || page > 1000000 || typeof search !== 'string' || search.length > 200) throw new HpMobileError('Ungültige DMS-Suche.', 400);
+      await verify();
+      const q = new URLSearchParams({ pageNum: String(page), pageSize: '25', of: 'ts', od: 'desc', s: search, sm: '0', rel: '["document_container","document_type"]' });
+      return (await request('GET', 'documents?' + q)).data;
+    },
+    async dmsContainer(id) {
+      const key = positiveId(id);
+      await verify();
+      return (await request('GET', 'documentcontainer/' + key)).data;
+    },
+    async dmsDatei(id, maxBytes = 64 * 1024 * 1024) {
+      const key = positiveId(id);
+      await verify();
+      let response;
+      try {
+        response = await fetchImpl(ORIGIN + '/api/v1/documents/' + key + '/binary', {
+          method: 'GET', redirect: 'error', signal: AbortSignal.timeout(120000),
+          headers: { Authorization: 'Bearer ' + accessToken, 'HPAPI-DOM': subdomain, Accept: 'application/octet-stream' },
+        });
+      } catch { throw new HpMobileError('Die HP-Datei ist gerade nicht erreichbar.', 502); }
+      if (!response.ok) {
+        const status = [401, 403, 404, 429].includes(response.status) ? response.status : 502;
+        throw new HpMobileError(status === 404 ? 'Die Datei ist in HP-Mobile nicht verfügbar.' : status === 401 ? 'Bitte HP-Mobile erneut verbinden.' : 'HP-Mobile hat den Dateizugriff abgelehnt.', status);
+      }
+      if (Number(response.headers.get('content-length')) > maxBytes) {
+        await response.body?.cancel().catch(() => {});
+        throw new HpMobileError('Dateien über 64 MB bitte direkt in HP-Mobile herunterladen.', 413);
+      }
+      if (!response.body) throw new HpMobileError('HP hat keine Datei geliefert.', 502);
+      const reader = response.body.getReader(), chunks = [];
+      let length = 0;
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          length += value.byteLength;
+          if (length > maxBytes) {
+            await reader.cancel();
+            throw new HpMobileError('Dateien über 64 MB bitte direkt in HP-Mobile herunterladen.', 413);
+          }
+          chunks.push(Buffer.from(value));
+        }
+      } catch (e) { if (e instanceof HpMobileError) throw e; throw new HpMobileError('Der HP-Dateiabruf wurde unterbrochen. Bitte erneut versuchen.', 502); }
+      finally { reader.releaseLock(); }
+      if (!length) throw new HpMobileError('HP hat eine leere Datei geliefert.', 502);
+      return Buffer.concat(chunks, length);
+    },
     async personenAenderungAnfordern(current, patch) {
       const payload = personenAenderung(current, patch);
       const identity = await verify();

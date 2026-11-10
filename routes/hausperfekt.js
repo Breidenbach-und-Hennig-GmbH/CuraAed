@@ -15,6 +15,16 @@ function baueHausperfektRouter(db, options = {}) {
     if (!expected || req.get('origin') !== expected || !req.is('application/json')) return next(new ValidationError('Bitte die HP-Verbindung aus CuraAed heraus bearbeiten.', 403));
     next();
   };
+  router.get('/dms/verbindungen', h(async (req, res) => res.json({ verbindungen: await service.liste(req.benutzer.id) })));
+  router.get('/dms/:id/dokumente', h(async (req, res) => res.json(await service.dmsListe(req.benutzer.id, req.params.id, {
+    seite: req.query.seite === undefined ? 1 : Number(req.query.seite), suche: req.query.suche === undefined ? '' : req.query.suche,
+  }))));
+  router.get('/dms/:id/dokumente/:dateiId', h(async (req, res) => res.json(await service.dmsDetails(req.benutzer.id, req.params.id, req.params.dateiId))));
+  router.get('/dms/:id/dokumente/:dateiId/download', h(async (req, res) => {
+    const file = await service.dmsDownload(req.benutzer.id, req.params.id, req.params.dateiId);
+    res.set({ 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': 'sandbox' });
+    res.attachment(file.name).type('application/octet-stream').send(file.bytes);
+  }));
   router.get('/status', (req, res) => res.json(service.status()));
   router.get('/verbindungen', h(async (req, res) => res.json({ verbindungen: await service.liste(req.benutzer.id) })));
   router.post('/verbinden', sameOrigin, h(async (req, res) => {

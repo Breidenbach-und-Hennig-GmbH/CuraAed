@@ -129,7 +129,7 @@ const BEFEHLE = [
 const SPRUENGE = [
   { taste: 'a', icon: 'pin', text: 'Adresse', aktion: () => geheZu('#/adressen') },
   { taste: 'b', icon: 'calendar', text: 'Buchung erfassen', folgt: FIBU },
-  { taste: 'd', text: 'HP DMS System (Archiv)', aktion: () => geheZu('#/archiv') },
+  { taste: 'd', text: 'HP DMS System (Archiv)', aktion: () => geheZu('#/dms') },
   { taste: 'h', icon: 'wrench', text: 'Handwerkerauftrag', folgt: SPAETER },
   { taste: 'j', icon: 'calendar', text: 'Jahreskalender', folgt: STUFE3 },
   { taste: 'k', icon: 'mail', text: 'Korrespondenz', aktion: () => befehl('k') },
@@ -826,7 +826,7 @@ const NAV = [
   { text: 'E-Banking', icon: 'bank', folgt: STUFE4 },
   { text: 'Vorgänge', icon: 'folder', folgt: 'Vorgänge/Akten folgen in einer späteren Ausbaustufe.' },
   { text: 'ETV', icon: 'users', hash: '#/etv', titel: 'Eigentümerversammlungen (ETV)', aktiv: (h) => /^#\/etv\b/.test(h) },
-  { text: 'Dokumente', icon: 'file', hash: '#/archiv', aktiv: (h) => /^#\/archiv\b/.test(h) },
+  { text: 'Dokumente', icon: 'file', hash: '#/dms', aktiv: (h) => /^#\/(archiv|dms)\b/.test(h) },
   { text: 'Auswertungen', icon: 'chart', menue: 'Auswertungen / Listen', aktiv: (h) => /liste\b/.test(h) },
   { text: 'Einstellungen', icon: 'settings', menue: 'System', aktiv: (h) => /^#\/benutzer\b/.test(h) },
 ];
@@ -1113,6 +1113,7 @@ function applikationOeffnen() {
     { text: 'Objekte', info: 'Objektmaske öffnen (Suche darin mit s)', hash: '#/objekte', taste: 'Alt+S, O' },
     { text: 'Wohnungen / Einheiten', info: 'Wohnungsmaske öffnen (Suche darin mit s)', hash: '#/einheiten', taste: 'Alt+S, W' },
     { text: 'Adressen', info: 'Adressmaske öffnen (Suche darin mit s)', hash: '#/adressen', taste: 'Alt+S, A' },
+    { text: 'DMS – HP-Mobile', info: 'HP-Dokumente und Zuordnungen', hash: '#/dms' },
     { text: 'Archiv', info: 'zentrale Ablage', hash: '#/archiv' },
     { text: 'Archiv – nicht zugeordnete Einträge', info: 'Eingang ohne Zuordnung', hash: '#/archiv?ohne=1' },
     { text: 'Benutzerverwaltung', info: 'System', hash: '#/benutzer', nurAdmin: true },
@@ -1427,7 +1428,7 @@ document.addEventListener('keydown', (ev) => {
   if (ev.altKey && !ev.ctrlKey && !ev.metaKey && !ev.shiftKey && /^F(1|2|8|10)$/.test(ev.key) && !dialogOffen) {
     ev.preventDefault();
     schliesseMenue();
-    if (ev.key === 'F10') geheZu('#/archiv');
+    if (ev.key === 'F10') geheZu('#/dms');
     else toast(`${{ F1: 'Zweite Menü-Ebene', F2: 'Aktive Arbeitsplätze', F8: 'Druckspooler' }[ev.key]}: ${SPAETER}`);
     return;
   }
