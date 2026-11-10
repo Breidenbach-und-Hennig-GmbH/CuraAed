@@ -7,17 +7,17 @@ const ARTEN = ['praesenz', 'hybrid', 'online'];
 const STATUS = ['vorbereitung', 'eingeladen', 'durchgefuehrt'];
 
 const SELECT = `
-  SELECT v.*, o.nummer AS objekt_nummer, o.bezeichnung AS objekt_bezeichnung, o.objekttyp
-  FROM versammlungen v JOIN objekte o ON o.id = v.objekt_id`;
+  SELECT v.*, o.nummer AS objekt_nummer, o.bezeichnung AS objekt_bezeichnung, o.objekttyp, b.name AS leitung_name,b.kuerzel AS leitung_kuerzel,b.aktiv AS leitung_aktiv
+  FROM versammlungen v JOIN objekte o ON o.id = v.objekt_id LEFT JOIN benutzer b ON b.id=v.leitung_id`;
 
 async function liste(db, opts = {}) {
   const where = ['v.archiviert = ?'];
   const params = [V.bool(opts.archiv)];
   const suche = V.str(opts.suche, 100);
   if (suche) {
-    where.push('(v.name LIKE ? OR o.nummer LIKE ? OR o.bezeichnung LIKE ? OR v.ort LIKE ? OR v.ort_strasse LIKE ? OR v.ort_plz LIKE ? OR v.ort_stadt LIKE ? OR v.ort_beschreibung LIKE ? OR CAST(v.nummer AS TEXT) = ?)');
+    where.push('(v.name LIKE ? OR o.nummer LIKE ? OR o.bezeichnung LIKE ? OR v.ort LIKE ? OR v.ort_strasse LIKE ? OR v.ort_plz LIKE ? OR v.ort_stadt LIKE ? OR v.ort_beschreibung LIKE ? OR b.name LIKE ? OR CAST(v.nummer AS TEXT) = ?)');
     const like = `%${suche}%`;
-    params.push(like, like, like, like, like, like, like, like, suche);
+    params.push(like, like, like, like, like, like, like, like, like, suche);
   }
   if (opts.objekt_id) { where.push('v.objekt_id = ?'); params.push(Number(opts.objekt_id)); }
   const richtung = opts.sort === 'asc' ? 'ASC' : 'DESC';
@@ -28,7 +28,7 @@ async function holen(db, id) {
   return db.get(`${SELECT} WHERE v.id = ?`, [id]);
 }
 
-async function werte(db, data) {
+async function werte(db, data,bisher=null) {
   const objektId = Number(data.objekt_id);
   if (!objektId || !(await db.get('SELECT id FROM objekte WHERE id = ?', [objektId]))) throw new V.ValidationError('Bitte ein Objekt wählen.');
   const datum = V.isoDate(data.datum, 'Datum');
@@ -37,7 +37,16 @@ async function werte(db, data) {
   if (uhrzeit && !/^([01]\d|2[0-3]):[0-5]\d$/.test(uhrzeit)) throw new V.ValidationError('Uhrzeit bitte als HH:MM angeben.');
   const nr = V.num(data.nummer);
   if (nr !== null && (!Number.isInteger(nr) || nr < 1 || nr > 9999)) throw new V.ValidationError('"Nr." muss eine ganze Zahl zwischen 1 und 9999 sein.');
+  let leitung=null;
+  if(data.leitung_id!==undefined&&data.leitung_id!==null&&data.leitung_id!==''){
+    if(!['string','number'].includes(typeof data.leitung_id))throw new V.ValidationError('Ungültige Versammlungsleitung.');
+    leitung=Number(data.leitung_id);
+    if(!Number.isSafeInteger(leitung)||leitung<1)throw new V.ValidationError('Ungültige Versammlungsleitung.');
+    const person=await db.get("SELECT id,aktiv,rolle FROM benutzer WHERE id=?",[leitung]);
+    if(!person||(!(person.aktiv&&['admin','mitarbeiter'].includes(person.rolle))&&bisher?.leitung_id!==leitung))throw new V.ValidationError('Bitte einen aktiven Mitarbeitenden als Versammlungsleitung auswählen.');
+  }
   return {
+    leitung_id:leitung,
     objekt_id: objektId,
     nummer: nr,
     name: V.requireStr(V.str(data.name, 120), 'Name'),
@@ -53,7 +62,7 @@ async function werte(db, data) {
     notizen: V.str(data.notizen),
   };
 }
-const SPALTEN = ['objekt_id', 'nummer', 'name', 'datum', 'uhrzeit', 'art', 'ort', 'ort_strasse', 'ort_plz', 'ort_stadt', 'ort_beschreibung', 'status', 'notizen'];
+const SPALTEN = ['objekt_id', 'nummer', 'name', 'datum', 'uhrzeit', 'art', 'ort', 'ort_strasse', 'ort_plz', 'ort_stadt', 'ort_beschreibung', 'status', 'notizen', 'leitung_id'];
 
 
 const ORTFELDER={ort:200,ort_strasse:200,ort_plz:20,ort_stadt:100,ort_beschreibung:2000};
@@ -85,7 +94,7 @@ async function anlegen(db, data, benutzerId) {
 async function aktualisieren(db, id, data) {
   const bisher=await holen(db,id);
   if (!bisher) throw new V.ValidationError('Versammlung nicht gefunden.', 404);
-  const w = await werte(db, {...bisher,...data});
+  const w = await werte(db, {...bisher,...data},bisher);
   return db.transaktion(async tx=>{
   await tx.run(`UPDATE versammlungen SET ${SPALTEN.map((s) => `${s}=?`).join(', ')}, geaendert_am=datetime('now') WHERE id=?`,
     [...SPALTEN.map((s) => w[s]), id]);

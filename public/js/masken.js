@@ -1707,10 +1707,13 @@ const ETV_STATUS = {
 const etvDatum = (v) => `${datumKurz(v.datum)}${v.uhrzeit ? ' - ' + v.uhrzeit : ''}`;
 
 async function versammlungForm(v, { kopie = false } = {}) {
-  let objekte = [];
-  try { objekte = await API.get('/objekte'); } catch (e) { fehler(e); return; }
+  let objekte=[],mitarbeiter=[];
+  try { [objekte,mitarbeiter]=await Promise.all([API.get('/objekte'),API.get('/mitarbeiter')]); } catch (e) { fehler(e); return; }
   const bearb = !!(v && v.id) && !kopie;
   const x = v || {};
+  const personen=mitarbeiter.map(p=>({value:p.id,label:p.name+(p.kuerzel?' · '+p.kuerzel:'')}));
+  if(bearb&&x.leitung_id&&!mitarbeiter.some(p=>p.id===x.leitung_id))personen.push({value:x.leitung_id,label:(x.leitung_name||'Bisherige Versammlungsleitung')+' · bisher zugeordnet (nicht mehr aktiv)'});
+  const leitung=kopie&&!mitarbeiter.some(p=>p.id===x.leitung_id)?'':x.leitung_id||'';
   let gespeicherteOrte=[];
   if(x.objekt_id)try{gespeicherteOrte=await API.get('/objekte/'+x.objekt_id+'/versammlungsorte');}catch(e){fehler(e);return;}
   formFenster({
@@ -1738,9 +1741,15 @@ async function versammlungForm(v, { kopie = false } = {}) {
         {name:'ort_stadt',label:'Ort',value:x.ort_stadt},
       ] },
       {felder:[{name:'ort_beschreibung',label:'Beschreibung des Versammlungsorts',type:'textarea',value:x.ort_beschreibung,hint:'z. B. Eingang, Etage oder Hinweise zur Anfahrt'}]},
+      {grid:2,felder:[
+        {name:'leitung_funktion',label:'Funktion',type:'select',value:'versammlungsleitung',options:[{value:'versammlungsleitung',label:'Versammlungsleitung'}]},
+        {name:'leitung_id',label:'Person',type:'select',value:leitung,options:[{value:'',label:'– Person wählen –'},...personen]},
+      ]},
       { felder: [{ name: 'notizen', label: 'Notizen', type: 'textarea', value: kopie ? '' : x.notizen }] },
     ],
     nachAufbau:(inputs,form)=>{
+      const teilnahme=inputs.leitung_id.closest('.field').parentElement;
+      const intern=el('section',{'aria-label':'Versammlungsteilnahme (intern)',class:'cu-karte',style:'padding:16px;margin:12px 0'},[el('h3',{text:'Versammlungsteilnahme (intern)'})]);form.insertBefore(intern,teilnahme);intern.append(teilnahme);
       const start=inputs.ort.closest('.field').parentElement,street=inputs.ort_strasse.closest('.field').parentElement,description=inputs.ort_beschreibung.closest('.field').parentElement;
       const section=el('section',{'aria-label':'Versammlungsort',class:'cu-karte',style:'padding:16px;margin:12px 0'},[el('h3',{text:'Versammlungsort'})]);form.insertBefore(section,start);section.append(start,street,description);
       for(const [key,max] of Object.entries({ort:200,ort_strasse:200,ort_plz:20,ort_stadt:100,ort_beschreibung:2000}))inputs[key].maxLength=max;
@@ -1825,6 +1834,7 @@ function etvMaske(params = new URLSearchParams()) {
         { label: 'Datum', class: 'nowrap', render: etvDatum },
         {label:'Versammlungsort',render:v=>el('span',{title:v.ort_beschreibung||'',text:[v.ort,v.ort_strasse,[v.ort_plz,v.ort_stadt].filter(Boolean).join(' ')].filter(Boolean).join(' · ')||'–'})},
         { label: 'Art', render: (v) => { const a = ETV_ART[v.art] || ETV_ART.praesenz; return el('span', { class: 'cu-etv-art', title: a.text, role: 'img', 'aria-label': a.text }, [icon(a.icon)]); } },
+        {label:'Versammlungsleitung',render:v=>v.leitung_name?(v.leitung_name+(v.leitung_kuerzel?' · '+v.leitung_kuerzel:'')):'–'},
         { label: '', class: 'aktionen', render: (v) => (schreiben ? el('span', { class: 'cu-etv-aktionen' }, [
           aktionKnopf(tab === 'archiv' ? 'auslagern' : 'einlagern', tab === 'archiv' ? 'Aus dem Archiv holen' : 'Archivieren', async () => {
             try { await API.post(`/versammlungen/${v.id}/archiv`, { archiviert: tab !== 'archiv' }); toast(tab === 'archiv' ? 'Wieder in der Übersicht' : 'Archiviert', 'success'); laden(); } catch (e) { fehler(e); }

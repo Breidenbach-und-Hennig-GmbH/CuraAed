@@ -68,3 +68,19 @@ test('ETV-Ortslisten: je Objekt getrennt, dauerhaft nach Löschen einer Versamml
  await assert.rejects(vs.ortMerken(db,999,data),/Objekt/);
  await assert.rejects(vs.orte(db,'1.5'),/Objekt/);
 });
+
+test('ETV-Leitung: aktive Mitarbeitende, Wiederöffnung, Kopie und erhaltene historische Zuordnung',async t=>{
+ const db=await openDatabase(':memory:');t.after(()=>db.close());
+ const objekt=await objekte.anlegen(db,{bezeichnung:'ETV Test'});
+ await db.run("INSERT INTO benutzer(id,benutzername,name,passwort_hash,rolle,kuerzel) VALUES(1,'leitung','Testleitung','test','mitarbeiter','TST'),(2,'leser','Leser','test','leser',NULL)");
+ const v=await vs.anlegen(db,{objekt_id:objekt.id,name:'ETV',datum:'2026-11-20',leitung_id:'1'});
+ assert.equal(v.leitung_name,'Testleitung');assert.equal((await vs.liste(db,{suche:'Testleitung'}))[0].id,v.id);
+ const kopie=await vs.anlegen(db,{...v,datum:'2027-11-20'});assert.equal(kopie.leitung_id,1);
+ await assert.rejects(vs.aktualisieren(db,v.id,{leitung_id:2}),/aktiven Mitarbeitenden/);
+ await assert.rejects(vs.aktualisieren(db,v.id,{leitung_id:999}),/aktiven Mitarbeitenden/);
+ await assert.rejects(vs.aktualisieren(db,v.id,{leitung_id:true}),/Ungültige/);
+ await db.run('UPDATE benutzer SET aktiv=0 WHERE id=1');
+ assert.equal((await vs.aktualisieren(db,v.id,{notizen:'Weiter bearbeitet'})).leitung_id,1);
+ await assert.rejects(vs.anlegen(db,{...v,name:'Neue ETV'}),/aktiven Mitarbeitenden/);
+ assert.equal((await vs.aktualisieren(db,v.id,{leitung_id:''})).leitung_id,null);
+});

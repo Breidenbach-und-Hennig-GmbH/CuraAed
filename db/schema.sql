@@ -394,6 +394,7 @@ CREATE TABLE IF NOT EXISTS versammlungen (
   ort_plz TEXT,
   ort_stadt TEXT,
   ort_beschreibung TEXT,
+  leitung_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
   status       TEXT NOT NULL DEFAULT 'vorbereitung',
   notizen      TEXT,
   archiviert   INTEGER NOT NULL DEFAULT 0,
