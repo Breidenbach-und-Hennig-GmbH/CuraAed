@@ -21,6 +21,7 @@ async function spalten(db, tabelle) {
  */
 async function migrieren(db, filePath) {
   const sVersammlungen=await spalten(db,'versammlungen');
+  if(!sVersammlungen.has('leitung_id'))await db.run('ALTER TABLE versammlungen ADD COLUMN leitung_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL');
   for(const feld of ['ort_strasse','ort_plz','ort_stadt','ort_beschreibung'])if(!sVersammlungen.has(feld))await db.run('ALTER TABLE versammlungen ADD COLUMN '+feld+' TEXT');
   await db.run("INSERT OR IGNORE INTO versammlungsorte(objekt_id,ort,ort_strasse,ort_plz,ort_stadt,ort_beschreibung) SELECT objekt_id,TRIM(ort),COALESCE(ort_strasse,''),COALESCE(ort_plz,''),COALESCE(ort_stadt,''),COALESCE(ort_beschreibung,'') FROM versammlungen WHERE TRIM(COALESCE(ort,''))<>''");
   const sBenutzer = await spalten(db, 'benutzer');
