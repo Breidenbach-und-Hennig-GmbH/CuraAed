@@ -95,6 +95,8 @@ function baueHpVerbindungen(db, options = {}) {
         return { id, subdomain, erp: identity.erp, canUpdate: identity.canUpdate };
       });
     },
+    fachListe(owner,id,resource,page) { return withClient(owner,id,c=>require('./hpFachbereiche').liste(c,resource,page)); },
+    fachDetails(owner,id,resource,remoteId) { return withClient(owner,id,c=>require('./hpFachbereiche').details(c,resource,remoteId)); },
     dmsListe(owner, id, query) { return withClient(owner, id, c => dms.liste(c, query)); },
     dmsDetails(owner, id, fileId) { return withClient(owner, id, c => dms.details(c, fileId)); },
     dmsSpeichern(owner,id,fileId,target,maxBytes) { return withClient(owner,id,c=>dms.speichern(c,fileId,target,maxBytes)); },

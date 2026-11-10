@@ -107,8 +107,8 @@ const BEFEHLE = [
   { taste: 'b', icon: 'calendar', text: 'Buchungsjahr', nur: ['objekt', 'einheit'], aktion: (k) => geheZu(`#/objekte/${k.objekt.id}?fibu=1`) },
   { taste: 'e', icon: 'phone', text: 'Eingangstelefonat erfassen', aktion: eingangstelefonat },
   { taste: 'f', icon: 'file', text: 'FiBu Stammdaten', nur: ['objekt', 'einheit'], aktion: (k) => fibuGrundwerteDialog(k.objekt) },
-  { taste: 'h', icon: 'wrench', text: 'Handwerkerauftrag', folgt: SPAETER },
-  { taste: 'j', icon: 'calendar', text: 'Jahreskalender', folgt: STUFE3 },
+  { taste: 'h', icon: 'wrench', text: 'Handwerkerauftrag', aktion: () => geheZu('#/vorgaenge?art=handwerker') },
+  { taste: 'j', icon: 'calendar', text: 'Kalender', aktion: () => geheZu('#/kalender') },
   { taste: 'k', icon: 'mail', text: 'Korrespondenz', aktion: (k) =>
       geheZu(kontextRoute(k) ? kontextRoute(k) + '?tab=archiv&kategorie=korrespondenz' : '#/archiv?kategorie=korrespondenz') },
   { taste: 'l', icon: 'building', text: 'Lieferant', nur: ['adresse'], folgt: FIBU },
@@ -130,8 +130,8 @@ const SPRUENGE = [
   { taste: 'a', icon: 'pin', text: 'Adresse', aktion: () => geheZu('#/adressen') },
   { taste: 'b', icon: 'calendar', text: 'Buchung erfassen', folgt: FIBU },
   { taste: 'd', text: 'HP DMS System (Archiv)', aktion: () => geheZu('#/dms') },
-  { taste: 'h', icon: 'wrench', text: 'Handwerkerauftrag', folgt: SPAETER },
-  { taste: 'j', icon: 'calendar', text: 'Jahreskalender', folgt: STUFE3 },
+  { taste: 'h', icon: 'wrench', text: 'Handwerkerauftrag', aktion: () => geheZu('#/vorgaenge?art=handwerker') },
+  { taste: 'j', icon: 'calendar', text: 'Kalender', aktion: () => geheZu('#/kalender') },
   { taste: 'k', icon: 'mail', text: 'Korrespondenz', aktion: () => befehl('k') },
   { taste: 'l', icon: 'building', text: 'Lieferantenkonto', folgt: FIBU },
   { taste: 'm', icon: 'mail', text: 'Mehrauslagen erfassen', folgt: 'Mehrauslagen/Mehraufwand – Platzhalter, wird später gebaut.' },
@@ -824,7 +824,7 @@ const NAV = [
   { text: 'Adressen', icon: 'user', hash: '#/adressen', aktiv: (h) => /^#\/(adressen|adressliste)\b/.test(h) },
   { text: 'Buchhaltung', icon: 'calc', hash: '#/fibu', titel: 'FIBU Gesamtmenü', aktiv: (h) => /^#\/fibu\b/.test(h) },
   { text: 'E-Banking', icon: 'bank', folgt: STUFE4 },
-  { text: 'Vorgänge', icon: 'folder', folgt: 'Vorgänge/Akten folgen in einer späteren Ausbaustufe.' },
+  { text: 'Vorgänge', icon: 'folder', hash: '#/vorgaenge', aktiv: (h) => /^#\/vorgaenge\b/.test(h) },
   { text: 'ETV', icon: 'users', hash: '#/etv', titel: 'Eigentümerversammlungen (ETV)', aktiv: (h) => /^#\/etv\b/.test(h) },
   { text: 'Dokumente', icon: 'file', hash: '#/dms', aktiv: (h) => /^#\/(archiv|dms)\b/.test(h) },
   { text: 'Auswertungen', icon: 'chart', menue: 'Auswertungen / Listen', aktiv: (h) => /liste\b/.test(h) },
@@ -970,7 +970,7 @@ function glockeOeffnen(b) {
   if (offenesMenue && offenesMenue.knopf === b) { schliesseMenue(); return; }
   const liste = b.hpListe || [];
   const eintraege = liste.length
-    ? liste.map((w) => ({ text: `${datumKurz(w.faellig_am)} · ${w.name || w.adresse_nummer}: ${w.betreff}`, aktion: () => geheZu('#/adressen/' + w.adresse_id) }))
+    ? liste.map((w) => ({ text: `${datumKurz(w.faellig_am)} · ${w.name || w.adresse_nummer}: ${w.betreff}`, aktion: () => geheZu(w.vorgang_id?'#/vorgaenge/'+w.vorgang_id:'#/adressen/' + w.adresse_id) }))
     : [{ text: 'Keine fälligen Wiedervorlagen', folgt: 'Alles erledigt.', stufe: '' }];
   oeffneListe(b, 'Benachrichtigungen', eintraege, { rechts: true });
 }
@@ -1113,14 +1113,16 @@ function applikationOeffnen() {
     { text: 'Objekte', info: 'Objektmaske öffnen (Suche darin mit s)', hash: '#/objekte', taste: 'Alt+S, O' },
     { text: 'Wohnungen / Einheiten', info: 'Wohnungsmaske öffnen (Suche darin mit s)', hash: '#/einheiten', taste: 'Alt+S, W' },
     { text: 'Adressen', info: 'Adressmaske öffnen (Suche darin mit s)', hash: '#/adressen', taste: 'Alt+S, A' },
-    { text: 'DMS – HP-Mobile', info: 'HP-Dokumente und Zuordnungen', hash: '#/dms' },
+    { text: 'DMS', info: 'Dauerhaftes Archiv', hash: '#/dms' },
+    { text: 'Arbeitsbereiche', info: 'Akten, Aufträge, Wiedervorlagen, ZIS und Notizen', hash: '#/vorgaenge' },
     { text: 'Archiv', info: 'zentrale Ablage', hash: '#/archiv' },
     { text: 'Archiv – nicht zugeordnete Einträge', info: 'Eingang ohne Zuordnung', hash: '#/archiv?ohne=1' },
     { text: 'Benutzerverwaltung', info: 'System', hash: '#/benutzer', nurAdmin: true },
     { text: 'Finanzbuchhaltung (FIBU)', folgt: SPAETER },
     { text: 'E-Banking / SEPA-Export', folgt: STUFE4 },
     { text: 'HP-Mobile (iPad-Formulare)', folgt: STUFE2 },
-    { text: 'Kalender / Wiedervorlage', folgt: STUFE3 },
+    { text: 'Wiedervorlagen', hash: '#/vorgaenge?art=wiedervorlage' },
+    { text: 'Kalender', hash: '#/kalender' },
   ].filter((a) => !a.nurAdmin || istAdmin());
   const suche = el('input', { id: 'app_suche', type: 'search', autocomplete: 'off', placeholder: 'Name der Applikation …' });
   const liste = el('div', { class: 'hp-app-liste', role: 'listbox', 'aria-label': 'Applikationen' });

@@ -42,6 +42,8 @@ function route() {
   if (bereich === 'objektliste') return objektSuche();
   if (bereich === 'einheitenliste') return einheitSuche();
   if (bereich === 'adressliste') return adressListe();
+  if (bereich === 'kalender') return vorgangKalender(params);
+  if (bereich === 'vorgaenge') return id ? vorgangDetail(id) : vorgaengeMaske(params);
   if (bereich === 'dms') return dmsMaske(params);
   if (bereich === 'archiv') return archivMaske(params);
   if (bereich === 'etv') return etvMaske(params);

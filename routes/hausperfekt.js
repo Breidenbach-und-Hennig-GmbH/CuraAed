@@ -9,6 +9,7 @@ function baueHausperfektRouter(db, options = {}) {
   const router = express.Router(), service = baueHpVerbindungen(db, options);
   const archiv = require('../services/hpDmsArchiv').baueArchiv(db, options.archivDir || require('node:path').join(require('node:path').dirname(db.db.filename), 'hp-dms'), service);
   router.archiv = archiv;
+  router.service = service;
   router.use(auth.erfordereSchreibrecht);
   router.use((req, res, next) => { res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }); next(); });
   const sameOrigin = (req, res, next) => {

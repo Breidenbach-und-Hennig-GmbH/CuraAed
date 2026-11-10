@@ -123,6 +123,17 @@ function baueApi(db, uploadDir, options = {}) {
   const hpRouter = require('./hausperfekt').baueHausperfektRouter(db, { ...options.hausperfekt, archivDir: path.join(uploadDir, 'hp-dms') });
   router.hpArchiv = hpRouter.archiv;
   router.use('/hausperfekt', hpRouter);
+  const vorgaengeRouter = require('./vorgaenge').baueRouter(db,{hp:hpRouter.service,archiv:hpRouter.archiv,publicUrl:options.hausperfekt?.publicUrl});
+  router.use('/vorgaenge',vorgaengeRouter);
+  async function zisLesen(req,typ) {
+    const base=typ==='objekt'?await zisSvc.objektEintraege(db,req.params.id,{suche:req.query.suche}):await zisSvc.eintraege(db,req.params.id,{suche:req.query.suche});
+    if(req.benutzer.rolle==='leser')return base;
+    const rows=await vorgaengeRouter.service.timeline(req.benutzer.id,typ,req.params.id,req.query.suche||'');
+    const docs=await router.hpArchiv.archiveList(req.benutzer.id,{[typ==='objekt'?'objektId':'adresseId']:req.params.id,suche:req.query.suche});
+    rows.push(...docs.eintraege.map(d=>({quelle:'hp_dokument',id:d.id,hp:d.hp,zeitpunkt:d.dokument_datum?d.dokument_datum+'T00:00':'',art:'DOK',text:d.titel,notiz:d.beschreibung})));
+    const all=[...base.eintraege,...rows].sort((a,b)=>String(b.zeitpunkt||'').localeCompare(String(a.zeitpunkt||'')));
+    return {...base,gesamt:base.gesamt+rows.length,eintraege:all.slice(0,1000)};
+  }
 
   // ===================== Metadaten (für UI-Dropdowns) ===================
   const V = require('../lib/validation');
@@ -292,7 +303,7 @@ function baueApi(db, uploadDir, options = {}) {
   router.put('/pkto-sollwerte/:sid', auth.erfordereSchreibrecht, h(async (req, res) => res.json(await pktoSvc.sollAendern(db, req.params.sid, req.body || {}))));
   router.delete('/pkto-sollwerte/:sid', auth.erfordereSchreibrecht, h(async (req, res) => { await pktoSvc.sollLoeschen(db, req.params.sid); res.json({ ok: true }); }));
   router.get('/objekte/:id/kennzahlen', h(async (req, res) => res.json(await objekteSvc.kennzahlen(db, req.params.id))));
-  router.get('/objekte/:id/zis', h(async (req, res) => res.json(await zisSvc.objektEintraege(db, req.params.id, { suche: req.query.suche }))));
+  router.get('/objekte/:id/zis', h(async (req, res) => res.json(await zisLesen(req,'objekt'))));
   // Neuestes Foto (Archiv-Kategorie „foto") des Objekts für das Bildfeld
   router.get('/objekte/:id/bild', h(async (req, res) => {
     const d = await db.get(
@@ -448,7 +459,7 @@ function baueApi(db, uploadDir, options = {}) {
     res.json(await kontakteSvc.wiedervorlagenListe(db, req.params.id, { mitErledigten: req.query.alle === '1' }))));
   router.post('/adressen/:id/wiedervorlagen', auth.erfordereSchreibrecht,
     h(async (req, res) => res.status(201).json(await kontakteSvc.wiedervorlageAnlegen(db, req.params.id, req.body || {}, req.benutzer.id))));
-  router.get('/wiedervorlagen/faellig', h(async (req, res) => res.json(await kontakteSvc.faelligeWiedervorlagen(db, req.benutzer.id))));
+  router.get('/wiedervorlagen/faellig', h(async (req, res) => res.json([...(await kontakteSvc.faelligeWiedervorlagen(db, req.benutzer.id)),...(req.benutzer.rolle==='leser'?[]:await vorgaengeRouter.service.due(req.benutzer.id))])));
   router.put('/wiedervorlagen/:wid', auth.erfordereSchreibrecht,
     h(async (req, res) => res.json(await kontakteSvc.wiedervorlageAktualisieren(db, req.params.wid, req.body || {}))));
   router.post('/wiedervorlagen/:wid/erledigt', auth.erfordereSchreibrecht,
@@ -456,7 +467,7 @@ function baueApi(db, uploadDir, options = {}) {
   router.delete('/wiedervorlagen/:wid', auth.erfordereSchreibrecht,
     h(async (req, res) => res.json(await kontakteSvc.wiedervorlageLoeschen(db, req.params.wid))));
   // Z.I.S – Zentrales Informationssystem (alle Eintragungen zu einer Adresse)
-  router.get('/adressen/:id/zis', h(async (req, res) => res.json(await zisSvc.eintraege(db, req.params.id, { suche: req.query.suche }))));
+  router.get('/adressen/:id/zis', h(async (req, res) => res.json(await zisLesen(req,'adresse'))));
   // Bankverbindungen (inkl. SEPA-Lastschriftmandat)
   router.get('/adressen/:id/bank', h(async (req, res) => res.json(await bankSvc.liste(db, req.params.id))));
   router.post('/adressen/:id/bank', auth.erfordereSchreibrecht,
