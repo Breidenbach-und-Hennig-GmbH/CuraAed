@@ -39,7 +39,7 @@ function extract(file){
   let done=false;const finish=(e,r)=>{if(done)return;done=true;clearTimeout(timer);child.kill();e?reject(e):resolve(r);};
   const timer=setTimeout(()=>finish(new ValidationError('Die Texterkennung hat zu lange gedauert. Bitte erneut versuchen oder Angaben manuell erfassen.',504)),85000);
   child.once('error',()=>finish(new ValidationError('Texterkennung konnte nicht gestartet werden.',503)));
-  child.once('exit',()=>finish(new ValidationError('Texterkennung wurde unterbrochen. Bitte erneut versuchen.',503)));
+  child.once('exit',(code,signal)=>{if(done)return;const error=new ValidationError('Texterkennung wurde unterbrochen. Bitte erneut versuchen.',503);error.workerExit={code,signal};finish(error);});
   child.on('message',m=>m.error?finish(new ValidationError(m.error,422)):finish(null,m));
  });
 }

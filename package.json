@@ -27,5 +27,8 @@
   },
   "engines": {
     "node": ">=22.19.0"
+  },
+  "overrides": {
+    "wasm-feature-detect": "1.8.0"
   }
 }
