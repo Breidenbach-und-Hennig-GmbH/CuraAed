@@ -28,9 +28,19 @@ test('Vorgänge: vollständig lokale Anlage, Bearbeitung, Kontext, Vermerke und 
  await assert.rejects(s.update(f.other,r.id,{...data(),revision:delegated.revision,zustaendig_id:null}),e=>e.status===403);
  await s.update(f.other,r.id,{...data(),status:'in_bearbeitung',revision:delegated.revision,zustaendig_id:f.other});
  assert.equal((await s.detail(f.owner,r.id)).status,'in_bearbeitung');
+ const child=await s.create(f.owner,{...data(),art:'handwerker',kontext:{typ:'akte',id:r.id}});assert.equal((await s.detail(f.owner,child.id)).bezuege[0].fach_id,r.id);
  await assert.rejects(s.create(f.owner,{...data(),art:'wiedervorlage'}),e=>e.status===400);
  await assert.rejects(s.create(f.owner,{...data(),faellig_am:'2026-02-30'}),e=>e.status===400);
  const w=await s.create(f.owner,{...data(),art:'wiedervorlage',faellig_am:'2020-01-01'});assert.ok((await s.due(f.owner)).some(r=>r.vorgang_id===w.id));
+});
+
+test('Zugewiesene Vorgänge: Dokumentzugriff bleibt auf konkret zugeordnete Dateien begrenzt',async t=>{
+ const f=await fixture(t),calls=[];const s=baueVorgaenge(f.db,{archiv:{localFile:async(...args)=>{calls.push(args);return {path:'synthetic',name:'test.pdf'};}}});
+ const a=incoming();a.bezuege.push({typ:'dokument',remote_id:99,hp_nummer:'1',objekt_nummer:null,name:'test.pdf'});
+ const r=await s.importOne(f.owner,{id:'source'},'records',a);
+ await assert.rejects(s.document(f.other,r.id,99),e=>e.status===404);assert.equal(calls.length,0);
+ await s.update(f.owner,r.id,{...data(),revision:1,zustaendig_id:f.other});await s.document(f.other,r.id,99);
+ assert.deepEqual(calls[0],[f.owner,'source',99]);await assert.rejects(s.document(f.other,r.id,100),e=>e.status===404);assert.equal(calls.length,1);
 });
 
 test('Vorgangs-API: Anmeldung, Rolle, Origin, persönliche Daten und ZIS-Verknüpfung',async t=>{

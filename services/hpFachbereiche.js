@@ -19,7 +19,7 @@ function projection(resource,raw){
  const done=[raw.closed,raw.finished,raw.completed,raw.processed_at].some(v=>v===true||v===1||(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}/.test(v)));
  const phase=txt(raw.status?.name)||txt(raw.status?.description);
  const status=done?'erledigt':/storniert|abgebrochen/i.test(phase)?'storniert':/auftrag erteilt|beauftragt/i.test(phase)?'beauftragt':/mahnung|bearbeitung/i.test(phase)?'in_bearbeitung':'offen';
- return {art,titel:(txt(raw.subject)||txt(raw.search)||txt(raw.title)||txt(raw.name)||text.split(/[\r\n]/)[0]||'HP-Eintrag '+raw.id).slice(0,500),
+ return {art,titel:(txt(raw.subject)||txt(raw.search)||txt(raw.title)||txt(raw.name)||text.split(/[\r\n]/)[0]||({akte:'Akte',handwerker:'Handwerkerauftrag',wiedervorlage:'Wiedervorlage',zis:'ZIS',notiz:'Notiz'}[art]+' '+(raw.hp_id??raw.id))).slice(0,500),
  text:text.slice(0,65535),status,prioritaet:/notdienst/i.test(raw.type?.name||'')?'dringend':/eilauftrag/i.test(raw.type?.name||'')?'hoch':'normal',
  faellig_am:datum(raw.due_date||raw.deadline||raw.date),uhrzeit:/^\d\d:\d\d/.test(txt(raw.due_time||raw.time))?txt(raw.due_time||raw.time).slice(0,5):null};
 }
@@ -28,7 +28,7 @@ function bezuege(raw){
  function add(typ,item,objekt=null){
   if(!item||!number(item.id))return;
   const name=typ==='adresse'?[item.firstname,item.lastname].filter(Boolean).join(' '):txt(item.position)||txt(item.search)||txt(item.subject)||txt(item.file_notes)||txt(item.file_original_name)||txt(item.name);
-  const r={typ,remote_id:number(item.id),hp_nummer:item.hp_id===undefined?null:String(item.hp_id),objekt_nummer:objekt===null?null:String(objekt),name:name||'HP '+item.id};
+  const r={typ,remote_id:number(item.id),hp_nummer:item.hp_id===undefined?null:String(item.hp_id),objekt_nummer:objekt===null?null:String(objekt),name:name||'HP '+(item.hp_id??item.id)};
   if(!out.some(x=>x.typ===r.typ&&x.remote_id===r.remote_id))out.push(r);
  }
  for(const item of raw.persons||[])add('adresse',item.person||item);
