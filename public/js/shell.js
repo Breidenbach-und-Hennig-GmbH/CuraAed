@@ -116,7 +116,7 @@ const BEFEHLE = [
   { taste: 'o', icon: 'building', text: 'Objekt', aktion: (k) =>
       (k.typ === 'adresse' ? pfktSprung(k, 'objekt') : geheZu(k.typ === 'einheit' || k.typ === 'pkto' ? '#/objekte/' + k.objekt.id : k.typ === 'objekt' ? kontextRoute(k) : '#/objekte')) },
   { taste: 'p', icon: 'user', text: 'Personenkonto', aktion: (k) => pktoSprung(k) },
-  { taste: 'r', icon: 'file', text: 'Rechnung', folgt: STUFE4 },
+  { taste: 'r', icon: 'file', text: 'Rechnung', aktion: () => rechnungAktuell() },
   { taste: 's', icon: 'book', text: 'Sachkontenrahmen', nur: ['objekt', 'einheit'], aktion: (k) => geheZu(`#/objekte/${k.objekt.id}?fibu=1`) },
   { taste: 't', icon: 'clock', text: 'Termin/Wiedervorlage', browser: true, aktion: terminWiedervorlage },
   { taste: 'v', icon: 'folder', text: 'Vorgang/Akte', aktion: (k) =>
@@ -137,7 +137,7 @@ const SPRUENGE = [
   { taste: 'm', icon: 'mail', text: 'Mehrauslagen erfassen', folgt: 'Mehrauslagen/Mehraufwand – Platzhalter, wird später gebaut.' },
   { taste: 'o', icon: 'building', text: 'Objekt', aktion: () => geheZu('#/objekte') },
   { taste: 'p', icon: 'user', text: 'Personenkonto', aktion: () => pktoSprung(S.kontext || {}) },
-  { taste: 'r', icon: 'file', text: 'Rechnung erfassen', folgt: STUFE4 },
+  { taste: 'r', icon: 'file', text: 'Rechnung erfassen', aktion: () => rechnungAktuell() },
   { taste: 't', icon: 'clock', text: 'Termin/Wiedervorlage', aktion: () => terminWiedervorlage(S.kontext || {}) },
   { taste: 'v', icon: 'folder', text: 'Vorgang/Akte', folgt: SPAETER },
   { taste: 'w', icon: 'house', text: 'Wohnung', aktion: () => geheZu('#/einheiten') },
@@ -1400,6 +1400,12 @@ const datumKurz = (iso) => (iso ? datum(iso) : '');
 // ---------------------------------------------------------------------
 document.addEventListener('keydown', (ev) => {
   if (!S.benutzer) return;
+  if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && !ev.shiftKey && (ev.code === 'KeyR' || ev.key?.toLowerCase() === 'r')) {
+    const dialog=[...document.querySelectorAll('.modal')].at(-1);
+    if(dialog?.querySelector('.cu-rechnungsmaske')){ev.preventDefault();return;}
+    if(!dialog && !darfSchreiben())return;
+    if(!dialog || dialog.hpRechnungsDokument){ev.preventDefault();rechnungAktuell();return;}
+  }
   const dialogOffen = !!document.querySelector('.modal-backdrop');
   const ohneMod = !ev.ctrlKey && !ev.altKey && !ev.metaKey && !ev.shiftKey;
   // Edit: Zoom (F5) / Breiter (F6) – Strg+F5 bleibt „neu laden"

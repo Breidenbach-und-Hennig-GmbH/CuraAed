@@ -23,7 +23,7 @@ async function dmsPosteingangMaske(sb,lauf){
   reopen=action('Wieder öffnen',()=>change('offen'));
  const upload=()=>archivUpload(null,async d=>{try{await API.post('/dms-posteingang',{dokument_id:d.id,sachbearbeiter:sb});await load(1);}catch(e){fehler(new Error('Datei im Archiv gespeichert; Zuordnung fehlgeschlagen: '+e.message));}});
  const side=el('aside',{class:'cu-karte cu-dms-aktionen','aria-label':'DMS-Aktionen'},[
-  el('h2',{class:'cu-karten-titel',text:'Aktionen'}),forwardButton,wvButton,el('button',{type:'button',text:'Suche',onclick:()=>search.focus()}),merge,postage,protocolButton,
+  el('h2',{class:'cu-karten-titel',text:'Aktionen'}),action('Rechnung erfassen · Strg + R',()=>{if(active)rechnungMaske(active.dokument).catch(fehler);}),forwardButton,wvButton,el('button',{type:'button',text:'Suche',onclick:()=>search.focus()}),merge,postage,protocolButton,
   el('label',{text:'Sortierung'}),sort,finish,reopen,el('hr'),el('button',{type:'button',text:'Dokument hochladen',onclick:upload}),el('button',{type:'button',text:'Sachbearbeiter wechseln',onclick:()=>geheZu('#/dms')}),
   el('a',{href:'#/archiv',text:'Archiv öffnen'}),el('a',{href:'#/dms-uebernahme',text:'HP-Archiv übernehmen'})]);
  const save=el('button',{type:'button',class:'btn-primary',text:'Angaben speichern',disabled:true,onclick:async()=>{if(!active)return;save.disabled=true;try{
@@ -43,11 +43,11 @@ async function dmsPosteingangMaske(sb,lauf){
  if(!zeigeAufDesktop(lauf,frame))return;
  function refreshButtons(){for(const b of buttons)b.disabled=!active;finish.disabled=!targets().some(r=>r.status==='offen');reopen.disabled=!targets().some(r=>r.status==='abgeschlossen');postage.disabled=!active?.dokument.verknuepfungen.some(r=>r.typ==='adresse');for(const field of [note,publicFlag,expiry])field.disabled=!active;}
  function highlight(){list.querySelectorAll('tbody tr.klick').forEach(tr=>{const yes=tr.hpDaten?.dokument_id===active?.dokument.id;tr.classList.toggle('cu-dms-aktiv',yes);tr.setAttribute('aria-selected',String(yes));});}
- function empty(){active=null;details.replaceChildren(panel([['Dateiart','–'],['Dateiname','–'],['Datei – Datum / SB','–'],['Archivnummer','–']]));files.replaceChildren(el('p',{class:'small muted',text:'Kein Dokument ausgewählt.'}));assignment.replaceChildren(el('p',{class:'small muted',text:'Keine Zuordnungen ausgewählt.'}));links.replaceChildren(panel([['Adresse','–'],['Objekt','–'],['Wohnung','–'],['Akte','–'],['HWA','–'],['PKto','–']]));note.value='';publicFlag.checked=false;expiry.value='';save.disabled=true;selectedLabel.textContent='Kein Dokument ausgewählt.';refreshButtons();}
+ function empty(){active=null;S.kontext.rechnungsDokument=null;details.replaceChildren(panel([['Dateiart','–'],['Dateiname','–'],['Datei – Datum / SB','–'],['Archivnummer','–']]));files.replaceChildren(el('p',{class:'small muted',text:'Kein Dokument ausgewählt.'}));assignment.replaceChildren(el('p',{class:'small muted',text:'Keine Zuordnungen ausgewählt.'}));links.replaceChildren(panel([['Adresse','–'],['Objekt','–'],['Wohnung','–'],['Akte','–'],['HWA','–'],['PKto','–']]));note.value='';publicFlag.checked=false;expiry.value='';save.disabled=true;selectedLabel.textContent='Kein Dokument ausgewählt.';refreshButtons();}
  async function choose(row){
   if(dirty&&row.dokument_id===active?.dokument.id)return;
   if(dirty&&row.dokument_id!==active?.dokument.id&&!await bestaetigen('Ungespeicherte Dokumentangaben verwerfen?'))return;
-  const nr=++detailVersion;try{const d=await API.get('/dms-posteingang/'+row.dokument_id);if(lauf!==S.lauf||nr!==detailVersion)return;active=d;dirty=false;
+  const nr=++detailVersion;try{const d=await API.get('/dms-posteingang/'+row.dokument_id);if(lauf!==S.lauf||nr!==detailVersion)return;active=d;S.kontext.rechnungsDokument=d.dokument;dirty=false;
    const doc=d.dokument;selectedLabel.textContent='Archivnummer: '+doc.id+' · Sachbearbeiter: '+(d.eingang.sachbearbeiter||'Nicht zugewiesen');
    frame.querySelector('.cu-unterzeile').textContent=[doc.original_name,'Archiv '+doc.id,'SB '+(d.eingang.sachbearbeiter||'–')].join(' · ');
    files.replaceChildren(el('button',{type:'button',class:'cu-dms-dateiname',text:doc.titel||doc.original_name,onclick:open}));

@@ -1366,6 +1366,7 @@ function archivListe(ziel, { ktx, kategorie, ohne, lauf }) {
         { label: 'Datei', render: (d) => el('span', { class: 'dateiname', text: `${d.original_name} (${dateiGroesse(d.groesse)})` }) },
         { label: '', class: 'aktionen', render: (d) => el('span', { class: 'aktionen' }, [
           el('a', { class: 'btn hp-mini', href: d.hp ? '#' : `/api/archiv/${d.id}/download`, title: 'Datei öffnen/herunterladen', text: 'Öffnen', onclick: d.hp ? (event) => { event.preventDefault(); dmsArchivOeffnen(d); } : undefined }),
+          darfSchreiben() ? el('button',{type:'button',class:'hp-mini',text:'Rechnung',title:'Eingangsrechnung erfassen (Strg + R)',onclick:()=>rechnungMaske(d).catch(fehler)}) : null,
           darfSchreiben() && !d.hp ? el('button', { type: 'button', class: 'hp-mini', text: 'Löschen', onclick: async () => {
             if (await bestaetigen(`Archiv-Eintrag „${d.titel}" endgültig löschen? Die Datei wird ebenfalls entfernt.`, { danger: true, text: 'Löschen' })) {
               try { await API.del('/archiv/' + d.id); toast('Gelöscht', 'success'); laden(); } catch (e) { fehler(e); }
