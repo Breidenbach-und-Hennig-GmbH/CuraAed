@@ -8,15 +8,24 @@ async function fixture(t){const db=await openDatabase(':memory:');t.after(()=>db
 test('Eingangsrechnung: Cent-genaue Erfassung, Wiederöffnung, eindeutige Dokumentbindung und Konfliktschutz',async t=>{
  const {db,owner,svc}=await fixture(t),dokument={typ:'archiv',id:1};
  assert.equal((await svc.get(owner,dokument)).rechnung,null);
- const created=await svc.save(owner,{dokument,revision:0,daten:body()});assert.ok(created.id);
+ const created=await svc.save(owner,{dokument,revision:0,daten:body()});assert.ok(created.id);assert.equal((await svc.get(owner,dokument)).dokument.dokumentenart,'RE');
  const d=await svc.get(owner,dokument);assert.equal(d.rechnung.daten.betrag,'1234,56');assert.equal(JSON.parse((await db.get('SELECT daten FROM eingangsrechnungen')).daten).betrag,123456);
  await assert.rejects(svc.save(owner,{dokument,revision:0,daten:body()}),e=>e.status===409);
  await svc.save(owner,{dokument,revision:1,daten:{...body(),notiz:'Ergänzt'}});
  assert.equal((await db.get('SELECT count(*) n FROM rechnungs_verlauf')).n,2);
+ const inbox=require('../services/dmsPosteingang').bauePosteingang(db);await inbox.add(owner,{dokument_id:1});
+ await db.run("INSERT INTO objekte(nummer,bezeichnung) VALUES('1001','Testhaus')");
+ await db.run("INSERT INTO adressen(nummer,firmenname,lkto_nr,adresstyp) VALUES('A1','Test GmbH','123','firma')");
+ const before=await inbox.detail(1);await svc.save(owner,{dokument,revision:2,daten:{...body(),objekt_nr:'1001'}});
+ assert.equal((await inbox.detail(1)).dokument.verknuepfungen.length,2);
+ assert.equal((await inbox.detail(1)).eingang.revision,before.eingang.revision+1);
+ await assert.rejects(inbox.saveMeta(owner,1,{revision:before.eingang.revision,basis_bemerkung:'',bemerkung:'',oeffentlich:false,dokumentenart:'DX'}),e=>e.status===409);
+ await assert.rejects(inbox.saveMeta(owner,1,{revision:before.eingang.revision+1,basis_bemerkung:'',bemerkung:'',oeffentlich:false,dokumentenart:'DX'}),/Dokumentenart bleibt RE/);
+
  await assert.rejects(require('../services/archiv').loeschen(db,1),e=>e.status===409);
  assert.equal(money('0,29'),29);assert.equal(money('-12,34'),-1234);for(const s of ['1e3','NaN','1,234','Infinity','12.34'])assert.throws(()=>money(s));
- await assert.rejects(svc.save(owner,{dokument,revision:2,daten:{...body(),rechnungsdatum:'2026-02-30'}}));
- await assert.rejects(svc.save(owner,{dokument,revision:2,daten:{...body(),zahlung_freigegeben:true}}));
+ await assert.rejects(svc.save(owner,{dokument,revision:3,daten:{...body(),rechnungsdatum:'2026-02-30'}}));
+ await assert.rejects(svc.save(owner,{dokument,revision:3,daten:{...body(),zahlung_freigegeben:true}}));
 });
 test('Eingangsrechnung: Prüfvermerke stammen vom angemeldeten Benutzer und müssen bei Änderungen zurückgenommen werden',async t=>{
  const {db,owner,svc}=await fixture(t),dokument={typ:'archiv',id:1};
@@ -31,7 +40,7 @@ test('Eingangsrechnung: HP-Dateinummern bleiben nach Quelle getrennt und fremde 
  for(const [q,u] of [['a',owner],['b',other]]){await db.run('INSERT INTO hp_dms_quellen(id,benutzer_id,subdomain) VALUES(?,?,?)',[q,u,'kunde-'+q]);await db.run("INSERT INTO hp_dms_dateien(quelle_id,datei_id,titel,dateiname,groesse,details,gelesen_am) VALUES(?,9,'Rechnung','test.pdf',8,'{}','2026-11-10')",[q]);}
  await svc.save(owner,{dokument:{typ:'hp',quelle:'a',id:9},revision:0,daten:body()});
  await assert.rejects(svc.get(other,{typ:'hp',quelle:'a',id:9}),e=>e.status===404);
- assert.equal((await svc.get(other,{typ:'hp',quelle:'b',id:9})).rechnung,null);
+ assert.equal((await svc.get(other,{typ:'hp',quelle:'b',id:9})).rechnung,null);assert.equal((await svc.get(owner,{typ:'hp',quelle:'a',id:9})).dokument.dokumentenart,'RE');assert.equal((await svc.get(other,{typ:'hp',quelle:'b',id:9})).dokument.dokumentenart,'DX');
 });
 
 

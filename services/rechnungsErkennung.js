@@ -55,18 +55,15 @@ function baueErkennung(db,{rechnungen,archiv,uploadDir,lesen=extract}){
   const stat=await fs.stat(file).catch(()=>null);if(!stat)throw new ValidationError('Dokumentdatei nicht vorhanden.',404);
   if(stat.size>50*1024*1024)throw new ValidationError('Datei ist für die Erkennung zu groß.',413);
   const hash=crypto.createHash('sha256').update(await fs.readFile(file)).digest('hex'),cached=await db.get('SELECT ergebnis FROM rechnungs_erkennung WHERE dokument_schluessel=? AND datei_hash=?',[key,hash]);
-  if(cached&&JSON.parse(cached.ergebnis).version===2)return JSON.parse(cached.ergebnis);
+  if(cached&&JSON.parse(cached.ergebnis).version===3)return require('./rechnungsZuordnung').zuordnen(db,JSON.parse(cached.ergebnis),doc,key,{owner});
   if(active.has(key))return active.get(key);
   if(active.size)throw new ValidationError('Die Rechnungserkennung ist gerade belegt. Bitte gleich erneut versuchen.',503);
   const promise=(async()=>{
    const data=await lesen(file),result=data.zugferd||parseInvoice(data.text);
-   result.version=2;
+   result.version=3;result.zuordnungsbasis=String(data.text||'').slice(0,150000);
    result.status='fertig';result.methode=data.methode;result.seiten=data.seiten;result.hinweise.push(...(data.hinweise||[]));
    if(data.konfidenz!==undefined&&data.konfidenz<65)result.hinweise.push('Scan schwer lesbar – alle erkannten Angaben besonders sorgfältig prüfen.');
-   // Bankdaten liefern nur einen Lieferantenhinweis, keine erfundene Kreditorenkontonummer.
-   const suppliers=[];for(const iban of result.ibans){const rows=await db.all('SELECT DISTINCT a.nummer,a.firmenname,a.vorname,a.nachname FROM adress_bank b JOIN adressen a ON a.id=b.adresse_id WHERE b.iban=?',[iban]);suppliers.push(...rows);}
-   result.lieferanten=[...new Map(suppliers.map(a=>[a.nummer,{nummer:a.nummer,name:a.firmenname||[a.vorname,a.nachname].filter(Boolean).join(' ')}])).values()];delete result.ibans;
-   await db.run('INSERT INTO rechnungs_erkennung(dokument_schluessel,datei_hash,ergebnis) VALUES(?,?,?) ON CONFLICT(dokument_schluessel) DO UPDATE SET datei_hash=excluded.datei_hash,ergebnis=excluded.ergebnis,erstellt_am=datetime(\'now\')',[key,hash,JSON.stringify(result)]);return result;
+   await db.run('INSERT INTO rechnungs_erkennung(dokument_schluessel,datei_hash,ergebnis) VALUES(?,?,?) ON CONFLICT(dokument_schluessel) DO UPDATE SET datei_hash=excluded.datei_hash,ergebnis=excluded.ergebnis,erstellt_am=datetime(\'now\')',[key,hash,JSON.stringify(result)]);return require('./rechnungsZuordnung').zuordnen(db,result,doc,key,{owner});
   })();active.set(key,promise);try{return await promise;}finally{active.delete(key);}
  }
  return{erkennen};

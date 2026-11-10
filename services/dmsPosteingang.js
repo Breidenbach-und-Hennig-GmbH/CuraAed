@@ -34,13 +34,19 @@ function bauePosteingang(db){
   const dokument=await require('./archiv').holen(db,id),meta=await db.get('SELECT * FROM dms_dokument_meta WHERE dokument_id=?',[id]);
   const autor=dokument.hochgeladen_von?await db.get('SELECT name,kuerzel FROM benutzer WHERE id=?',[dokument.hochgeladen_von]):null;
   const verlauf=await db.all('SELECT h.aktion,h.sachbearbeiter,h.erstellt_am,b.name AS benutzer FROM dms_posteingang_verlauf h LEFT JOIN benutzer b ON b.id=h.benutzer_id WHERE h.dokument_id=? ORDER BY h.id DESC',[id]);
-  return {eingang,dokument,autor,oeffentlich:!!meta?.oeffentlich,verfall_am:meta?.verfall_am||null,zugriffe:meta?.zugriffe||0,verlauf};
+  return {rechnung_erfasst:!!await db.get('SELECT 1 FROM eingangsrechnungen WHERE dokument_schluessel=?',['archiv:'+id]),eingang,dokument,autor,oeffentlich:!!meta?.oeffentlich,verfall_am:meta?.verfall_am||null,zugriffe:meta?.zugriffe||0,verlauf};
  }
  async function saveMeta(owner,id,b){
   if(!b||!Number.isSafeInteger(b.revision)||typeof b.bemerkung!=='string'||b.bemerkung.length>4000||typeof b.oeffentlich!=='boolean')throw new ValidationError('Ungültige Dokumentangaben.');
+  const art=b.dokumentenart;
+  if(art!==undefined&&!Object.hasOwn(require('./dokumentenarten').ARTEN,art))throw new ValidationError('Ungültige Dokumentenart.');
   const verfall=b.verfall_am||null;if(verfall&&(!/^\d{4}-\d{2}-\d{2}$/.test(verfall)||Number.isNaN(Date.parse(verfall+'T00:00:00Z'))||new Date(verfall+'T00:00:00Z').toISOString().slice(0,10)!==verfall))throw new ValidationError('Ungültiges Verfalldatum.');
   return db.transaktion(async tx=>{const p=await tx.get('SELECT * FROM dms_posteingang WHERE dokument_id=?',[id]);if(!p)throw new ValidationError('Posteingang nicht gefunden.',404);const doc=await tx.get('SELECT beschreibung FROM dokumente WHERE id=?',[id]);
    if(p.revision!==b.revision||(doc.beschreibung||'')!==b.basis_bemerkung)throw new ValidationError('Dokument inzwischen geändert. Bitte neu laden.',409);
+   if(art!==undefined){
+    if(art!=='RE'&&await tx.get('SELECT 1 FROM eingangsrechnungen WHERE dokument_schluessel=?',['archiv:'+id]))throw new ValidationError('Zu diesem Dokument ist eine Rechnung erfasst. Die Dokumentenart bleibt RE.');
+    await tx.run('INSERT INTO dokumentenarten(dokument_schluessel,art) VALUES(?,?) ON CONFLICT(dokument_schluessel) DO UPDATE SET art=excluded.art',['archiv:'+id,art]);
+   }
    await tx.run('UPDATE dokumente SET beschreibung=? WHERE id=?',[b.bemerkung||null,id]);
    await tx.run('INSERT INTO dms_dokument_meta(dokument_id,oeffentlich,verfall_am) VALUES(?,?,?) ON CONFLICT(dokument_id) DO UPDATE SET oeffentlich=excluded.oeffentlich,verfall_am=excluded.verfall_am',[id,b.oeffentlich?1:0,verfall]);
    await tx.run("UPDATE dms_posteingang SET revision=revision+1,geaendert_am=datetime('now') WHERE dokument_id=?",[id]);

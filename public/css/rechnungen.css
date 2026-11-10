@@ -8,3 +8,5 @@
 .cu-zugferd-daten{margin-top:12px;border-top:1px solid var(--cu-rand,#dcd5e9);padding-top:10px}.cu-zugferd-daten>summary{cursor:pointer;color:var(--cu-violett,#7136cc);font-weight:600}.cu-zugferd-daten .hp-panel{background:white;margin-top:10px}.cu-zugferd-daten .hp-tabelle-wrap{max-height:260px;overflow:auto}.cu-zugferd-daten h3{font-size:14px;margin:14px 0 6px}
 
 .cu-zugferd-daten .hp-zeile{grid-template-columns:180px minmax(0,1fr);column-gap:12px}.cu-zugferd-daten .hp-w1{overflow-wrap:anywhere}@media(max-width:600px){.cu-zugferd-daten .hp-zeile{grid-template-columns:1fr;gap:3px}}
+
+.cu-rechnung-zuordnung{display:grid;grid-template-columns:140px minmax(0,1fr);gap:8px 12px;align-items:center}.cu-rechnung-zuordnung[hidden]{display:none}.cu-rechnung-zuordnung>strong{grid-column:1/-1}.cu-rechnung-zuordnung>select{min-width:0;width:100%}.cu-rechnung-zuordnung>label{margin:0}@media(max-width:600px){.cu-rechnung-zuordnung{grid-template-columns:1fr}}

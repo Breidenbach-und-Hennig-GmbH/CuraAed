@@ -600,3 +600,6 @@ CREATE TABLE IF NOT EXISTS rechnungs_erkennung (
  ergebnis TEXT NOT NULL,
  erstellt_am TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS dokumentenarten (dokument_schluessel TEXT PRIMARY KEY,art TEXT NOT NULL DEFAULT 'DX');
+INSERT OR IGNORE INTO dokumentenarten(dokument_schluessel,art) SELECT dokument_schluessel,'RE' FROM eingangsrechnungen;

@@ -54,3 +54,20 @@ test('ZUGFeRD-Maske: Positionen, Lieferant, Steuern und Zahlbetrag sind sichtbar
  const w=setup(t,async()=>({dokument:doc,rechnung:null,erkennung}));await w.rechnungMaske(doc);assert.equal(w.document.getElementById('rechnung-betrag').value,'1190,00');assert.equal(w.document.querySelector('input[name=teilzahlung]').value,'200,00');
  const section=w.document.querySelector('.cu-zugferd-daten');assert.match(section.textContent,/990,00/);assert.match(section.textContent,/Wartung/);assert.match(section.textContent,/19,00/);assert.equal(w.document.querySelectorAll('img').length,0);
 });
+
+test('Automatische Zuordnung: Kandidatenauswahl setzt Felder und aktualisiert objektspezifisches Buchungskonto',async t=>{
+ const erkennung={rechnung:true,felder:{},hinweise:[],zuordnungen:{lieferanten:[{konto:'70001',name:'Test GmbH',grund:'IBAN'}],objekte:[{nummer:'1001',name:'Testhaus',grund:'Anschrift'}],konten:[]}};
+ const w=setup(t,async url=>url.includes('/objekte/')?[]:{dokument:doc,rechnung:null,erkennung});
+ w.API.post=async(url,b)=>{
+  if(url==='/vorgaenge/aufloesen')return[{gefunden:true,id:1,label:'Testhaus'}];
+  assert.equal(url,'/eingangsrechnungen/zuordnung');
+  return{felder:{buchungskonto:'4100'},belege:{buchungskonto:'Heizungswartung'},zuordnungen:{...erkennung.zuordnungen,konten:[{nummer:'4100',objekt_nr:'1001',name:'Heizungswartung',grund:'Leistung'}]}};
+ };
+ await w.rechnungMaske(doc);
+ const supplier=w.document.querySelector('[aria-label="Lieferant zuordnen"]');supplier.value='70001';supplier.dispatchEvent(new w.Event('change'));await tick();
+ assert.equal(w.document.getElementById('rechnung-lieferantenkonto').value,'70001');assert.equal(w.document.getElementById('rechnung-buchungskonto').value,'');
+ const object=w.document.querySelector('[aria-label="Objekt zuordnen"]');object.value='1001';object.dispatchEvent(new w.Event('change'));await tick();await tick();
+ assert.equal(w.document.getElementById('rechnung-objekt_nr').value,'1001');assert.equal(w.document.getElementById('rechnung-buchungskonto').value,'4100');
+ w.document.getElementById('rechnung-buchungskonto').value='4200';w.document.getElementById('rechnung-buchungskonto').dispatchEvent(new w.Event('input'));supplier.value='70001';supplier.dispatchEvent(new w.Event('change'));await tick();
+ assert.equal(w.document.getElementById('rechnung-buchungskonto').value,'4200');
+});

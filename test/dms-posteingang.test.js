@@ -17,8 +17,8 @@ test('DMS-Details: Bemerkung, Kennzeichnung, Zuordnungen und konkurrierende Änd
  await db.run("INSERT INTO dokumente(id,titel,kategorie,original_name,speicher_name,mime_type,groesse,quelle) VALUES(1,'Test','sonstiges','test.pdf','test.pdf','application/pdf',8,'upload')");
  const s=bauePosteingang(db);await s.add(owner,{dokument_id:1,sachbearbeiter:'FD'});
  const d=await s.detail(1);assert.equal(d.eingang.sachbearbeiter,'FD');assert.deepEqual(d.dokument.verknuepfungen,[]);assert.equal(d.verlauf[0].aktion,'eingang');
- const body={revision:1,basis_bemerkung:'',bemerkung:'Rückruf vereinbaren',oeffentlich:true,verfall_am:'2030-02-28'};
- await s.saveMeta(owner,1,body);const saved=await s.detail(1);assert.equal(saved.dokument.beschreibung,body.bemerkung);assert.equal(saved.oeffentlich,true);assert.equal(saved.verfall_am,'2030-02-28');assert.equal(saved.eingang.revision,2);
+ const body={revision:1,basis_bemerkung:'',bemerkung:'Rückruf vereinbaren',dokumentenart:'MA',oeffentlich:true,verfall_am:'2030-02-28'};
+ await s.saveMeta(owner,1,body);const saved=await s.detail(1);assert.equal(saved.dokument.beschreibung,body.bemerkung);assert.equal(saved.oeffentlich,true);assert.equal(saved.dokument.dokumentenart,'MA');assert.equal(saved.verfall_am,'2030-02-28');assert.equal(saved.eingang.revision,2);
  assert.equal((await s.list({suche:'Rückruf',sortierung:'titel'})).gesamt,1);assert.equal((await s.list({suche:'unbekannt'})).gesamt,0);
  await assert.rejects(s.saveMeta(owner,1,body),e=>e.status===409);
  await db.run("UPDATE dokumente SET beschreibung='Archiv geändert' WHERE id=1");

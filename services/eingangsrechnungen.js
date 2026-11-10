@@ -31,10 +31,15 @@ function baueRechnungen(db,archiv){
   if(typeof ref.quelle!=='string'||ref.quelle.length>100)fail('Ungültiger Archivbestand.');
   if(!await db.get('SELECT 1 FROM hp_dms_quellen WHERE id=? AND benutzer_id=?',[ref.quelle,owner]))fail('Dokument nicht gefunden.',404);
   const row=await db.get('SELECT * FROM hp_dms_dateien WHERE quelle_id=? AND datei_id=?',[ref.quelle,Number(ref.id)]);if(!row)fail('Dokument noch nicht übernommen.',404);
-  return{key:'hp:'+ref.quelle+':'+Number(ref.id),dokument:await archiv.archiveDocument(owner,ref.quelle,Number(ref.id))};
+  return{key:'hp:'+ref.quelle+':'+Number(ref.id),dokument:{...await archiv.archiveDocument(owner,ref.quelle,Number(ref.id)),dokumentenart:await require('./dokumentenarten').art(db,'hp:'+ref.quelle+':'+Number(ref.id))}};
  }
  function view(row){if(!row)return null;const daten=JSON.parse(row.daten);for(const k of [...MONEY,'ziel1_skonto','ziel2_skonto'])daten[k]=euro(daten[k]);return{...row,daten,pruefungen:JSON.parse(row.pruefungen)};}
- async function get(owner,ref){const doc=await document(owner,ref);return{dokument:doc.dokument,erkennung:JSON.parse((await db.get('SELECT ergebnis FROM rechnungs_erkennung WHERE dokument_schluessel=?',[doc.key]))?.ergebnis||'null'),rechnung:view(await db.get('SELECT r.*,b.name AS erfasst_name,b.kuerzel AS erfasst_sb FROM eingangsrechnungen r LEFT JOIN benutzer b ON b.id=r.erstellt_von WHERE dokument_schluessel=?',[doc.key]))};}
+ async function get(owner,ref){const doc=await document(owner,ref);return{dokument:doc.dokument,erkennung:await zuordnung(owner,ref),rechnung:view(await db.get('SELECT r.*,b.name AS erfasst_name,b.kuerzel AS erfasst_sb FROM eingangsrechnungen r LEFT JOIN benutzer b ON b.id=r.erstellt_von WHERE dokument_schluessel=?',[doc.key]))};}
+ async function zuordnung(owner,ref,auswahl={}){
+  const doc=await document(owner,ref),cached=await db.get('SELECT ergebnis FROM rechnungs_erkennung WHERE dokument_schluessel=?',[doc.key]);
+  if(!cached)return null;
+  return require('./rechnungsZuordnung').zuordnen(db,JSON.parse(cached.ergebnis),doc.dokument,doc.key,{...auswahl,owner});
+ }
  async function save(owner,b){
   const doc=await document(owner,b.dokument),daten=normalize(b.daten);if(!Number.isSafeInteger(b.revision)||b.revision<0)fail('Ungültige Version.');
   return db.transaktion(async tx=>{
@@ -50,9 +55,20 @@ function baueRechnungen(db,archiv){
    for(const k of FLAGS.slice(0,3)){if(daten[k]&&!previous[k])checks[k]={sb:user.kuerzel||'',benutzer:user.name,zeit:new Date().toISOString()};if(!daten[k])delete checks[k];}
    let id;if(old){id=old.id;await tx.run("UPDATE eingangsrechnungen SET daten=?,pruefungen=?,revision=revision+1,geaendert_am=datetime('now') WHERE id=?",[JSON.stringify(daten),JSON.stringify(checks),id]);}
    else{const inserted=await tx.run('INSERT INTO eingangsrechnungen(dokument_schluessel,erstellt_von,daten,pruefungen) VALUES(?,?,?,?)',[doc.key,owner,JSON.stringify(daten),JSON.stringify(checks)]);id=inserted.lastID;}
+   if(b.dokument.typ==='archiv'){
+    const objekt=daten.objekt_nr?await tx.get('SELECT id FROM objekte WHERE nummer=?',[daten.objekt_nr]):null;
+    const adressen=daten.lieferantenkonto?await tx.all('SELECT id FROM adressen WHERE lkto_nr=? AND archiviert=0',[daten.lieferantenkonto]):[];
+    for(const [column,id] of [['objekt_id',objekt?.id],['adresse_id',adressen.length===1?adressen[0].id:null]])if(id&&!await tx.get('SELECT 1 FROM archiv_verknuepfungen WHERE dokument_id=? AND '+column+'=?',[Number(b.dokument.id),id]))await tx.run('INSERT INTO archiv_verknuepfungen(dokument_id,'+column+') VALUES(?,?)',[Number(b.dokument.id),id]);
+   }
+   await tx.run("INSERT INTO dokumentenarten(dokument_schluessel,art) VALUES(?,'RE') ON CONFLICT(dokument_schluessel) DO UPDATE SET art='RE'",[doc.key]);
+   if(b.dokument.typ==='archiv'){
+    const p=await tx.get('SELECT * FROM dms_posteingang WHERE dokument_id=?',[Number(b.dokument.id)]);
+    if(p){await tx.run("UPDATE dms_posteingang SET revision=revision+1,geaendert_am=datetime('now') WHERE dokument_id=?",[Number(b.dokument.id)]);
+    await tx.run("INSERT INTO dms_posteingang_verlauf(dokument_id,benutzer_id,aktion,sachbearbeiter) VALUES(?,?,'rechnung_erfasst',?)",[Number(b.dokument.id),owner,p.sachbearbeiter]);}
+   }
    await tx.run('INSERT INTO rechnungs_verlauf(rechnung_id,benutzer_id,vorher,nachher) VALUES(?,?,?,?)',[id,owner,old?JSON.stringify({daten:JSON.parse(old.daten),pruefungen:JSON.parse(old.pruefungen)}):null,JSON.stringify({daten,pruefungen:checks})]);return{id,revision:(old?.revision||0)+1};
   });
  }
- return{get,save,document};
+ return{get,save,document,zuordnung};
 }
 module.exports={baueRechnungen,normalize,money,euro};
