@@ -593,3 +593,10 @@ CREATE TABLE IF NOT EXISTS rechnungs_verlauf (
  nachher TEXT NOT NULL,
  erstellt_am TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS rechnungs_erkennung (
+ dokument_schluessel TEXT PRIMARY KEY,
+ datei_hash TEXT NOT NULL,
+ ergebnis TEXT NOT NULL,
+ erstellt_am TEXT NOT NULL DEFAULT (datetime('now'))
+);

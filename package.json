@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",
+    "@napi-rs/canvas": "1.1.0",
+    "@tesseract.js-data/deu": "1.0.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "express": "^4.21.2",
@@ -17,6 +19,7 @@
     "multer": "^2.4.0",
     "pdfjs-dist": "6.5.438",
     "sqlite3": "^5.1.7",
+    "tesseract.js": "7.0.0",
     "undici": "8.12.4"
   },
   "devDependencies": {

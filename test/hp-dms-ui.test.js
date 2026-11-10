@@ -6,7 +6,7 @@ const entry={id:9,titel:'<img src=x onerror=alert(1)>',dateiname:'test.pdf',doku
 function setup(t, get){
  const dom=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example/'});t.after(()=>dom.window.close());
  const w=dom.window;w.API={get,qs:o=>'?'+new URLSearchParams(o)};
- for(const file of ['ui','kern','shell','dms-upload','dms-posteingang','dms'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());
+ for(const file of ['ui','kern','rechnungen','shell','dms-upload','dms-posteingang','dms'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());
  vm.runInContext('S.lauf=1;S.benutzer={rolle:"admin"};',dom.getInternalVMContext());return w;
 }
 test('DMS-UI: persönliche Quelle, serverseitige Suche, Dateiliste und sichere Zuordnungsanzeige',async t=>{
@@ -87,4 +87,13 @@ test('DMS Drag & Drop: Text und Links werden nicht importiert, leere und ungeeig
  const textDrop=new w.Event('drop',{cancelable:true});Object.defineProperty(textDrop,'dataTransfer',{value:{types:['text/plain'],files:[]}});root.dispatchEvent(textDrop);assert.equal(textDrop.defaultPrevented,false);
  const files=[new w.File([],'leer.pdf'),new w.File(['x'],'programm.exe')],drop=new w.Event('drop',{cancelable:true});Object.defineProperty(drop,'dataTransfer',{value:{types:['Files'],files}});root.dispatchEvent(drop);await tick();
  assert.equal(uploads,0);assert.match(root.textContent,/Datei ist leer/);assert.match(root.textContent,/Dateiformat wird nicht unterstützt/);
+});
+
+test('Drag & Drop: erkannte Rechnung öffnet automatisch die vorbelegte Rechnungsmaske ohne Freigaben',async t=>{
+ const doc={id:77,titel:'rechnung.pdf',original_name:'rechnung.pdf',verknuepfungen:[]},erkennung={rechnung:true,methode:'Lokale OCR',felder:{rechnungs_nr:'RE-42',rechnungsdatum:'2026-11-09',betrag:'1190,00',faelligkeit:'2026-11-23'},hinweise:[],belege:{}};
+ const w=setup(t,async()=>({dokument:doc,rechnung:null,erkennung})),root=w.document.createElement('div');w.document.body.append(root);let uploads=0,recognized=0;
+ w.API.upload=async()=>{uploads++;return doc;};w.API.post=async(p,b)=>{if(p==='/eingangsrechnungen/erkennen'){recognized++;assert.equal(b.dokument.id,77);return erkennung;}return{ok:true};};
+ root.append(w.dmsDateiEingang(root,{sachbearbeiter:'FD',aktuell:()=>true,neuLaden:async()=>{}}));
+ const drop=new w.Event('drop',{cancelable:true});Object.defineProperty(drop,'dataTransfer',{value:{types:['Files'],files:[new w.File(['%PDF'],'rechnung.pdf',{type:'application/pdf'})]}});root.dispatchEvent(drop);
+ await tick();await tick();await tick();assert.equal(uploads,1);assert.equal(recognized,1);assert.equal(w.document.getElementById('rechnung-rechnungs_nr').value,'RE-42');assert.equal(w.document.getElementById('rechnung-betrag').value,'1190,00');assert.equal(w.document.getElementById('rechnung-zahlung_freigegeben').checked,false);assert.match(w.document.querySelector('.cu-rechnung-erkannt').textContent,/bitte prüfen/);
 });
