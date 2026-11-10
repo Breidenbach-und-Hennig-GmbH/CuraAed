@@ -1,70 +1,21 @@
-# DMS aus HP-Mobile
+# Dauerhaftes CuraAed-DMS
 
-Stand: 10. November 2026. Lesende Anbindung der Dokumente aus der persönlichen
-HP-Mobile-Verbindung. Die vorhandene lokale Archivfunktion bleibt unter
-`#/archiv` erreichbar. `Dokumente`, Alt+S+D und Alt+F10 öffnen `#/dms`.
+Das HP-Mobile-DMS wird in die dauerhafte CuraAed-Ablage übernommen. Keine Weiterleitung in HP-Mobile zum Öffnen erforderlich. PDF-Vorschau und Download erfolgen in CuraAed.
 
-## Daten und Zuordnungen
+## Speicherung und Zuordnung
 
-Die Ansicht lädt maximal 25 Dateien pro Seite und sucht serverseitig mit dem
-vom Portal verwendeten Suchparameter `s`. Sortierung: Dokumentdatum absteigend.
-Bei mehreren persönlichen HP-Verbindungen muss der Kundenbestand ausgewählt
-werden. Ein einzelner Bestand wird automatisch gewählt.
+Metadaten, Originalnamen, Archivnummern, Dateilisten und alle vom Container gelieferten Zuordnungsgruppen werden in SQLite gespeichert. Originaldateien liegen unter UPLOAD_DIR/hp-dms auf demselben persistenten Datenträger wie die übrigen Uploads. Dieser Ordner muss zusammen mit der Datenbank gesichert werden. Die OAuth-Schlüsseldatei bleibt für spätere Abrufe erforderlich; gespeicherte Dokumente brauchen sie nicht. Löschen einer HP-Mobile-Verbindung löscht keine übernommenen Dateien.
 
-Die Mobile-Datei-ID (`documents.id`), die Mobile-Container-ID (`container_id`)
-und die ERP-Archivnummer (`document_container.hp_id`) sind verschiedene Werte.
-Ein Container kann mehrere Dateien enthalten; `documents.hp_id` ist eine
-Dateinummer innerhalb des Archiveintrags und kein globaler Dokumentschlüssel.
+Eine Quelle gehört einem CuraAed-Benutzer und HP-Subdomain. Sie kann genau einer eigenen direkten HP-Datenquelle zugeordnet werden. Diese fachliche Quellbindung wird bewusst ausgewählt; Namensgleichheit reicht nicht. Verknüpfungen erfolgen ausschließlich über HP-Adressnummer, Objekt-/Wohnungsnummer und die vorhandenen Quelltabellen. Lokale Archivlisten zeigen übernommene Dokumente derselben Person in den zugehörigen Adress-, Objekt- und Einheitenarchiven. Nicht importierte lokale Objekte erhalten keine geratenen Verknüpfungen. Die bisherigen persönlichen HP-Zugriffsrechte bleiben erhalten; Leser sehen nur die bisherige lokale Ablage.
 
-Die Detailansicht liest `documents/{id}` und danach
-`documentcontainer/{container_id}`. Sie zeigt die Dateien des Containers sowie
-die gelieferten Zuordnungen zu Liegenschaften, Einheiten, Personen,
-Handwerkeraufträgen, Akten, Z.I.S., Wiedervorlagen und Notizen. HP-Objektnummern
-werden bei Einheiten separat angezeigt. Es gibt keine ungeprüfte Zuordnung
-von HP-Mobile-IDs zu lokalen CuraAed-Datensatz-IDs. Bei einer unvollständigen
-vom Anbieter gelieferten Zuordnungsliste wird der Unterschied zum Zähler
-ausgewiesen; der Archiveintrag bleibt direkt in HP-Mobile erreichbar.
+## Übernahme
 
-Der Mobile-Bestand ist kein nachgewiesenes Vollarchiv des lokalen Servers.
-Dokumentarten besitzen unter anderem Export- und Alterskonfigurationen.
+Im DMS kann der gesamte Bestand oder eine aktuelle Titelsuche dauerhaft übernommen werden. Suchübernahmen erfassen nur Treffer der HP-Titelsuche und sind keine vollständigen Adressarchive. Der Gesamtdurchlauf liest nach aufsteigender Datei-ID, speichert Position und Seite je Quelle und arbeitet nach Schließen der Ansicht im Server weiter. Nach Serverneustart kann der gespeicherte Cursor per Fortsetzen wieder aufgenommen werden. Ein abgeschlossener Durchlauf kann erneut gestartet werden; bereits gesicherte unveränderte Dateien werden nicht dupliziert. Die HP-Seitenliste ist kein transaktionaler Snapshot: nachträgliche Löschungen oder Änderungen erfordern einen erneuten vollständigen Abgleich.
 
-## Dateidownload
+Die Übernahme wird bei Anmeldung, Berechtigung, Ratenbegrenzung oder knappem Speicher angehalten. 256 MiB bleiben reserviert. Es wird keine kostenpflichtige Speichererweiterung ausgelöst. Einzelne nicht verfügbare Dateien werden als Fehler markiert, damit spätere Dateien trotzdem übernommen werden. Ein abgeschlossener Durchlauf bestätigt keine fehlerfreie Vollständigkeit: die Anzahl gesicherter Dateien, Metadaten und Fehler separat prüfen. Wenn HP weniger Beziehungen als angekündigt liefert, bleibt dies als Fehler vermerkt.
 
-Dateien werden erst nach einem Klick von
-`GET https://api.hausperfekt-mobile.de/api/v1/documents/{id}/binary` abgerufen.
-Es gibt keinen vollständigen Dateiimport, keine Dateikopie auf dem CuraAed-
-Server und keine DMS-Schreiboperation in HP. Die Antwort wird innerhalb einer
-festen Grenze von 64 MiB gepuffert, geprüft und als Download ausgeliefert.
-Größere Dateien können über den Link zum Dokument in HP-Mobile geladen werden.
+Große Dateien werden auf Platte gestreamt, nicht vollständig im Server-RAM gehalten. Größe, MD5/SHA1 soweit vorhanden und eine eigene SHA256-Prüfsumme werden geprüft. Temporäre Dateien werden erst nach erfolgreicher Prüfung atomar umbenannt. Parallele Schreibvorgänge sind serialisiert. Eine veränderte bereits gesicherte Quelldatei überschreibt niemals still den gesicherten Stand. Der lokale Download prüft SHA256 erneut.
 
-Vor dem Dateiabruf werden die Metadaten mit derselben Anmeldung gelesen.
-Dateigröße und vollständige, syntaktisch gültige MD5-/SHA-1-Prüfsummen werden
-mit den geladenen Bytes verglichen. Diese Legacy-Prüfsummen dienen dem
-Übertragungsvergleich, nicht als Sicherheitsnachweis für den Dateiinhalt.
-Ein leerer, abgebrochener oder widersprüchlicher Abruf liefert einen Fehler.
-Download-Timeout: 120 Sekunden; Metadaten verwenden den vorhandenen Timeout.
+## Grenzen der Ablösung
 
-## Zugriff
-
-Alle DMS-Routen erben den vorhandenen HP-Zugriff für Administratoren und
-Mitarbeiter. Jede Anfrage prüft den Besitzer der persönlichen Verbindung,
-erneuert bei Bedarf deren verschlüsselt gespeichertes Token und kontrolliert
-die Kundenmitgliedschaft über `whoami`. Der Header `HPAPI-DOM` stammt nur aus
-der gespeicherten Verbindung. Fremde Verbindungs-IDs liefern 404, bevor HP
-aufgerufen wird. Die bestehenden Einschränkungen für Leser bleiben erhalten.
-
-Ausgehende Hosts und Pfade sind fest vorgegeben; Anbieter-URLs werden nicht
-als Downloadziel übernommen. Weiterleitungen sind deaktiviert. Antworten
-verwenden `Cache-Control: no-store`. Dateien werden mit Attachment-Disposition,
-`application/octet-stream`, `nosniff` und einer Sandbox-CSP ausgeliefert.
-Zugangstokens und Lesebestätigungen werden nicht an die DMS-Oberfläche gegeben.
-Ein Sachbearbeiterkürzel erteilt keine zusätzlichen Berechtigungen.
-
-## HTTP-Routen unter /api/hausperfekt
-
-- `GET /dms/verbindungen`: eigene Verbindungen.
-- `GET /dms/:id/dokumente?seite=1&suche=...`: begrenzte Dokumentliste.
-- `GET /dms/:id/dokumente/:dateiId`: Details und Containerzuordnungen.
-- `GET /dms/:id/dokumente/:dateiId/download`: geprüfter Dateidownload.
-
-Es werden keine Datenbankschemata oder bestehenden HP-Kopplungen verändert.
+Unabhängig sind nur tatsächlich gespeicherte Dateien und Metadaten. Noch nicht übernommene Dateien benötigen einmalig die bestehende HP-Anbindung. Die Gesamtzahl von rund 290.000 HP-Dateien bedeutet nicht, dass diese schon migriert sind. Speicherbedarf, Laufzeit und Fehler müssen im echten Bestand geprüft werden. Der direkte dauerhafte Archivabgleich vom HausPerfekt-Server sowie eine vollständige fachliche Funktionsparität mit HP-Mobile sind zusätzliche Ausbaustufen.

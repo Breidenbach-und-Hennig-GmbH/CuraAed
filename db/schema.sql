@@ -551,3 +551,10 @@ CREATE TABLE IF NOT EXISTS hp_adress_importfehler (
  PRIMARY KEY(verbindung_id,hp_nummer)
 );
 CREATE INDEX IF NOT EXISTS hp_adress_sync_status ON hp_adress_zuordnung(verbindung_id,status,unterwegs_ms);
+
+-- Durable DMS migration: independent of OAuth connection lifetime.
+CREATE TABLE IF NOT EXISTS hp_dms_quellen (id TEXT PRIMARY KEY,benutzer_id INTEGER NOT NULL REFERENCES benutzer(id),subdomain TEXT NOT NULL,direkt_id TEXT REFERENCES hp_adress_verbindungen(id),UNIQUE(benutzer_id,subdomain));
+CREATE TABLE IF NOT EXISTS hp_dms_dateien (quelle_id TEXT NOT NULL REFERENCES hp_dms_quellen(id),datei_id INTEGER NOT NULL,titel TEXT NOT NULL,dateiname TEXT NOT NULL,datum TEXT,art TEXT,groesse INTEGER NOT NULL,details TEXT NOT NULL,gelesen_am TEXT NOT NULL,speicher_name TEXT,sha256 TEXT,gesichert_am TEXT,fehler TEXT,PRIMARY KEY(quelle_id,datei_id));
+CREATE TABLE IF NOT EXISTS hp_dms_bezuege (quelle_id TEXT NOT NULL,datei_id INTEGER NOT NULL,art TEXT NOT NULL,hp_nummer TEXT NOT NULL,objekt_nummer TEXT NOT NULL,name TEXT NOT NULL,FOREIGN KEY(quelle_id,datei_id) REFERENCES hp_dms_dateien(quelle_id,datei_id),UNIQUE(quelle_id,datei_id,art,hp_nummer,objekt_nummer,name));
+CREATE INDEX IF NOT EXISTS hp_dms_bezug_suche ON hp_dms_bezuege(quelle_id,art,hp_nummer,objekt_nummer);
+CREATE TABLE IF NOT EXISTS hp_dms_auftraege (quelle_id TEXT PRIMARY KEY REFERENCES hp_dms_quellen(id),verbindung_id TEXT NOT NULL,suche TEXT NOT NULL,seite INTEGER NOT NULL,position INTEGER NOT NULL,status TEXT NOT NULL,meldung TEXT);

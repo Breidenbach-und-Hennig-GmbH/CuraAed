@@ -97,6 +97,7 @@ function baueHpVerbindungen(db, options = {}) {
     },
     dmsListe(owner, id, query) { return withClient(owner, id, c => dms.liste(c, query)); },
     dmsDetails(owner, id, fileId) { return withClient(owner, id, c => dms.details(c, fileId)); },
+    dmsSpeichern(owner,id,fileId,target,maxBytes) { return withClient(owner,id,c=>dms.speichern(c,fileId,target,maxBytes)); },
     dmsDownload(owner, id, fileId) { return withClient(owner, id, c => dms.download(c, fileId)); },
     daten(owner, id, resource, page) { return withClient(owner, id, c => c.liste(resource, { page })); },
     async entfernen(owner, id) { return lock(id, async () => { await owned(owner, id); await db.run('DELETE FROM hp_mobile_verbindungen WHERE id=? AND benutzer_id=?', [id, owner]); return { ok: true }; }); },

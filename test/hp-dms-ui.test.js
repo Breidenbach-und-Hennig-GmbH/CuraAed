@@ -16,9 +16,9 @@ test('DMS-UI: persönliche Quelle, serverseitige Suche, Dateiliste und sichere Z
    return{dokumente:[entry],gesamt:100,seite:1,weitere:true};
  });
  await w.dmsMaske();assert.ok(calls.some(u=>u.includes('/dms/a/dokumente?')));assert.match(w.document.body.textContent,/100 Treffer/);
- assert.equal(w.document.querySelectorAll('img').length,0);
+ assert.equal(w.document.querySelectorAll('img').length,0);assert.equal(w.document.querySelectorAll('a[href*="hausperfekt-mobile.de"]').length,0);
  const title=[...w.document.querySelectorAll('button')].find(b=>b.textContent===entry.titel);title.click();await tick();await tick();
- assert.match(w.document.querySelector('[role=dialog]').textContent,/Objekt 4010/);assert.equal(w.document.querySelectorAll('[role=dialog] button[title="Datei aus HP-Mobile herunterladen"]').length,2);
+ assert.match(w.document.querySelector('[role=dialog]').textContent,/Objekt 4010/);assert.equal(w.document.querySelectorAll('[role=dialog] button[title="Datei in CuraAed sichern und herunterladen"]').length,2);
  [...w.document.querySelectorAll('[role=dialog] button')].find(b=>b.textContent==='Schließen').click();
  const search=w.document.getElementById('dms-suche');search.value='A&B';w.document.querySelector('form').dispatchEvent(new w.Event('submit',{cancelable:true}));await tick();
  assert.ok(calls.some(u=>u.includes('suche=A%26B')));
