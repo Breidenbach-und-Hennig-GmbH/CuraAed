@@ -748,7 +748,7 @@ function wiedervorlagenDialog(a) {
         el('input', { type: 'checkbox', checked: alle ? '' : null, onchange: (ev) => { alle = ev.target.checked; zeichnen(); } }),
         document.createTextNode(' erledigte anzeigen'),
       ]);
-      return el('div', {}, [schalter, raster([
+      return el('div', {}, [schalter, darfSchreiben()?el('p',{},[el('a',{href:'#/vorgaenge?art=wiedervorlage&typ=adresse&ziel='+a.id,text:'Übernommene und neue CuraAed-Wiedervorlagen öffnen'})]):null, raster([
         { label: 'Fällig', class: 'nowrap', render: (w) => el('span', { class: !w.erledigt && w.faellig_am < heute ? 'hp-ueberfaellig' : '', text: datumKurz(w.faellig_am) }) },
         { label: 'Betreff', render: (w) => el('div', {}, [el('strong', { text: w.betreff }), w.notiz ? el('div', { class: 'small muted', text: w.notiz }) : null]) },
         { label: 'Zuständig', render: (w) => w.zustaendig_name || '' },

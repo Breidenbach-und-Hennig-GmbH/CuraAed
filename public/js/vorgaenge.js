@@ -55,6 +55,7 @@ async function vorgangDetail(id){
    const choose=side=>async()=>{try{await API.post('/vorgaenge/'+r.id+'/konflikt',{fassung:side,revision:r.revision});neuLaden();}catch(e){fehler(e);}};
    conflict.append(el('button',{text:'Lokale Fassung behalten',onclick:choose('lokal')}),el('button',{text:'HP-Fassung übernehmen',onclick:choose('hp')}));root.append(conflict);
   }
+  if(r.art==='handwerker'&&r.remote_snapshot){const hp=r.remote_snapshot;root.append(el('h2',{text:'Auftragsinformationen'}),panel([['Auftragsart',hp.type?.name||'–'],['Vorgang',hp.process?.name||'–'],['Beauftragt am',datum(hp.to_occur)],['HP-Ansprechpartner',[hp.team?.first_name,hp.team?.last_name].filter(Boolean).join(' ')||'–'],['Informationen zum Status',hp.status_text?.text||'–'],['Schätzbetrag',hp.estimated_price??'–'],['Rechnungsbetrag',hp.bill_price??'–']]));}
   root.append(el('h2',{text:'Beschreibung'}),el('div',{style:'white-space:pre-wrap',text:r.text||'Keine Beschreibung.'}),el('h2',{text:'Zuordnungen'}));
   const refs=r.bezuege.filter(b=>b.typ!=='dokument');root.append(refs.length?el('ul',{},refs.map(b=>el('li',{},[vorgangLink(b)]))):el('p',{text:'Noch keine Zuordnungen vorhanden.'}));
   const docs=r.bezuege.filter(b=>b.typ==='dokument');if(docs.length){root.append(el('h2',{text:'Dokumente'}));for(const d of docs)root.append(el('p',{},[el('button',{text:d.name,onclick:()=>dmsVorschau('/api/vorgaenge/'+r.id+'/dokumente/'+d.remote_id,{titel:d.name})})]));}
@@ -76,7 +77,7 @@ function vorgaengeListe(root,{art='',kontext=null,lauf=S.lauf}={}){
   result.replaceChildren(raster([{label:'Titel',render:v=>el('a',{href:'#/vorgaenge/'+v.id,text:v.titel})},{label:'Bereich',render:v=>VORGANG_ART[v.art]},{label:'Status',render:v=>VORGANG_STATUS[v.status]+(v.quelle_status==='konflikt'?' · Konflikt':'')},{label:'Fällig',render:v=>datum(v.faellig_am)},{label:'Zuständig',render:v=>v.zustaendig||'–'},{label:'HP-Nummer',render:v=>v.hp_nummer||'–'}],r.eintraege,{leer:'Keine Vorgänge gefunden. Vorhandene HP-Daten können in den Arbeitsbereichen dauerhaft übernommen werden.',onOpen:v=>geheZu('#/vorgaenge/'+v.id)}));
   page=r.seite;prev.disabled=page<=1;next.disabled=!r.weitere;message.textContent=r.gesamt+' Vorgänge · Seite '+page;
  }catch(e){if(lauf===S.lauf&&current===version)message.textContent=e.message;}}
- search.addEventListener('input',debounce(()=>load(1)));statusSelect.addEventListener('change',()=>load(1));load(1);
+ search.addEventListener('input',debounce(()=>load(1)));statusSelect.addEventListener('change',()=>load(1));load(1);return()=>load(page);
 }
 async function vorgaengeMaske(params=new URLSearchParams()){
  const lauf=S.lauf,root=el('section',{class:'cu-karte',style:'padding:20px;margin:16px auto;max-width:1250px'});if(!zeigeAufDesktop(lauf,root))return;
@@ -84,9 +85,10 @@ async function vorgaengeMaske(params=new URLSearchParams()){
  const art=Object.hasOwn(VORGANG_ART,params.get('art'))?params.get('art'):'';
  root.append(el('h1',{text:art?VORGANG_ART[art]:'Arbeitsbereiche'}),el('p',{text:'Akten, Aufträge, Wiedervorlagen, ZIS und Notizen werden in CuraAed geführt.'}),
   el('nav',{class:'tel-plaud-knoepfe'},[el('a',{href:'#/vorgaenge',text:'Alle Bereiche'}),...Object.entries(VORGANG_ART).map(([key,text])=>el('a',{href:'#/vorgaenge?art='+key,text}))]));
- const imports=el('details',{},[el('summary',{text:'Vorhandene HP-Daten übernehmen'})]),body=el('div'),list=el('div');imports.append(body);root.append(imports,list);vorgaengeListe(list,{art,lauf});
+ const imports=el('details',{},[el('summary',{text:'Vorhandene HP-Daten übernehmen'})]),body=el('div'),list=el('div');imports.append(body);root.append(imports,list);const context=['adresse','objekt','einheit'].includes(params.get('typ'))&&Number(params.get('ziel'))>0?{typ:params.get('typ'),id:Number(params.get('ziel'))}:null;const refreshList=vorgaengeListe(list,{art,kontext:context,lauf});
  async function refresh(){try{
   const [info,connections]=await Promise.all([API.get('/vorgaenge/uebersicht'),API.get('/hausperfekt/verbindungen')]);if(lauf!==S.lauf)return;
+  refreshList();
   body.replaceChildren(el('p',{text:info.bereiche.map(b=>VORGANG_ART[b.art]+': '+b.gesamt+(b.konflikte?' ('+b.konflikte+' Konflikte)':'')).join(' · ')||'Noch keine HP-Fachbereiche übernommen.'}));
   for(const job of info.auftraege){body.append(el('p',{role:'status',text:(VORGANG_ART[{records:'akte',craftsman_tasks:'handwerker',tasks:'wiedervorlage',cis:'zis',notes:'notiz'}[job.resource]]||job.resource)+' · Seite '+job.seite+' · '+(job.status==='laeuft'?'Übernahme läuft':job.status==='fertig'?'Durchlauf abgeschlossen':'Übernahme angehalten')+' · '+job.fehler+' Fehler'+(job.meldung?' · '+job.meldung:'')}));
    if(job.status==='laeuft')body.append(el('button',{text:'Übernahme anhalten',onclick:async()=>{try{await API.post('/vorgaenge/anhalten',{quelle:job.quelle_id});refresh();}catch(e){fehler(e);}}}));

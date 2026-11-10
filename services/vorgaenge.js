@@ -9,6 +9,7 @@ const STATUS=['offen','in_bearbeitung','beauftragt','erledigt','storniert'];
 const fail=(message,status=400)=>{throw new ValidationError(message,status);};
 const json=v=>JSON.stringify(v);
 const pick=r=>Object.fromEntries(FELDER.map(k=>[k,r[k]??null]));
+const sourceHash=data=>crypto.createHash('sha256').update(json({snapshot:data.snapshot,werte:pick(data.werte),bezuege:data.bezuege})).digest('hex');
 function input(b){
  const str=(k,max,nullable=false)=>{if((b[k]===null||b[k]==='')&&nullable)return null;if(typeof b[k]!=='string'||b[k].length>max)fail('Ungültige Eingabe: '+k);return b[k].trim();};
  const r={art:b.art,titel:str('titel',500),text:str('text',65535),status:b.status||'offen',prioritaet:b.prioritaet||'normal',faellig_am:str('faellig_am',10,true),uhrzeit:str('uhrzeit',5,true)};
@@ -53,7 +54,7 @@ function baueVorgaenge(db,{hp,archiv}={}){
   const art=BEREICHE[resource];if(!art)fail('Unbekannter Importbereich.');
   return db.transaktion(async tx=>{
    const old=await tx.get('SELECT * FROM fach_vorgaenge WHERE quelle_id=? AND remote_art=? AND remote_id=?',[source.id,resource,data.remote_id]);
-   const incoming=pick(data.werte),snapshot=json(data.snapshot),hash=crypto.createHash('sha256').update(snapshot).digest('hex');
+   const incoming=pick(data.werte),snapshot=json(data.snapshot),hash=sourceHash(data);
    if(old&&old.remote_hash===hash)return {id:old.id,unveraendert:true};
    let id;
    if(!old){
@@ -113,7 +114,7 @@ function baueVorgaenge(db,{hp,archiv}={}){
  async function resolve(owner,id,b){
   if(!['lokal','hp'].includes(b.fassung))fail('Bitte eine Fassung auswählen.');
   return db.transaktion(async tx=>{const old=await own(tx,owner,id);if(old.revision!==b.revision)fail('Vorgang inzwischen geändert.',409);if(!old.incoming)fail('Kein offener Konflikt.');const data=JSON.parse(old.incoming),next=b.fassung==='hp'?pick(data.werte):pick(old),snapshot=json(data.snapshot);
-   await tx.run(`UPDATE fach_vorgaenge SET ${FELDER.map(k=>k+'=?').join(',')},basis=?,remote_snapshot=?,remote_hash=?,incoming=NULL,quelle_status=?,revision=revision+1,geaendert_am=datetime('now') WHERE id=?`,[...FELDER.map(k=>next[k]),json(pick(data.werte)),snapshot,crypto.createHash('sha256').update(snapshot).digest('hex'),b.fassung==='hp'?'uebernommen':'lokal_geaendert',id]);
+   await tx.run(`UPDATE fach_vorgaenge SET ${FELDER.map(k=>k+'=?').join(',')},basis=?,remote_snapshot=?,remote_hash=?,incoming=NULL,quelle_status=?,revision=revision+1,geaendert_am=datetime('now') WHERE id=?`,[...FELDER.map(k=>next[k]),json(pick(data.werte)),snapshot,sourceHash(data),b.fassung==='hp'?'uebernommen':'lokal_geaendert',id]);
    await references(tx,id,data.bezuege);await log(tx,id,owner,'konflikt_'+b.fassung,pick(old),next);return {id};});
  }
  async function addRef(owner,id,b){return db.transaktion(async tx=>{const r=await own(tx,owner,id);if(r.revision!==b.revision)fail('Vorgang inzwischen geändert.',409);await localRef(tx,id,b,owner);await tx.run("UPDATE fach_vorgaenge SET revision=revision+1,geaendert_am=datetime('now') WHERE id=?",[id]);await log(tx,id,owner,'zugeordnet',null,{typ:b.typ,id:b.id});return {id};});}
