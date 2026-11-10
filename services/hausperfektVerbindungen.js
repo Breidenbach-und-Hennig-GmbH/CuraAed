@@ -4,6 +4,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { baueHpMobileClient, portalKennung, HpMobileError } = require('./hausperfektMobile');
 const ORIGIN = 'https://api.hausperfekt-mobile.de';
+const dms = require('./hpDms');
 
 function baueHpVerbindungen(db, options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
@@ -94,6 +95,9 @@ function baueHpVerbindungen(db, options = {}) {
         return { id, subdomain, erp: identity.erp, canUpdate: identity.canUpdate };
       });
     },
+    dmsListe(owner, id, query) { return withClient(owner, id, c => dms.liste(c, query)); },
+    dmsDetails(owner, id, fileId) { return withClient(owner, id, c => dms.details(c, fileId)); },
+    dmsDownload(owner, id, fileId) { return withClient(owner, id, c => dms.download(c, fileId)); },
     daten(owner, id, resource, page) { return withClient(owner, id, c => c.liste(resource, { page })); },
     async entfernen(owner, id) { return lock(id, async () => { await owned(owner, id); await db.run('DELETE FROM hp_mobile_verbindungen WHERE id=? AND benutzer_id=?', [id, owner]); return { ok: true }; }); },
   };
