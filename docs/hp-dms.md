@@ -2,7 +2,7 @@
 
 Stand: 10. November 2026. Lesende Anbindung der Dokumente aus der persönlichen
 HP-Mobile-Verbindung. Die vorhandene lokale Archivfunktion bleibt unter
-`#/archiv` erreichbar. `Dokumente`, Alt+S+D und F10 öffnen `#/dms`.
+`#/archiv` erreichbar. `Dokumente`, Alt+S+D und Alt+F10 öffnen `#/dms`.
 
 ## Daten und Zuordnungen
 
