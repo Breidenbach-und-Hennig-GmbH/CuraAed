@@ -1,12 +1,13 @@
 'use strict';
 const norm=v=>String(v||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/ß/g,'ss').replace(/[^a-z0-9]+/g,' ').trim();
-const contains=(text,value)=>{const n=norm(value);return n.length>=6&&(' '+norm(text)+' ').includes(' '+n+' ');};
 const name=a=>a.firmenname||[a.vorname,a.nachname].filter(Boolean).join(' ');
 async function zuordnen(db,result,doc,key,auswahl={}){
+ const normalized=new Map();
+ const contains=(text,value)=>{const n=norm(value);if(n.length<6)return false;if(!normalized.has(text))normalized.set(text,' '+norm(text)+' ');return normalized.get(text).includes(' '+n+' ');};
  const r=structuredClone(result||{rechnung:false,felder:{},belege:{},hinweise:[]});
  const text=r.zuordnungsbasis||'',z=r.struktur||{},ibans=r.ibans||z.iban||[];
  const lieferanten=[],objekte=[],konten=[];
- const suppliers=await db.all('SELECT * FROM adressen WHERE archiviert=0');
+ const suppliers=await db.all('SELECT id,nummer,firmenname,vorname,nachname,strasse,plz,lkto_nr FROM adressen WHERE archiviert=0');
  const banks=await db.all('SELECT adresse_id,iban FROM adress_bank');
  const bankIds=new Set(banks.filter(b=>ibans.some(i=>String(i).replace(/\s/g,'').toUpperCase()===String(b.iban||'').replace(/\s/g,'').toUpperCase())).map(b=>b.adresse_id));
  const legalIds=new Set(suppliers.filter(a=>norm(name(a)).length>=6&&norm(name(a))===norm(z.lieferant?.name)&&((z.lieferant?.plz&&String(a.plz)===z.lieferant.plz)||(z.lieferant?.strasse&&norm(a.strasse)===norm(z.lieferant.strasse)))).map(a=>a.id));
