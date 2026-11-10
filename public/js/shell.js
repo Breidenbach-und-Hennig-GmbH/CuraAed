@@ -826,7 +826,7 @@ const NAV = [
   { text: 'E-Banking', icon: 'bank', folgt: STUFE4 },
   { text: 'Vorgänge', icon: 'folder', hash: '#/vorgaenge', aktiv: (h) => /^#\/vorgaenge\b/.test(h) },
   { text: 'ETV', icon: 'users', hash: '#/etv', titel: 'Eigentümerversammlungen (ETV)', aktiv: (h) => /^#\/etv\b/.test(h) },
-  { text: 'Dokumente', icon: 'file', hash: '#/dms', aktiv: (h) => /^#\/(archiv|dms)\b/.test(h) },
+  { text: 'Dokumente', icon: 'file', hash: '#/dms', aktiv: (h) => /^#\/(archiv|dms|dms-uebernahme)\b/.test(h) },
   { text: 'Auswertungen', icon: 'chart', menue: 'Auswertungen / Listen', aktiv: (h) => /liste\b/.test(h) },
   { text: 'Einstellungen', icon: 'settings', menue: 'System', aktiv: (h) => /^#\/benutzer\b/.test(h) },
 ];

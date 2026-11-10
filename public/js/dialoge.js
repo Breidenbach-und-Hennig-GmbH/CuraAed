@@ -411,7 +411,7 @@ function archivUpload(ktx, reload) {
         Object.entries(felder).forEach(([t, f]) => { if (f.input.value.trim()) fd.append(t + '_nr', f.input.value.trim()); });
         fd.append('datei', dateiInput.files[0]); // Datei zuletzt, Textfelder zuerst
         btn.disabled = true;
-        try { await API.upload('/archiv', fd); toast('Eintrag gespeichert', 'success'); close(); reload(); }
+        try { const saved=await API.upload('/archiv', fd); toast('Eintrag gespeichert', 'success'); close(); reload(saved); }
         catch (e) { fehler(e); btn.disabled = false; }
       } });
       return [el('button', { text: 'Abbrechen', onclick: close }), btn];
