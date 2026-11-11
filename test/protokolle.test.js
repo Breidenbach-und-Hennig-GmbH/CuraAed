@@ -12,7 +12,7 @@ test('Protokoll übernimmt TOPs, Beschlussentwurf und gespeicherte Auszählung, 
 });
 test('PDF zur Unterzeichnung enthält tatsächliche Beschlüsse, Zahlen, Vollmachten und die ausgewählten Personen',async t=>{
  const db=await fixture(t),s=await P.stand(db,1),b=ready(s);b.daten.tops[1].beschlusswortlaut='BESTÄTIGTER WORTLAUT: Der Wirtschaftsplan wird beschlossen.';b.daten.tops[1].ergebnis={ja:999};const pdf=await read(await P.speichern(db,1,b,true));
- for(const text of ['ZUR UNTERZEICHNUNG','BESTÄTIGTER WORTLAUT','Ja: 1 | Nein: 0 | Enthaltungen: 1','Verkündetes Ergebnis Angenommen','Gemeindesaal, Testweg 2, 01234 Musterstadt','Test-Protokollführung','Alpha','Testbeirat','DMS 42','Vertagt'])assert.ok(pdf.all.includes(text),text);assert.doesNotMatch(pdf.all,/999|ENTWURF/);assert.match(pdf.all,/keine elektronischen Unterschriften/);assert.match(pdf.all,/Niederschrift/);assert.doesNotMatch(pdf.all,/CuraAedificii/);assert.match(pdf.all,/mit insgesamt 1 von 1 MEA/);
+ for(const text of ['ZUR UNTERZEICHNUNG','BESTÄTIGTER WORTLAUT','Ja: 1 | Nein: 0 | Enthaltungen: 1','Verkündetes Ergebnis Angenommen','Gemeindesaal, Testweg 2, 01234 Musterstadt','Test-Protokollführung','Alpha','Testbeirat','DMS 42','Vertagt'])assert.ok(pdf.all.includes(text),text);assert.doesNotMatch(pdf.all,/999|ENTWURF/);assert.match(pdf.texts[0],/Verwaltungsbeirat/);assert.match(pdf.texts[0],/Wohnungseigentümer\/in/);assert.match(pdf.all,/Niederschrift/);assert.doesNotMatch(pdf.all,/CuraAedificii/);assert.match(pdf.all,/mit insgesamt 1 von 1 (?:MEA|Miteigentumsanteilen)/);
  for(let i=0;i<pdf.pages;i++)assert.ok(pdf.texts[i].includes('Seite '+(i+1)+' von '+pdf.pages));assert.ok((await P.stand(db,1)).revision>0);
 });
 test('Fehlende, unbestätigte und historische Auszählungen sperren nur die Ausgabe zur Unterzeichnung',async t=>{
@@ -30,4 +30,17 @@ test('Validierung: keine fremden oder doppelten TOPs, gültige Zeiten und bewuss
 });
 test('Lange Protokollergänzungen werden vollständig über mehrere Seiten ausgegeben',async t=>{
  const db=await fixture(t),s=await P.stand(db,1),b=body(s);b.daten.tops[1].verlauf=('Langer Protokollabsatz zur Beratung.\n').repeat(160)+'ENDE-LANGTEXT';const pdf=await read(await P.speichern(db,1,b,true));assert.ok(pdf.pages>3);assert.match(pdf.all,/ENDE-LANGTEXT/);assert.equal((pdf.all.match(/Langer Protokollabsatz zur Beratung\./g)||[]).length,160);for(const text of pdf.texts)assert.ok(text.length>70);
+});
+
+test('Die erste Seite enthält das vollständige Musterdeckblatt und keine erfundenen Feststellungen',async t=>{
+ const db=await fixture(t),s=await P.stand(db,1),b=ready(s);Object.assign(b.daten,{verwaltung_anwesend:'Testleitung und Test-Protokollführung',wohnungseigentuemer:'2',teileigentuemer:'0',einladung_festgestellt:true,beschlussfaehigkeit_festgestellt:false,beschluesse_verlesen:true});
+ const pdf=await read(await P.speichern(db,1,b,true)),cover=pdf.texts[0];
+ for(const text of ['der Eigentümergemeinschaft: Musterstraße 12','Datum: 05.12.2026','Zeit: 17:30 Uhr bis 19:20 Uhr','Anwesend waren:','a) von der Verwaltung:','Testleitung und Test-Protokollführung','2 stimmberechtigte Wohnungseigentümer','0 stimmberechtigte Garagen-/Teileigentümer','mit insgesamt 1 von 1 Miteigentumsanteilen','ordnungsgemäße Einladung festgestellt','Feststellung der Beschlussfähigkeit: Noch nicht bestätigt.','Beschlüsse vorgelesen','Anzahl der Seiten: '+pdf.pages,'Verwaltungsbeirat','Testbeirat','Vorsitz / Versammlungsleitung','Wohnungseigentümer/in','Alpha'])assert.ok(cover.includes(text),text);
+ assert.ok(!cover.includes('Tagesordnung und Beschlüsse'));assert.ok(pdf.texts.slice(1).join(' ').includes('Tagesordnung und Beschlüsse'));assert.doesNotMatch(cover,/CuraAedificii|Firma|ordnungsgemäßen Einladung: Noch/);
+ const saved=await P.stand(db,1);assert.equal(saved.daten.verwaltung_anwesend,b.daten.verwaltung_anwesend);assert.equal(saved.daten.einladung_festgestellt,true);assert.equal(saved.daten.beschlussfaehigkeit_festgestellt,false);assert.equal(saved.daten.wohnungseigentuemer,'2');
+});
+test('Deckblatt akzeptiert nur geprüfte ganze Eigentümerzahlen und echte Bestätigungen',async t=>{
+ const db=await fixture(t),s=await P.stand(db,1);
+ for(const change of [b=>b.daten.wohnungseigentuemer='-1',b=>b.daten.teileigentuemer='1.5',b=>b.daten.wohnungseigentuemer=2,b=>b.daten.einladung_festgestellt='true']){const b=body(s);change(b);await assert.rejects(P.speichern(db,1,b),/Eigentümeranzahl|Feststellung/);}
+ const pdf=await read(await P.speichern(db,1,body(s),true));assert.match(pdf.texts[0],/Feststellung der ordnungsgemäßen Einladung: Noch nicht bestätigt/);assert.match(pdf.texts[0],/Nicht erfasst stimmberechtigte Wohnungseigentümer/);
 });
