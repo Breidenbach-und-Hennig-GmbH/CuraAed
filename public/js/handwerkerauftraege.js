@@ -18,7 +18,7 @@ function hwaAuswahl(typ,chosen,{objektId}={}){
 
 async function handwerkerForm(r={},kontext=null){
  const lauf=S.lauf;let users;try{users=await API.get('/mitarbeiter');if(lauf!==S.lauf)return;}catch(e){fehler(e);return;}
- const a=r.auftrag||{},today=new Date().toLocaleDateString('sv-SE'),selected={handwerker:a.handwerker||null,objekt:a.objekt||null,einheit:a.einheit||null,akte:a.akte_id?{id:a.akte_id,titel:'CA-'+a.akte_id}:null},recipients=(a.adressaten_details||[]).map(p=>({...p}));
+ const a=r.auftrag||{},today=new Date().toLocaleDateString('sv-SE'),selected={handwerker:a.handwerker||null,objekt:a.objekt?.id?a.objekt:null,einheit:a.einheit?.id?a.einheit:null,akte:a.akte_id?{id:a.akte_id,titel:'CA-'+a.akte_id}:null},recipients=(a.adressaten_details||[]).map(p=>({...p}));
  if(!r.id&&kontext&&['objekt','einheit','adresse'].includes(kontext.typ)){
   try{const row=await API.get('/'+({objekt:'objekte',einheit:'einheiten',adresse:'adressen'}[kontext.typ])+'/'+kontext.id);if(lauf!==S.lauf)return;selected[{objekt:'objekt',einheit:'einheit',adresse:'handwerker'}[kontext.typ]]=row;if(kontext.typ==='einheit')selected.objekt=await API.get('/objekte/'+row.objekt_id);}catch(e){fehler(e);return;}
  }
@@ -27,9 +27,10 @@ async function handwerkerForm(r={},kontext=null){
   {grid:3,felder:[{name:'status',label:'Status',type:'select',options:opt(HWA_STATUS),value:r.status||'offen'},{name:'zustaendig_id',label:'Sachbearbeiter',type:'select',options:[{value:'',label:'Nicht zugewiesen'},...users.map(u=>({value:String(u.id),label:[u.kuerzel,u.name].filter(Boolean).join(' · ')}))],value:String(r.zustaendig_id||S.benutzer.id||'')},{name:'firma',label:'Firma / Verwaltungskennung',value:a.firma||''}]},
   {grid:3,felder:[{name:'datum',label:'Auftragsdatum',type:'date',value:a.datum||today},{name:'faellig_am',label:'Frist',type:'date',value:r.faellig_am||''},{name:'erledigt_am',label:'Erledigt am',type:'date',value:a.erledigt_am||''}]},
   {grid:2,felder:[{name:'betrag',label:'Auftragsbetrag (EUR)',value:a.betrag||'',placeholder:'z. B. 250,00'},{name:'prioritaet',label:'Priorität',type:'select',options:opt({normal:'Normal',hoch:'Hoch',dringend:'Dringend'}),value:r.prioritaet||'normal'}]},
-  {felder:[{name:'text',label:'Auftragstext / Leistungsbeschreibung',type:'textarea',value:r.text||''}]},
+  {felder:[{name:'text',label:'Auftragstext / Leistungsbeschreibung',type:'textarea',value:r.text||a.originaltext||''}]},
   {grid:2,felder:[{name:'gewaehrleistung_bis',label:'Gewährleistung bis',type:'date',value:a.gewaehrleistung_bis||''},{name:'garantie_notiz',label:'Gewährleistung / Hinweise',value:a.garantie_notiz||''}]},
  ]);
+ if(a.objekt?.nur_original||a.einheit?.nur_original)form.prepend(el('p',{class:'hp-hinweis',text:'Übernommene Originalzuordnung: '+[a.objekt?.nummer,a.objekt?.bezeichnung,a.einheit?.nummer,a.einheit?.bezeichnung].filter(Boolean).join(' · ')+'. Vor dem Speichern den passenden lokalen Stammdatensatz auswählen.'}));
  const refs=el('fieldset',{class:'cu-hwa-referenzen'},[el('legend',{text:'Auftrag zuordnen'})]),refGrid=el('div',{class:'grid-2'}),refLabels={};
  for(const [key,typ,label] of [['handwerker','adresse','Handwerker / Auftragnehmer'],['objekt','objekt','Objekt'],['einheit','einheit','Wohnung'],['akte','akte','Akte']]){
   const value=el('span',{class:'cu-hwa-auswahlwert'});refLabels[key]=value;
@@ -51,7 +52,7 @@ async function handwerkerForm(r={},kontext=null){
 
 function hwaMail(r){
  const a=r.auftrag,supplier=a.handwerker,mail=a.kommunikation.emails.find(e=>e.ist_email)?.adresse||supplier?.email;
- const text=['Sehr geehrte Damen und Herren,','','hiermit bitten wir um Ausführung des folgenden Auftrags:','','Auftrag: '+hwaNr(r),'Betreff: '+r.titel,'Auftragsart: '+HWA_ART[a.auftragsart],a.objekt?'Objekt: '+[a.objekt.nummer,a.objekt.bezeichnung,a.objekt.strasse,a.objekt.plz,a.objekt.ort].filter(Boolean).join(' '):'',a.einheit?'Wohnung: '+a.einheit.nummer+' '+a.einheit.bezeichnung:'','Frist: '+datum(r.faellig_am),a.betrag?'Auftragsbetrag: '+a.betrag+' EUR':'','',r.text,'',...a.adressaten_details.map(p=>'Ansprechpartner: '+hwaName(p)+(p.telefon?' · '+p.telefon:'')+(p.mobil?' · '+p.mobil:'')),'','Bitte bestätigen Sie uns den Auftrag und stimmen Sie den Termin mit dem Ansprechpartner ab.'].filter(x=>x!==null).join('\r\n');
+ const text=['Sehr geehrte Damen und Herren,','','hiermit bitten wir um Ausführung des folgenden Auftrags:','','Auftrag: '+hwaNr(r),'Betreff: '+r.titel,'Auftragsart: '+HWA_ART[a.auftragsart],a.objekt?'Objekt: '+[a.objekt.nummer,a.objekt.bezeichnung,a.objekt.strasse,a.objekt.plz,a.objekt.ort].filter(Boolean).join(' '):'',a.einheit?'Wohnung: '+a.einheit.nummer+' '+a.einheit.bezeichnung:'','Frist: '+datum(r.faellig_am),a.betrag?'Auftragsbetrag: '+a.betrag+' EUR':'','',r.text||a.originaltext,'',...a.adressaten_details.map(p=>'Ansprechpartner: '+hwaName(p)+(p.telefon?' · '+p.telefon:'')+(p.mobil?' · '+p.mobil:'')),'','Bitte bestätigen Sie uns den Auftrag und stimmen Sie den Termin mit dem Ansprechpartner ab.'].filter(x=>x!==null).join('\r\n');
  const body=el('textarea',{'aria-label':'E-Mail-Entwurf',rows:16,text,style:'width:100%'}),to=el('input',{'aria-label':'Empfänger E-Mail',type:'email',value:mail||'',style:'width:100%'});
  modal({titel:'HWA senden – E-Mail vorbereiten',wide:true,inhalt:el('div',{},[el('label',{text:'Empfänger'}),to,el('p',{text:'Der Entwurf wird im E-Mail-Programm geöffnet. Vor dem Versand prüfen; Anlagen dort ergänzen.'}),body]),footer:close=>[el('button',{text:'Schließen',onclick:close}),el('button',{class:'btn-primary',text:'Im E-Mail-Programm öffnen',onclick:()=>{if(!to.checkValidity()||!to.value){to.reportValidity();return;}location.href='mailto:'+encodeURIComponent(to.value)+'?subject='+encodeURIComponent('Handwerkerauftrag '+hwaNr(r)+' – '+r.titel)+'&body='+encodeURIComponent(body.value);}})]});
 }
@@ -65,14 +66,14 @@ function handwerkerMaske(r,params=new URLSearchParams()){
  const lauf=S.lauf,a=r.auftrag,basis='#/vorgaenge/'+r.id,tab=params.get('tab')||'allgemein',supplier=a.handwerker;
  S.kontext={typ:'handwerker',id:r.id,bearbeiten:()=>handwerkerForm(r),erstellen:()=>handwerkerForm(),drucken:()=>window.print(),rechnungGespeichert:async()=>neuLaden()};
  const tabs=[{key:'allgemein',label:'Allgemein'},{key:'korrespondenz',label:'Korrespondenz'},{key:'archiv',label:'Archiv'},{key:'rechnung',label:'Rechnung'},{key:'vorgaenge',label:'Akten / Vorgänge'},{key:'historie',label:'Historie'}];
- const ref=(row,path)=>row?el('a',{href:'#/'+path+'/'+row.id,text:[row.nummer,hwaName(row)].filter(Boolean).join(' · ')}):'–';
+ const ref=(row,path)=>row&&!row.id?el('span',{text:[row.nummer,hwaName(row),'(Originalzuordnung)'].filter(Boolean).join(' · ')}):row?el('a',{href:'#/'+path+'/'+row.id,text:[row.nummer,hwaName(row)].filter(Boolean).join(' · ')}):'–';
  const oben=[el('div',{class:'cu-hwa-kopf'},[
-  panel([['Auftrags-Nr.',hwaNr(r)],['Status',HWA_STATUS[r.status]||r.status],['Sachbearbeiter',r.zustaendig||r.auftrag_sb_name||'Nicht zugewiesen'],['Firma',a.firma||'–'],['Betrag',a.betrag?a.betrag+' EUR':'–']]),
+  panel([['Auftrags-Nr.',hwaNr(r)],['Status',a.source_status||HWA_STATUS[r.status]||r.status],['Sachbearbeiter',r.zustaendig||r.auftrag_sb_name||a.source_sb||'Nicht zugewiesen'],['Firma',a.firma||'–'],['Betrag',a.betrag?a.betrag+' EUR':'–']]),
   panel([['Akte',a.akte_id?el('a',{href:'#/vorgaenge/'+a.akte_id,text:'CA-'+a.akte_id}):'–'],['Objekt',ref(a.objekt,'objekte')],['Wohnung',ref(a.einheit,'einheiten')],['Datum',datum(a.datum)],['Frist',datum(r.faellig_am)],['Erledigt',datum(a.erledigt_am)]]),
  ]),el('div',{class:'cu-karte cu-hwa-betreff'},[el('span',{class:'small muted',text:'Betreff'}),el('h2',{text:r.titel}),el('span',{class:'cu-chip',text:HWA_ART[a.auftragsart]||a.auftragsart})])];
  const content=el('div',{class:'cu-hwa-inhalt'});
  const changeTab=t=>geheZu(basis+'?tab='+t);
- const upload=()=>archivUpload(a.objekt?{typ:'objekt',nummer:a.objekt.nummer,kategorie:tab==='rechnung'?'rechnung':'korrespondenz'}:null,async saved=>{try{const latest=await API.get('/vorgaenge/'+r.id);await API.post('/vorgaenge/'+r.id+'/auftragsdokumente',{dokument_id:saved.id,revision:latest.revision});neuLaden();}catch(e){fehler(new Error('Datei ist im Archiv gespeichert; Auftragszuordnung fehlgeschlagen: '+e.message));}});
+ const upload=()=>archivUpload(a.objekt?.id?{typ:'objekt',nummer:a.objekt.nummer,kategorie:tab==='rechnung'?'rechnung':'korrespondenz'}:null,async saved=>{try{const latest=await API.get('/vorgaenge/'+r.id);await API.post('/vorgaenge/'+r.id+'/auftragsdokumente',{dokument_id:saved.id,revision:latest.revision});neuLaden();}catch(e){fehler(new Error('Datei ist im Archiv gespeichert; Auftragszuordnung fehlgeschlagen: '+e.message));}});
  const seite=seitenleiste([
   {text:'Suche',onclick:()=>geheZu('#/vorgaenge?art=handwerker')},{text:'Neu',onclick:()=>handwerkerForm()},
   {text:'Bearbeiten',onclick:()=>handwerkerForm(r)},{text:'Drucken',onclick:()=>window.print()},
@@ -85,12 +86,12 @@ function handwerkerMaske(r,params=new URLSearchParams()){
  if(r.incoming){const conflict=el('div',{class:'hp-hinweis'},[el('strong',{text:'HP-Änderungskonflikt'}),el('p',{text:'Die lokale Fassung wurde erhalten. Beide Fassungen vor der Übernahme prüfen.'}),el('pre',{text:JSON.stringify(r.incoming.werte,null,2)})]);for(const [side,label] of [['lokal','Lokale Fassung behalten'],['hp','HP-Fassung übernehmen']])conflict.append(el('button',{text:label,onclick:async()=>{try{await API.post('/vorgaenge/'+r.id+'/konflikt',{fassung:side,revision:r.revision});neuLaden();}catch(e){fehler(e);}}}));content.append(conflict);}
  if(tab==='allgemein'){
   const rows=[...(supplier?[{...supplier,bezeichnung:'Auftragnehmer'}]:[]),...a.adressaten_details];
-  content.append(abschnitt('Auftrag · Adressaten',raster([{label:'Adressat',render:p=>ref({...p,bezeichnung:hwaName(p)},'adressen')},{label:'Wohnungs-Nr.',render:()=>a.einheit?.nummer||'–'},{label:'Bezeichnung',render:p=>p.bezeichnung}],rows,{mindestZeilen:3,leer:'Noch kein Handwerker zugeordnet.'})));
+  content.append(abschnitt('Auftrag · Adressaten',raster([{label:'Adressat',render:p=>ref({...p,bezeichnung:hwaName(p)},'adressen')},{label:'Wohnungs-Nr.',render:()=>a.einheit?.nummer||'–'},{label:'PFkt',render:p=>p.pfkt||'–'},{label:'Bezeichnung',render:p=>p.bezeichnung}],rows,{mindestZeilen:3,leer:'Noch kein Handwerker zugeordnet.'})));
   const address=supplier?el('div',{class:'cu-hwa-anschrift'},[el('strong',{text:hwaName(supplier)}),el('span',{text:supplier.strasse||''}),el('span',{text:[supplier.land,supplier.plz,supplier.ort].filter(Boolean).join(' ')}),supplier.email?el('a',{href:'mailto:'+encodeURIComponent(supplier.email),text:supplier.email}):null]):el('p',{text:'Auftragnehmer in „Bearbeiten“ auswählen.'});
   let phones=a.kommunikation.telefone;if(!phones.length&&supplier)phones=[...(supplier.telefon?[{art:'Telefon',nummer:supplier.telefon}]:[]),...(supplier.mobil?[{art:'Mobil',nummer:supplier.mobil}]:[])];
   content.append(el('div',{class:'cu-hwa-kontakte'},[abschnitt('Anschrift',address),abschnitt('Telefon',raster([{label:'Telefontext',render:t=>t.art},{label:'Telefon-Nr.',render:t=>el('a',{href:telHref(t.nummer),text:t.nummer})},{label:'Bemerkung',render:t=>t.bemerkung}],phones,{mindestZeilen:3,leer:'Keine Telefonnummern hinterlegt.'}))]));
   if(a.kommunikation.ansprechpartner.length)content.append(abschnitt('Ansprechpartner',raster([{label:'Name',render:p=>p.name},{label:'Funktion',render:p=>p.funktion},{label:'Telefon',render:p=>p.telefon}],a.kommunikation.ansprechpartner)));
-  content.append(abschnitt('Auftragstext / Leistungsbeschreibung',el('div',{class:'cu-hwa-text',text:r.text||'Noch kein Auftragstext erfasst.'})));
+  content.append(abschnitt('Auftragstext / Leistungsbeschreibung',el('div',{class:'cu-hwa-text',text:r.text||a.originaltext||'Noch kein Auftragstext erfasst.'})));
   if(a.gewaehrleistung_bis||a.garantie_notiz)content.append(abschnitt('Gewährleistung',panel([['Bis',datum(a.gewaehrleistung_bis)],['Hinweise',a.garantie_notiz||'–']])));
  }else if(tab==='archiv'||tab==='korrespondenz'||tab==='rechnung'){
   content.append(el('div',{class:'cu-hwa-werkzeuge'},[el('button',{text:tab==='rechnung'?'Rechnungsbeleg hochladen':'Dokument hochladen',onclick:upload}),el('button',{text:'Archivdokument zuordnen',onclick:()=>hwaDokumentWaehlen(r)})]));
