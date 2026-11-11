@@ -8,6 +8,7 @@ function vorgangLink(b){
  return el('span',{text:b.name+(b.hp_nummer?' · HP '+b.hp_nummer:'')});
 }
 async function vorgangForm(record={},context=null){
+ if(record.art==='handwerker')return handwerkerForm(record,context);
  const lauf=S.lauf;let mitarbeiter;try{mitarbeiter=await API.get('/mitarbeiter');if(lauf!==S.lauf)return;}catch(e){fehler(e);return;}
  const {form,werte}=formular([
   [{name:'art',label:'Bereich',type:'select',options:opt(VORGANG_ART),value:record.art||'akte',disabled:!!record.id},
@@ -40,10 +41,11 @@ async function vorgangZuordnung(record){
  }catch(err){fehler(err);}finally{save.disabled=false;}});
  m=modal({titel:'Zuordnung ergänzen',inhalt:form,footer:close=>[el('button',{text:'Abbrechen',onclick:close}),save]});
 }
-async function vorgangDetail(id){
+async function vorgangDetail(id,params=new URLSearchParams()){
  const lauf=S.lauf,root=el('section',{class:'cu-karte',style:'padding:20px;margin:16px auto;max-width:1250px'});if(!zeigeAufDesktop(lauf,root))return;
  try{
   const r=await API.get('/vorgaenge/'+encodeURIComponent(id));if(lauf!==S.lauf)return;
+  if(r.art==='handwerker')return handwerkerMaske(r,params);
   root.append(el('p',{},[el('a',{href:'#/vorgaenge?art='+r.art,text:'← '+VORGANG_ART[r.art]})]),el('h1',{text:r.titel}),
    panel([['Vorgangsnummer','CA-'+r.id],['Bereich',VORGANG_ART[r.art]],['Status',VORGANG_STATUS[r.status]],['Fällig',datum(r.faellig_am)+(r.uhrzeit?' '+r.uhrzeit:'')],['HP-Nummer',r.hp_nummer||'–'],['Datenhaltung','In CuraAed gespeichert'],['Herkunft',r.subdomain||'In CuraAed angelegt'],['HP-Status',r.remote_snapshot?.status?.name||r.remote_snapshot?.status?.description||'–']]),
    el('div',{class:'tel-plaud-knoepfe'},[el('button',{text:'Bearbeiten',onclick:()=>vorgangForm(r)}),el('button',{text:'Zuordnung ergänzen',onclick:()=>vorgangZuordnung(r)})]));

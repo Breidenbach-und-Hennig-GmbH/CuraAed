@@ -3,6 +3,16 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const tick=()=>new Promise(r=>setImmediate(r));
 function setup(t,get){const dom=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example/'});t.after(()=>dom.window.close());const w=dom.window;w.logout=()=>{};w.passwortDialog=()=>{};w.pfktCodesDialog=()=>{};w.API={get,qs:o=>'?'+new URLSearchParams(o)};for(const file of ['ui','kern','rechnungen','shell'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());w.eval('S.lauf=1;S.benutzer={rolle:"admin",name:"Test"};');return w;}
 const doc={id:3,titel:'Lieferantenrechnung',original_name:'rechnung.pdf',dokument_datum:'2026-11-07',verknuepfungen:[]};
+
+test('Rechnung aus HWA übernimmt Auftrag, Akte, Objekt und Lieferantenkonto; gespeicherte Werte bleiben erhalten',async t=>{
+ for(const saved of [false,true]){
+  const w=setup(t,async url=>url.includes('/objekte/')?[]:{dokument:doc,rechnung:saved?{id:2,revision:1,erstellt_am:'2026-11-11 12:00:00',pruefungen:{},daten:{hwa_nr:'CA-99',objekt_nr:'9000',lieferantenkonto:'79999',akte:'CA-88'}}:null});
+  w.API.post=async()=>[{gefunden:true,id:1,label:'Testobjekt'}];
+  await w.rechnungMaske(doc,{hwa:{id:5,auftrag:{akte_id:4,objekt:{nummer:'1001'},handwerker:{lkto_nr:'70001'}}}});
+  for(const [key,value] of Object.entries(saved?{hwa_nr:'CA-99',objekt_nr:'9000',lieferantenkonto:'79999',akte:'CA-88'}:{hwa_nr:'CA-5',objekt_nr:'1001',lieferantenkonto:'70001',akte:'CA-4'}))assert.equal(w.document.getElementById('rechnung-'+key).value,value);
+  await tick();
+ }
+});
 test('Rechnungsmaske: Strg+R öffnet ausgewähltes Dokument, bildet Felder ab und speichert verknüpft',async t=>{
  const w=setup(t,async()=>({dokument:doc,rechnung:null}));let payload;w.API.post=async(url,b)=>{payload={url,b};return{id:12,revision:1};};
  w.eval('S.kontext.rechnungsDokument='+JSON.stringify(doc));

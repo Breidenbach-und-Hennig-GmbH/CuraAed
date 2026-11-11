@@ -7,14 +7,15 @@ function rechnungAktuell(){
  if(!d||(!d.hp&&!d.original_name&&!d.dokument_id)){toast('Bitte zuerst ein Dokument auswählen.');return;}
  rechnungMaske(d).catch(fehler);
 }
-async function rechnungMaske(dokument){
+async function rechnungMaske(dokument,kontext={}){
  if(!darfSchreiben()||rechnungOeffnet)return;rechnungOeffnet=true;
  const lauf=S.lauf,ref=rechnungsReferenz(dokument);let result;
  try{result=await API.get('/eingangsrechnungen/dokument'+API.qs(ref));}finally{rechnungOeffnet=false;}
  if(lauf!==S.lauf)return;
  if(document.querySelector('.cu-rechnungsmaske'))return;
  const doc=result.dokument,saved=result.rechnung,today=new Date().toLocaleDateString('sv-SE'),f={},prüf=saved?.pruefungen||{};
- const defaults={lieferantenkonto:'',bankverbindung:'000',rechnungs_nr:'',rechnungsbeleg:doc.titel||doc.original_name||'',rechnungsdatum:doc.dokument_datum?.slice(0,10)||'',eingangsdatum:today,betrag:'0,00',anerkannt:'0,00',hndl_re:'0,00',hndl_teil:'0,00',bagatellgrenze:'0,00',teilzahlung:'0,00',netto_tage:'',ziel1_tage:'',ziel2_tage:'',ziel1_skonto:'0,00',ziel2_skonto:'0,00',objekt_nr:(doc.verknuepfungen?.filter(r=>r.typ==='objekt').length===1?doc.verknuepfungen.find(r=>r.typ==='objekt').nummer:''),buchungskonto:'',bank_verb_nr:'000',steuerschluessel:'000',buchungstext:'',buchungstext2:'',buchungstext3:'',verwendungszweck1:'',verwendungszweck2:'',hwa_nr:'',akte:'',faelligkeit:'',fibu_bj:String(new Date().getFullYear()),notiz:'',rechnerisch_richtig:false,sachlich_richtig:false,zahlung_freigegeben:false,abgrenzen:false,zahlungsart:'ueberweisung'};
+ const defaults={lieferantenkonto:'',bankverbindung:'000',rechnungs_nr:'',rechnungsbeleg:doc.titel||doc.original_name||'',rechnungsdatum:doc.dokument_datum?.slice(0,10)||'',eingangsdatum:today,betrag:'0,00',anerkannt:'0,00',hndl_re:'0,00',hndl_teil:'0,00',bagatellgrenze:'0,00',teilzahlung:'0,00',netto_tage:'',ziel1_tage:'',ziel2_tage:'',ziel1_skonto:'0,00',ziel2_skonto:'0,00',objekt_nr:(doc.verknuepfungen?.filter(r=>r.typ==='objekt').length===1?doc.verknuepfungen.find(r=>r.typ==='objekt').nummer:''),buchungskonto:'',bank_verb_nr:'000',steuerschluessel:'000',buchungstext:'',buchungstext2:'',buchungstext3:'',verwendungszweck1:'',verwendungszweck2:'',hwa_nr:kontext.hwa?'CA-'+kontext.hwa.id:'',akte:kontext.hwa?.auftrag?.akte_id?'CA-'+kontext.hwa.auftrag.akte_id:'',faelligkeit:'',fibu_bj:String(new Date().getFullYear()),notiz:'',rechnerisch_richtig:false,sachlich_richtig:false,zahlung_freigegeben:false,abgrenzen:false,zahlungsart:'ueberweisung'};
+ if(kontext.hwa){defaults.objekt_nr=kontext.hwa.auftrag?.objekt?.nummer||defaults.objekt_nr;defaults.lieferantenkonto=kontext.hwa.auftrag?.handwerker?.lkto_nr||'';}
  const erkannt=result.erkennung?.rechnung?result.erkennung:null;const values={...defaults,...(!saved?erkannt?.felder:{}),...saved?.daten};let revision=saved?.revision||0,closed=false,busy=false;
  const form=el('form',{class:'cu-rechnungsmaske',autocomplete:'off'}),alert=el('p',{role:'alert',class:'cu-rechnung-fehler'}),nameInfo=el('span',{class:'small muted'}),calcHints={};
  const cents=v=>{const s=String(v);if(!/^-?\d{1,9}(,\d{1,2})?$/.test(s))return null;const [w,p='']=s.replace('-','').split(',');return(Number(w)*100+Number(p.padEnd(2,'0')))*(s.startsWith('-')?-1:1);};
