@@ -674,3 +674,10 @@ CREATE TABLE IF NOT EXISTS etv_teilnahme (
  versammlung_id INTEGER PRIMARY KEY REFERENCES versammlungen(id) ON DELETE CASCADE,
  daten TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS etv_teilnahme_version (
+ versammlung_id INTEGER PRIMARY KEY REFERENCES versammlungen(id) ON DELETE CASCADE,
+ revision INTEGER NOT NULL, basis_hash TEXT NOT NULL,
+ benutzer_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+ geaendert_am TEXT NOT NULL DEFAULT (datetime('now'))
+);

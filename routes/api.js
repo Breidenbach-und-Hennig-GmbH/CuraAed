@@ -261,6 +261,9 @@ function baueApi(db, uploadDir, options = {}) {
   router.get('/objekte/:id/versammlungsorte',h(async(req,res)=>res.json(await versammlungenSvc.orte(db,req.params.id))));
   router.post('/objekte/:id/versammlungsorte',auth.erfordereSchreibrecht,h(async(req,res)=>res.status(201).json(await versammlungenSvc.ortMerken(db,req.params.id,req.body||{}))));
   router.get('/objekte/:id/etv-personen',h(async(req,res)=>res.json(await versammlungenSvc.teilnahmePersonen(db,req.params.id,req.query.datum))));
+  router.get('/versammlungen/:id/teilnehmer',h(async(req,res)=>res.json(await require('../services/teilnehmer').stand(db,req.params.id))));
+  router.put('/versammlungen/:id/teilnehmer',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await require('../services/teilnehmer').speichern(db,req.params.id,req.body||{},req.benutzer.id))));
+  router.get('/versammlungen/:id/teilnehmer.txt',h(async(req,res)=>{res.type('text/plain').set('Content-Disposition','attachment; filename="Teilnehmerliste.txt"').send(await require('../services/teilnehmer').download(db,req.params.id));}));
   router.get('/objekte/:id/stimmprinzip',h(async(req,res)=>res.json(await require('../services/abstimmungen').config(db,req.params.id))));
   router.put('/objekte/:id/stimmprinzip',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await require('../services/abstimmungen').saveConfig(db,req.params.id,req.body||{}))));
   router.get('/versammlungen/:vid/tops/:tid/abstimmung',h(async(req,res)=>res.json(await require('../services/abstimmungen').stand(db,req.params.vid,req.params.tid))));

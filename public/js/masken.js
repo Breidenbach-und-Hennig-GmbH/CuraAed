@@ -1877,6 +1877,7 @@ function etvMaske(params = new URLSearchParams()) {
             try { await API.post(`/versammlungen/${v.id}/archiv`, { archiviert: tab !== 'archiv' }); toast(tab === 'archiv' ? 'Wieder in der Übersicht' : 'Archiviert', 'success'); laden(); } catch (e) { fehler(e); }
           }),
           el('a',{href:'#/etv/'+v.id,text:'Tagesordnung',onclick:e=>e.stopPropagation()}),
+          el('button',{type:'button',text:'Teilnehmer',onclick:e=>{e.stopPropagation();teilnehmerDialog(v.id).catch(fehler);}}),
           aktionKnopf('copy', 'Kopieren (z. B. für das nächste Jahr)', () => versammlungForm(v, { kopie: true })),
           aktionKnopf('trash', 'Löschen', async () => {
             if (!(await bestaetigen(`Versammlung „${v.name}" (${v.objekt_nummer}, ${etvDatum(v)}) endgültig löschen?`, { danger: true, text: 'Löschen' }))) return;
