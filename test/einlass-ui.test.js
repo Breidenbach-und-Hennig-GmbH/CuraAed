@@ -17,6 +17,12 @@ test('Bühnenansicht zeigt nur Übersicht und keinen Startknopf',async t=>{
 
 test('Eine ältere Aktualisierung überschreibt den bestätigten Versammlungsstart nicht',async t=>{
  const w=setup(t),initial=source();let calls=0,finish;
- w.API={get:async()=>{if(++calls===1)return initial;return new Promise(resolve=>finish=resolve);},post:async()=>({...source(),durchfuehrung:{gestartet_am:'2026-11-11T16:08:00Z',gestartet_von:'Testleitung'}})};
+ w.API={get:async url=>{if(url.endsWith('/live'))return {};if(++calls===1)return initial;return new Promise(resolve=>finish=resolve);},post:async()=>({...source(),durchfuehrung:{gestartet_am:'2026-11-11T16:08:00Z',gestartet_von:'Testleitung'}})};
  await w.einlassMaske(7,{container:w.document.getElementById('host')});button(w,'Anwesenheit aktualisieren').click();button(w,'Versammlung starten').click();await tick();await tick();assert.match(w.document.body.textContent,/Versammlung läuft/);finish(initial);await tick();await tick();assert.match(w.document.body.textContent,/Versammlung läuft/);assert.equal(button(w,'Versammlung starten'),undefined);
+});
+
+test('Der QR-Code steht direkt im Einlass und kann dort geöffnet werden, ohne die Versammlung zu starten',async t=>{
+ const w=setup(t),s=source(),live={darf_leiten:true,raum:null},puts=[];w.API={get:async url=>url.endsWith('/live')?live:s,put:async(url,b)=>{puts.push({url,b});live.raum={aktiv:true,revision:1,teams_url:'',einwahl_url:'https://curaaed.test/teilnahme.html#7/key'};}};
+ await w.einlassMaske(7,{container:w.document.getElementById('host')});button(w,'QR-Zugang im Einlass öffnen').click();await tick();await tick();
+ assert.equal(puts.length,1);assert.equal(puts[0].url,'/versammlungen/7/live/raum');assert.equal(puts[0].b.aktiv,true);const qr=w.document.querySelector('.cu-einlass-qr img');assert.equal(qr.getAttribute('alt'),'QR-Code zur Teilnahme im Einlass');assert.equal(qr.getAttribute('src'),'/api/versammlungen/7/live/qr.png');assert.equal(s.durchfuehrung,null);assert.ok(w.document.querySelector('.cu-einlass-qr a[href^="https://curaaed.test/teilnahme.html"]'));
 });
