@@ -1,8 +1,8 @@
 'use strict';
 function einlassReiter(id,ansicht){return el('nav',{class:'cu-einlass-reiter','aria-label':'Durchführung'},[['einlass','Einlass'],['live','TOPs & Abstimmung'],['protokoll','Protokoll']].map(([key,text])=>el('a',{href:'#/etv/'+id+'?schritt=durchfuehrung&ansicht='+key,text,class:key===ansicht?'aktiv':'','aria-current':key===ansicht?'page':null})));}
 async function einlassMaske(id,{container,buehne=false}={}){
- const lauf=S.lauf;let s,mode='mea',busy=false,request=0;
- const stageTitle=el('h2',{text:'Anwesenheit'}),root=el('div'),message=el('p',{role:'alert',class:'cu-rechnung-fehler'}),chart=el('div'),status=el('div'),hint=el('div'),actions=el('div',{class:'cu-einlass-start'});
+ const lauf=S.lauf;let s,mode='mea',busy=false,request=0,qrState=null,qrBusy=false;
+ const stageTitle=el('h2',{text:'Anwesenheit'}),root=el('div'),message=el('p',{role:'alert',class:'cu-rechnung-fehler'}),chart=el('div'),qrPanel=el('div',{class:'cu-einlass-qr'}),status=el('div'),hint=el('div'),actions=el('div',{class:'cu-einlass-start'});
  container.replaceChildren(root);
  const fmt=x=>/^\d+$/.test(String(x))?BigInt(x).toLocaleString('de-DE'):String(x);
  const einheit=(n,dativ=false)=>mode==='koepfe'?(String(n)==='1'?'Kopf':dativ?'Köpfen':'Köpfe'):mode==='einheiten'?(String(n)==='1'?'Einheit':'Einheiten'):'MEA';
@@ -11,7 +11,18 @@ async function einlassMaske(id,{container,buehne=false}={}){
  for(const key of Object.keys(labels)){const radio=el('input',{type:'radio',name:'einlass-ansicht-'+id,value:key,checked:key===mode,'aria-label':labels[key],title:key==='koepfe'?'Eigentümergruppen einschließlich ihrer Vertretung':labels[key],onchange:()=>{mode=key;zeichnenChart();}});selection.append(el('label',{},[radio,document.createTextNode(' '+labels[key])]));}
  summary.append(selection,chart);
  const refresh=el('button',{type:'button',text:'Anwesenheit aktualisieren',onclick:()=>laden().catch(e=>message.textContent=e.message)});
- async function laden(){const n=++request;const r=await API.get('/versammlungen/'+id+'/einlass');if(lauf!==S.lauf||!container.isConnected||n!==request)return;s=r;zeichnen();}
+ async function laden(){const n=++request;const [r,q]=await Promise.all([API.get('/versammlungen/'+id+'/einlass'),buehne?Promise.resolve(null):API.get('/versammlungen/'+id+'/live')]);if(lauf!==S.lauf||!container.isConnected||n!==request)return;s=r;qrState=q;zeichnen();}
+ function zeichnenQr(){
+  if(buehne)return;const room=qrState?.raum;qrPanel.replaceChildren(el('h3',{text:'QR-Code zur Teilnahme'}));
+  if(room?.aktiv){
+   qrPanel.append(el('div',{class:'cu-live-qr'},[el('img',{src:'/api/versammlungen/'+id+'/live/qr.png',alt:'QR-Code zur Teilnahme im Einlass',width:180,height:180}),el('div',{},[el('p',{text:'Eigentümer scannen diesen Code. Sie geben die Teilnahme nach Prüfung der Identität frei.'}),el('a',{href:room.einwahl_url,target:'_blank',rel:'noopener noreferrer',text:'Teilnahme-Seite öffnen'}),el('button',{type:'button',text:'Teilnahme-Link kopieren',onclick:async()=>{try{await navigator.clipboard.writeText(room.einwahl_url);toast('Teilnahme-Link kopiert','success');}catch{message.textContent=room.einwahl_url;}}})])]));
+  }else{
+   qrPanel.append(el('p',{class:'small muted',text:'Den QR-Zugang für den Einlass öffnen. Die Identitätsfreigabe bleibt erforderlich.'}),el('button',{type:'button',text:'QR-Zugang im Einlass öffnen',disabled:qrBusy||busy||!darfSchreiben()||!qrState?.darf_leiten||qrState?.abstimmung?.status==='offen',onclick:async()=>{
+    if(qrBusy)return;qrBusy=true;zeichnenQr();message.textContent='';try{await API.put('/versammlungen/'+id+'/live/raum',{revision:room?.revision||0,teams_url:room?.teams_url||'',aktiv:true});await laden();}catch(e){message.textContent=e.message;}finally{qrBusy=false;zeichnenQr();}
+   }}));
+  }
+  qrPanel.append(el('p',{},[el('a',{href:'#/etv/'+id+'?schritt=durchfuehrung&ansicht=live',text:'Beitrittsanfragen freigeben'})]));
+ }
  function zeichnenChart(){
   if(!s)return;const u=s.uebersicht[mode],usable=u.verfuegbar,percent=usable?u.prozent.toLocaleString('de-DE',{maximumFractionDigits:2})+'%':'–';let pos=0;const stops=[];
   for(const key of ['praesenz','online','gesperrt','abwesend']){const end=pos+(usable?u.anteile[key]:0);stops.push(categories[key][1]+' '+pos+'% '+end+'%');pos=end;}
@@ -29,7 +40,7 @@ async function einlassMaske(id,{container,buehne=false}={}){
    try{const r=await API.post('/versammlungen/'+id+'/starten',{basis_hash:s.basis_hash,teilnahme_revision:s.teilnahme_revision});if(lauf!==S.lauf||!container.isConnected)return;s=r;toast('Versammlung gestartet. Der Beginn wurde protokolliert.','success');}
    catch(e){message.textContent=e.message;await laden().catch(()=>{});}finally{busy=false;if(lauf===S.lauf&&container.isConnected)zeichnen();}
   }}));
-  zeichnenChart();
+  zeichnenChart();zeichnenQr();
  }
  if(buehne){root.className='cu-einlass-buehne';const stageTop=el('section');root.append(stageTitle,stageTop,status,summary,refresh,message,el('a',{href:'#/etv/'+id+'?schritt=durchfuehrung',text:'Zurück zum Einlass'}));}
  else{
@@ -38,6 +49,7 @@ async function einlassMaske(id,{container,buehne=false}={}){
    el('li',{},[el('a',{href:'#/etv/'+id+'?schritt=teilnehmer',text:'Vollmachten und Vertreter eintragen'}),el('p',{text:'Unter Teilnehmer erfassen und speichern Sie Anwesenheit, Vollmachten und bevollmächtigte Personen.'})]),
    el('li',{},[el('a',{href:'#/etv/'+id+'?schritt=teilnehmer',text:'Teilnahme vor Ort oder online markieren'}),el('p',{text:'Ordnen Sie den Teilnahmeweg zu. Bei einer Einlasssperre wird die betreffende Gruppe getrennt ausgewiesen.'})])
   ]),el('p',{class:'small muted',text:'Anwesenheit und Vollmachten können während der gesamten Versammlung nachgetragen und geändert werden. Die Übersicht aktualisiert sich alle 15 Sekunden.'}),hint]);
+  info.insertBefore(qrPanel,info.children[2]);
   root.append(einlassReiter(id,'einlass'),el('a',{href:'#/etv/'+id+'?schritt=durchfuehrung&ansicht=live',class:'button',text:'QR-Zugang, Teams und Live-Abstimmung'}),el('h2',{text:'Einlass'}),el('div',{class:'cu-einlass-grid'},[info,el('div',{class:'cu-einlass-rechts'},[summary,refresh,actions])]),message);
  }
  await laden();if(buehne&&typeof liveBuehneBox==='function'){const host=root.querySelector('section');if(host)liveBuehneBox(id,host).catch(()=>{});}

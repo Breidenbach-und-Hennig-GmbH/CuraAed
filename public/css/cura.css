@@ -639,3 +639,6 @@ kbd { font: 12px/1.6 inherit; font-family: inherit; color: var(--cu-grau); backg
 
 .cu-live-karte{padding:22px!important;margin:20px 0}.cu-live-karte h3{margin-top:0}.cu-live-karte input[type=url]{width:100%}.cu-live-qr{display:grid;grid-template-columns:250px minmax(0,1fr);gap:24px;align-items:center}.cu-live-qr img{max-width:100%;height:auto;background:white}.cu-live-qr p{overflow-wrap:anywhere}.cu-live-top{display:flex;gap:18px;justify-content:space-between;align-items:center;padding:18px 0;border-top:1px solid #e4dfeb}.cu-live-ausschluss{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin:12px 0}.cu-einlass-reiter{flex-wrap:wrap}
 @media(max-width:850px){.cu-live-qr{grid-template-columns:1fr}.cu-live-top{display:block}.cu-live-top .cu-etv-aktionen{margin-top:14px;max-width:100%}.cu-live-ausschluss{grid-template-columns:1fr}}
+
+.cu-einlass-qr{padding:20px 0;margin:22px 0;border-top:1px solid #e4dfeb;border-bottom:1px solid #e4dfeb}.cu-einlass-qr h3{margin-top:0!important}.cu-einlass-qr .cu-live-qr{grid-template-columns:180px minmax(0,1fr);gap:16px}.cu-einlass-qr .cu-live-qr p{font-size:13px}.cu-einlass-qr button{margin-top:10px;white-space:normal}
+@media(max-width:600px){.cu-einlass-qr .cu-live-qr{grid-template-columns:1fr}.cu-einlass-qr img{margin:auto}}
