@@ -1,9 +1,9 @@
 'use strict';
-async function protokollDialog(vid){
+async function protokollDialog(vid,{container=null}={}){
  const url='/versammlungen/'+vid+'/protokoll';let s=await API.get(url),busy=false,closed=false,rows=[],globalUI,coverChecks={},geprueft,fieldset,save,pdfButton;
  const content=el('div'),error=el('p',{role:'alert',class:'cu-rechnung-fehler'}),status=el('p',{role:'status',class:'small muted'});
  const labels={offen:'Noch nicht erfasst',angenommen:'Angenommen',abgelehnt:'Abgelehnt',nicht_abgestimmt:'Keine Abstimmung',vertagt:'Vertagt'};
- const m=modal({titel:'Versammlungsprotokoll · '+s.versammlung.name,inhalt:content,wide:true,onClose:()=>{closed=true;},footer:close=>[el('button',{type:'button',text:'Schließen',onclick:close}),save=el('button',{type:'button',text:'Protokoll speichern',disabled:!darfSchreiben(),onclick:()=>speichern(false)}),pdfButton=el('button',{type:'button',text:'PDF erstellen',class:'btn-primary',disabled:!darfSchreiben(),onclick:()=>speichern(true)})]});
+ const m=(container?options=>etvInlineFenster(container,options):modal)({titel:'Versammlungsprotokoll · '+s.versammlung.name,inhalt:content,wide:true,onClose:()=>{closed=true;},footer:close=>[el('button',{type:'button',text:'Schließen',onclick:close}),save=el('button',{type:'button',text:'Protokoll speichern',disabled:!darfSchreiben(),onclick:()=>speichern(false)}),pdfButton=el('button',{type:'button',text:'PDF erstellen',class:'btn-primary',disabled:!darfSchreiben(),onclick:()=>speichern(true)})]});
  function form(gruppen,prefix){const u=formular(gruppen);for(const [key,i] of Object.entries(u.inputs)){const l=u.form.querySelector('label[for="'+i.id+'"]');i.id=prefix+key;if(l)l.htmlFor=i.id;i.addEventListener('input',()=>{if(geprueft)geprueft.checked=false;});}u.form.addEventListener('submit',e=>e.preventDefault());return u;}
  function daten(){return{...globalUI.werte(),...Object.fromEntries(Object.entries(coverChecks).map(([k,input])=>[k,input.checked])),teilnehmer_anlage:globalUI.anlage.checked,geprueft:geprueft.checked,tops:rows.map(r=>({id:r.t.id,...r.u.werte(),wortlaut_geprueft:r.confirm.checked,beschlussstatus:r.t.art==='beschluss'?r.u.inputs.beschlussstatus.value:'besprechung'}))};}
  function zeichnen(){
@@ -31,6 +31,7 @@ async function protokollDialog(vid){
   }
   const closing=form([{felder:[{name:'schluss',label:'Abschluss / weitere Hinweise',type:'textarea',value:d.schluss}]}],'protokoll-');closing.inputs.schluss.maxLength=10000;globalUI.inputs.schluss=closing.inputs.schluss;fieldset.append(closing.form);
   geprueft=el('input',{type:'checkbox','aria-label':'Inhalt und verkündete Beschlüsse geprüft'});fieldset.append(el('label',{class:'check-inline'},[geprueft,document.createTextNode(' Inhalt und verkündete Beschlüsse geprüft (für die Ausgabe zur Unterzeichnung)')]),el('p',{class:'small muted',text:'Die erste PDF-Seite enthält Unterschriftenfelder für die Versammlungsleitung, eine Eigentümerperson und gegebenenfalls den Beiratsvorsitz bzw. dessen Vertretung. Es werden keine Unterschriften erzeugt.'}));content.append(fieldset,error,status);
+  if(container)etvMerkeStand(container.closest('.cu-etv-inhalt')||container);
  }
  async function speichern(pdf){
   if(busy||!darfSchreiben())return;busy=true;save.disabled=pdfButton.disabled=true;fieldset.disabled=true;error.textContent='';status.textContent=pdf?'PDF wird erstellt …':'Protokoll wird gespeichert …';

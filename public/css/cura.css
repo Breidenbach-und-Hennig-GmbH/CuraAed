@@ -599,3 +599,20 @@ kbd { font: 12px/1.6 inherit; font-family: inherit; color: var(--cu-grau); backg
 .tel-plaud-status { margin-top: 6px; }
 .tel-plaud-abschrift { margin-top: 6px; font-size: 13px; }
 .tel-plaud-abschrift > div { max-height: 220px; overflow: auto; padding: 6px; background: #fff; border-radius: 6px; }
+
+/* Navigation innerhalb einer Eigentümerversammlung */
+.cu-etv-ablauf{display:grid;grid-template-columns:222px minmax(0,1fr);gap:24px;align-items:start}
+.cu-etv-seitenleiste{position:sticky;top:16px;background:#f0edf5;border:1px solid #e0d9e9;border-radius:12px;overflow:hidden;min-height:440px;display:flex;flex-direction:column}
+.cu-etv-seitenkopf{display:grid;gap:8px;padding:22px 18px;color:#56327e;overflow-wrap:anywhere}
+.cu-etv-seitenkopf span{font-size:12px;color:#71677c}
+.cu-etv-schritt{display:flex;gap:12px;align-items:center;padding:19px 18px;color:#51465d;text-decoration:none;font-weight:600;border-left:4px solid transparent}
+.cu-etv-schritt:hover{background:#e5deee}
+.cu-etv-schritt.aktiv{background:#56327e;color:white;border-left-color:#b29ad2}
+.cu-etv-schritt-nr{font-size:12px;border:1px solid currentColor;border-radius:50%;width:23px;height:23px;display:inline-grid;place-items:center;flex-shrink:0}
+.cu-etv-verlassen{margin:auto 14px 18px;padding:14px 4px;border-top:1px solid #d6cde1;color:#51465d;text-decoration:none}
+.cu-etv-inhalt{min-width:0}
+.cu-etv-inline>h2{font-size:20px;margin:0 0 22px}
+.cu-etv-inline-fuss{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:12px;padding:20px 0;margin-top:20px;border-top:1px solid #e0d9e9}
+@media(max-width:780px){.cu-etv-ablauf{grid-template-columns:minmax(0,1fr);gap:18px}.cu-etv-seitenleiste{position:static;min-height:0}.cu-etv-seitenleiste nav{display:flex;flex-wrap:wrap}.cu-etv-schritt{flex:1 1 45%;padding:12px}.cu-etv-verlassen{margin:12px 18px}.cu-etv-seitenkopf{padding:14px 18px}}
+
+.cu-etv-inhalt .cu-etv-aktionen{display:flex;flex-wrap:wrap;gap:6px;min-width:170px;max-width:220px;white-space:normal}

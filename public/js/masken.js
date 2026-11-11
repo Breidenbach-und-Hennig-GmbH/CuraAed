@@ -450,7 +450,6 @@ async function objektMaske(id, params) {
     { text: 'Suche', titel: 'Anderes Objekt suchen (Taste s)', onclick: () => geheZu('#/objektliste') },
     { text: 'Z.I.S.', titel: 'Zentrales Informationssystem: Kontakte und Dokumente zum Objekt', onclick: () => geheZu(basis + '?zis=1') },
     { text: 'Bank', schnell: true, titel: 'Bankkonten des Objekts (Hausgeld-, Rücklagenkonto …)', onclick: () => objektBankDialog(o) },
-    {text:'Stimmprinzip',titel:'Stimmprinzip und Gemeinschaftsordnung für Eigentümerversammlungen',onclick:()=>objektStimmprinzipDialog(o.id).catch(fehler),gesperrt:!schreiben},
     { text: 'PFkt.', titel: 'Allgemeine Personenfunktionen (Beirat, Hausmeister, Handwerker …)', onclick: () => objektPfktDialog(o) },
     { text: 'AbrArt', gesperrt: true, grund: 'Abrechnungsarten – folgen mit der Finanzbuchhaltung (FIBU).' },
     { text: 'Text', gesperrt: true, grund: 'Texte zum Objekt – ' + SPAETER_KNOPF },
@@ -1707,7 +1706,7 @@ const ETV_STATUS = {
 };
 const etvDatum = (v) => `${datumKurz(v.datum)}${v.uhrzeit ? ' - ' + v.uhrzeit : ''}`;
 
-async function versammlungForm(v, { kopie = false } = {}) {
+async function versammlungForm(v, { kopie = false, container = null } = {}) {
   let objekte=[],mitarbeiter=[];
   try { [objekte,mitarbeiter]=await Promise.all([API.get('/objekte'),API.get('/mitarbeiter')]); } catch (e) { fehler(e); return; }
   const bearb = !!(v && v.id) && !kopie;
@@ -1731,6 +1730,7 @@ async function versammlungForm(v, { kopie = false } = {}) {
   let gespeicherteOrte=[];
   if(x.objekt_id)try{gespeicherteOrte=await API.get('/objekte/'+x.objekt_id+'/versammlungsorte');}catch(e){fehler(e);return;}
   formFenster({
+    container,
     titel: bearb ? `Versammlung bearbeiten – ${x.name}` : kopie ? 'Versammlung kopieren' : 'Versammlung anlegen',
     felder: [
       { grid: 2, felder: [
@@ -1841,7 +1841,7 @@ async function versammlungForm(v, { kopie = false } = {}) {
 
     },
     speichern: async(w)=>{if(!w.leitung_id)throw new Error('Bitte eine Versammlungsleitung auswählen.');const r=await (bearb?API.put('/versammlungen/'+x.id,w):API.post('/versammlungen',w));gespeichertId=r?.id||gespeichertId;return r;},
-    loeschen: bearb ? async()=>{await API.del('/versammlungen/'+x.id);gespeichertId=null;} : null,
+    loeschen: bearb&&!container ? async()=>{await API.del('/versammlungen/'+x.id);gespeichertId=null;} : null,
     loeschFrage: `Versammlung „${x.name}" endgültig löschen?`,
     danach: ()=>gespeichertId?geheZu('#/etv/'+gespeichertId):neuLaden(),
   });

@@ -696,10 +696,10 @@ function listenFenster({ titel, laden, neuText, neu }) {
   zeichnen();
 }
 
-function formFenster({ titel, felder, speichern, loeschen, loeschFrage, danach, nachAufbau }) {
+function formFenster({ titel, felder, speichern, loeschen, loeschFrage, danach, nachAufbau, container }) {
   const { form, werte, inputs } = formular(felder);
   if (nachAufbau) nachAufbau(inputs, form);
-  modal({
+  (container?options=>etvInlineFenster(container,options):modal)({
     titel, inhalt: form,
     footer: (close) => [
       loeschen ? el('button', { class: 'btn-danger', text: 'Löschen', onclick: async () => {

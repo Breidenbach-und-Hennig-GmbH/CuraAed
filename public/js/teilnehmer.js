@@ -1,9 +1,9 @@
 'use strict';
-async function teilnehmerDialog(vid){
+async function teilnehmerDialog(vid,{container=null}={}){
  const url='/versammlungen/'+vid+'/teilnehmer';let s=await API.get(url),rows=[],busy=false,closed=false,save;
  const content=el('div'),error=el('p',{role:'alert',class:'cu-rechnung-fehler'}),status=el('p',{role:'status',class:'small muted'}),suche=el('input',{type:'search','aria-label':'Teilnehmer durchsuchen',placeholder:'Eigentümer, Einheit oder bevollmächtigte Person suchen …'});
  let fieldset,summary;
- const m=modal({titel:'Teilnehmerliste · '+s.versammlung.name,inhalt:content,wide:true,onClose:()=>{closed=true;},footer:close=>[
+ const m=(container?options=>etvInlineFenster(container,options):modal)({titel:'Teilnehmerliste · '+s.versammlung.name,inhalt:content,wide:true,onClose:()=>{closed=true;},footer:close=>[
   el('button',{type:'button',text:'Schließen',onclick:close}),save=el('button',{type:'button',text:'Teilnehmerliste speichern',class:'btn-primary',disabled:!darfSchreiben(),onclick:speichern})
  ]});
  function daten(){return rows.map(r=>({key:r.g.key,teilnahme:r.teilnahme.value,vertreter:r.vertreter.value,nachweis:r.nachweis.value,vollmacht_textform:r.textform.checked,anwesende_eigentuemer:r.personen.filter(p=>p.input.checked).map(p=>p.id)}));}
@@ -35,7 +35,8 @@ async function teilnehmerDialog(vid){
    rows.push(r);fieldset.append(card);proxy.style.display=select.value==='vollmacht'?'':'none';
   }
   if(!rows.length)fieldset.append(el('p',{text:'Noch keine Eigentümergruppen vorhanden. Bitte zuerst die Eigentümer den Einheiten dieses Objekts zuordnen.'}));
-  content.append(fieldset,error,status,el('a',{href:'/api'+url+'.txt',download:'',class:'button',text:'Gespeicherte Teilnehmerliste herunterladen'}),el('p',{class:'small muted',text:'Gespeicherte Anwesenheit und Vollmachten werden für neue Abstimmungen vorbelegt. Stimmen und TOP-bezogene Stimmrechtsausschlüsse werden dort gesondert erfasst.'}));zusammenfassung();
+  content.append(fieldset,error,status,el('a',{href:'/api'+url+'.txt',download:'',class:'button',text:'Gespeicherte Teilnehmerliste herunterladen'}),el('p',{class:'small muted',text:'Anwesenheit und Vollmachten bleiben für die Durchführung dieser Versammlung gespeichert.'}));zusammenfassung();
+  if(container)etvMerkeStand(container.closest('.cu-etv-inhalt')||container);
  }
  async function speichern(){
   if(busy||!darfSchreiben())return;busy=true;save.disabled=true;fieldset.disabled=true;error.textContent='';
