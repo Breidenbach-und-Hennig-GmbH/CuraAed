@@ -97,6 +97,7 @@ async function tagesordnungMaske(id){
    el('button',{type:'button',text:'↑',title:'TOP '+t.position+' nach oben','aria-label':'TOP '+t.position+' nach oben',disabled:t.position===1,onclick:e=>{e.stopPropagation();bewegen(t,-1);}}),
    el('button',{type:'button',text:'↓',title:'TOP '+t.position+' nach unten','aria-label':'TOP '+t.position+' nach unten',disabled:t.position===stand.tops.length,onclick:e=>{e.stopPropagation();bewegen(t,1);}}),
    el('button',{type:'button',text:'Bearbeiten',onclick:e=>{e.stopPropagation();topForm(t);}}),
+   el('button',{type:'button',text:'Mehrheit / Abstimmen',disabled:t.art!=='beschluss',onclick:e=>{e.stopPropagation();abstimmungDialog(id,t.id).catch(fehler);}}),
    el('button',{type:'button',text:'Als Vorlage speichern',onclick:e=>{e.stopPropagation();vorlageForm(null,t);}}),
    el('button',{type:'button',text:'Löschen',onclick:e=>{e.stopPropagation();loeschen(t);}})
   ]):''}],rows,{onOpen:t=>{if(darfSchreiben())topForm(t);},leer:q?'Keine passenden TOPs.':'Noch keine Tagesordnungspunkte. Über „Tagesordnungspunkt anlegen“ starten.'}));

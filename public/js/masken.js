@@ -450,6 +450,7 @@ async function objektMaske(id, params) {
     { text: 'Suche', titel: 'Anderes Objekt suchen (Taste s)', onclick: () => geheZu('#/objektliste') },
     { text: 'Z.I.S.', titel: 'Zentrales Informationssystem: Kontakte und Dokumente zum Objekt', onclick: () => geheZu(basis + '?zis=1') },
     { text: 'Bank', schnell: true, titel: 'Bankkonten des Objekts (Hausgeld-, Rücklagenkonto …)', onclick: () => objektBankDialog(o) },
+    {text:'Stimmprinzip',titel:'Stimmprinzip und Gemeinschaftsordnung für Eigentümerversammlungen',onclick:()=>objektStimmprinzipDialog(o.id).catch(fehler),gesperrt:!schreiben},
     { text: 'PFkt.', titel: 'Allgemeine Personenfunktionen (Beirat, Hausmeister, Handwerker …)', onclick: () => objektPfktDialog(o) },
     { text: 'AbrArt', gesperrt: true, grund: 'Abrechnungsarten – folgen mit der Finanzbuchhaltung (FIBU).' },
     { text: 'Text', gesperrt: true, grund: 'Texte zum Objekt – ' + SPAETER_KNOPF },
