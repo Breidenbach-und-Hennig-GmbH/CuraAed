@@ -139,4 +139,4 @@ async function auszaehlen(db,vid,tid,b,owner,speichern=false){
  });
 }
 async function verlauf(db,vid,tid){await top(db,vid,tid);return db.all('SELECT h.revision,h.ergebnis,h.snapshot,h.erstellt_am,b.name AS benutzer FROM etv_abstimmungsverlauf h LEFT JOIN benutzer b ON b.id=h.benutzer_id WHERE h.top_id=? ORDER BY h.revision DESC',[tid]);}
-module.exports={config,saveConfig,rule,saveRule,stand,register,zaehlen,auszaehlen,verlauf,DEFAULT_CONFIG,DEFAULT_RULE};
+module.exports={topHash,config,saveConfig,rule,saveRule,stand,register,zaehlen,auszaehlen,verlauf,DEFAULT_CONFIG,DEFAULT_RULE};

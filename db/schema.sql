@@ -686,3 +686,8 @@ CREATE TABLE IF NOT EXISTS etv_einladungen (
  versammlung_id INTEGER PRIMARY KEY REFERENCES versammlungen(id) ON DELETE CASCADE,
  daten TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1
 );
+
+CREATE TABLE IF NOT EXISTS etv_protokolle (
+ versammlung_id INTEGER PRIMARY KEY REFERENCES versammlungen(id) ON DELETE CASCADE,
+ daten TEXT NOT NULL, quellen_hash TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1
+);
