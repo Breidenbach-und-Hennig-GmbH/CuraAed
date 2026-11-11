@@ -18,7 +18,8 @@ function pruefen(register,rows){
  const map=new Map();for(const r of rows){if(!r||typeof r.key!=='string'||map.has(r.key))fail('Doppelte oder ungültige Eigentümergruppe.');map.set(r.key,r);}
  return Object.fromEntries(register.gruppen.map(g=>{
   const r=map.get(g.key);if(!r||!['selbst','vollmacht','abwesend'].includes(r.teilnahme)||typeof r.vollmacht_textform!=='boolean')fail('Ungültige Teilnahme.');
-  const d={teilnahme:r.teilnahme,vertreter:text(r.vertreter,200),nachweis:text(r.nachweis,500),vollmacht_textform:r.vollmacht_textform};
+  if(r.kanal!==undefined&&!['praesenz','online'].includes(r.kanal))fail('Ungültiger Teilnahmeweg.');if(r.zugang_gesperrt!==undefined&&typeof r.zugang_gesperrt!=='boolean')fail('Ungültiger Einlassstatus.');if(r.zugang_gesperrt&&r.teilnahme!=='abwesend')fail('Gesperrte Eigentümergruppen bitte als Nichtteilnahme führen.');
+  const d={kanal:r.kanal||'praesenz',zugang_gesperrt:r.zugang_gesperrt===true,teilnahme:r.teilnahme,vertreter:text(r.vertreter,200),nachweis:text(r.nachweis,500),vollmacht_textform:r.vollmacht_textform};
   if(d.teilnahme==='vollmacht'){
    if(!d.vertreter||!d.nachweis||!d.vollmacht_textform)fail('Bitte für '+g.name+' die bevollmächtigte Person und den Nachweis der Vollmacht in Textform ergänzen.');
   }else{d.vertreter='';d.nachweis='';d.vollmacht_textform=false;}

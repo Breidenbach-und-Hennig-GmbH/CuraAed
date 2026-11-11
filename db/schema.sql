@@ -696,3 +696,9 @@ CREATE TABLE IF NOT EXISTS firmenbriefkoepfe (
  id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, daten TEXT NOT NULL,
  logo BLOB, revision INTEGER NOT NULL DEFAULT 1
 );
+
+CREATE TABLE IF NOT EXISTS etv_durchfuehrung (
+ versammlung_id INTEGER PRIMARY KEY REFERENCES versammlungen(id) ON DELETE CASCADE,
+ gestartet_am TEXT NOT NULL, benutzer_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+ teilnahme_revision INTEGER NOT NULL
+);

@@ -266,6 +266,8 @@ function baueApi(db, uploadDir, options = {}) {
   router.get('/firmenbriefkoepfe/:id',h(async(req,res)=>res.json(await require('../services/firmenbriefkoepfe').holen(db,req.params.id))));
   router.post('/firmenbriefkoepfe',auth.erfordereAdmin,h(async(req,res)=>res.json(await require('../services/firmenbriefkoepfe').speichern(db,null,req.body||{}))));
   router.put('/firmenbriefkoepfe/:id',auth.erfordereAdmin,h(async(req,res)=>res.json(await require('../services/firmenbriefkoepfe').speichern(db,req.params.id,req.body||{}))));
+  router.get('/versammlungen/:id/einlass',h(async(req,res)=>res.json(await require('../services/einlass').stand(db,req.params.id))));
+  router.post('/versammlungen/:id/starten',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await require('../services/einlass').starten(db,req.params.id,req.body||{},req.benutzer.id))));
   router.get('/versammlungen/:id/protokoll',h(async(req,res)=>res.json(await require('../services/protokolle').stand(db,req.params.id))));
   router.put('/versammlungen/:id/protokoll',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await require('../services/protokolle').speichern(db,req.params.id,req.body||{}))));
   router.post('/versammlungen/:id/protokoll.pdf',auth.erfordereSchreibrecht,h(async(req,res)=>{const pdf=await require('../services/protokolle').speichern(db,req.params.id,req.body||{},true);res.type('application/pdf').set('Cache-Control','no-store').set('Content-Disposition','attachment; filename="Versammlungsprotokoll.pdf"').send(pdf);}));

@@ -12,10 +12,10 @@ test('Schrittleiste zeigt die aktuelle Phase, behält die Versammlung bei und sc
  flow.merken();nav.querySelector('a[href$="schritt=basisdaten"]').click();await tick();assert.equal(links[1],'#/etv/7?schritt=basisdaten');
  assert.doesNotMatch(w.document.body.textContent,/Versammlung abbrechen|Mehrheit|Abstimmen/);
 });
-test('Teilnehmer und Durchführung werden innerhalb der Schrittleiste geöffnet; Abstimmung ist für später vorgemerkt',async t=>{
+test('Teilnehmer und Einlass werden innerhalb der Schrittleiste geöffnet',async t=>{
  const w=setup(t),calls=[];w.API={get:async()=>({id:7,name:'ETV Test',objekt_nummer:'1001',datum:'2026-12-05'})};
  w.teilnehmerDialog=async(id,{container})=>{calls.push(['teilnehmer',id]);container.append(w.document.createElement('input'));};
- w.protokollDialog=async(id,{container})=>{calls.push(['protokoll',id]);container.append(w.document.createElement('textarea'));};
+ w.einlassMaske=async(id,{container})=>{calls.push(['einlass',id]);container.append(w.document.createElement('textarea'));};
  await w.versammlungSchrittMaske(7,'teilnehmer');assert.equal(calls[0][0],'teilnehmer');assert.ok(w.document.querySelector('.cu-etv-seitenleiste'));assert.equal(w.document.querySelectorAll('[role="dialog"]').length,0);
- await w.versammlungSchrittMaske(7,'durchfuehrung');assert.equal(calls[1][0],'protokoll');assert.match(w.document.body.textContent,/Abstimmung wird später in diesem Schritt ergänzt/);assert.match(w.document.querySelector('[aria-current="step"]').textContent,/Durchführung/);
+ await w.versammlungSchrittMaske(7,'durchfuehrung');assert.equal(calls[1][0],'einlass');assert.match(w.document.querySelector('[aria-current="step"]').textContent,/Durchführung/);
 });
