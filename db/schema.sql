@@ -681,3 +681,8 @@ CREATE TABLE IF NOT EXISTS etv_teilnahme_version (
  benutzer_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
  geaendert_am TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS etv_einladungen (
+ versammlung_id INTEGER PRIMARY KEY REFERENCES versammlungen(id) ON DELETE CASCADE,
+ daten TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1
+);

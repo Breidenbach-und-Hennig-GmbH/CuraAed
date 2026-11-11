@@ -6,7 +6,7 @@ test('Abstimmungs-API: Authentifizierung, Schreibrechte, Objekt- und TOP-Grenzen
  const request=(url,method='GET',body,session=token)=>fetch(base+url,{method,headers:{'content-type':'application/json',cookie:auth.COOKIE_NAME+'='+session},body:body?JSON.stringify(body):undefined});
  assert.equal((await request('/objekte/1/stimmprinzip','GET',null,'')).status,401);
  assert.equal((await request('/objekte/1/stimmprinzip','GET',null,reader)).status,200);
- assert.equal((await request('/versammlungen/1/teilnehmer','GET',null,reader)).status,200);assert.equal((await request('/versammlungen/1/teilnehmer.txt','GET',null,reader)).status,200);assert.equal((await request('/versammlungen/1/teilnehmer','PUT',{},reader)).status,403);assert.equal((await request('/versammlungen/999/teilnehmer')).status,404);
+ assert.equal((await request('/versammlungen/1/teilnehmer','GET',null,reader)).status,200);assert.equal((await request('/versammlungen/1/einladung','GET',null,reader)).status,200);assert.equal((await request('/versammlungen/1/einladung.pdf','POST',{},reader)).status,403);assert.equal((await request('/versammlungen/1/teilnehmer.txt','GET',null,reader)).status,200);assert.equal((await request('/versammlungen/1/teilnehmer','PUT',{},reader)).status,403);assert.equal((await request('/versammlungen/999/teilnehmer')).status,404);
  assert.equal((await request('/objekte/1/stimmprinzip','PUT',{revision:0,daten:{}},reader)).status,403);
  for(const suffix of ['auszaehlen','abstimmung'])assert.equal((await request('/versammlungen/1/tops/1/'+suffix,'POST',{},reader)).status,403);
  assert.equal((await request('/versammlungen/2/tops/1/abstimmung')).status,404);
