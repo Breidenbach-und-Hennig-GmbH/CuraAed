@@ -8,7 +8,7 @@ test('Rechnung aus HWA übernimmt Auftrag, Akte, Objekt und Lieferantenkonto; ge
  for(const saved of [false,true]){
   const w=setup(t,async url=>url.includes('/objekte/')?[]:{dokument:doc,rechnung:saved?{id:2,revision:1,erstellt_am:'2026-11-11 12:00:00',pruefungen:{},daten:{hwa_nr:'CA-99',objekt_nr:'9000',lieferantenkonto:'79999',akte:'CA-88'}}:null});
   w.API.post=async()=>[{gefunden:true,id:1,label:'Testobjekt'}];
-  await w.rechnungMaske(doc,{hwa:{id:5,auftrag:{akte_id:4,objekt:{nummer:'1001'},handwerker:{lkto_nr:'70001'}}}});
+  await w.rechnungMaske(doc,{hwa:{id:5,auftrag:{akte_id:4,objekt:{id:1,nummer:'1001'},handwerker:{lkto_nr:'70001'}}}});
   for(const [key,value] of Object.entries(saved?{hwa_nr:'CA-99',objekt_nr:'9000',lieferantenkonto:'79999',akte:'CA-88'}:{hwa_nr:'CA-5',objekt_nr:'1001',lieferantenkonto:'70001',akte:'CA-4'}))assert.equal(w.document.getElementById('rechnung-'+key).value,value);
   await tick();
  }
