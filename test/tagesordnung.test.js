@@ -19,3 +19,25 @@ test('Tagesordnung: je Versammlung anlegen, bearbeiten, umsortieren, exportieren
  await assert.rejects(tops.aendern(db,a.id,'anlegen',{revision:6,titel:'',art:'beschluss'}),/Titel/);
  assert.equal((await tops.liste(db,a.id)).revision,6);
 });
+
+test('TOP-Vorlagen: Mehrfachübernahme als unabhängige Kopie, Versionskonflikte und vollständiger Rollback',async t=>{
+ const db=await openDatabase(':memory:');t.after(()=>db.close());
+ await db.run("INSERT INTO benutzer(id,benutzername,name,passwort_hash,rolle) VALUES(1,'leitung','Testleitung','test','admin')");
+ await db.run("INSERT INTO objekte(id,nummer,bezeichnung) VALUES(1,'1001','Testhaus')");
+ const meeting=await vs.anlegen(db,{objekt_id:1,name:'ETV',datum:'2026-11-20',leitung_id:1});
+ const one=await tops.vorlageAendern(db,'anlegen',{name:'Eröffnung Standard',titel:'Eröffnung',art:'besprechung',erlaeuterung:'Begrüßung'});
+ const two=await tops.vorlageAendern(db,'anlegen',{name:'Budget Standard',titel:'Budget',art:'beschluss',beschlussvorschlag:'Bitte anpassen'});
+ const request={revision:1,vorlagen:[{id:two.id,revision:1},{id:one.id,revision:1}]};
+ await tops.vorlagenUebernehmen(db,meeting.id,request);
+ assert.deepEqual((await tops.liste(db,meeting.id)).tops.map(t=>t.titel),['Budget','Eröffnung']);
+ await assert.rejects(tops.vorlagenUebernehmen(db,meeting.id,request),e=>e.status===409);
+ await tops.vorlageAendern(db,'bearbeiten',{...two,revision:1,titel:'Budget neu'});
+ assert.equal((await tops.liste(db,meeting.id)).tops[0].titel,'Budget');
+ await assert.rejects(tops.vorlagenUebernehmen(db,meeting.id,{revision:2,vorlagen:[{id:one.id,revision:1},{id:two.id,revision:1}]}),e=>e.status===409);
+ assert.equal((await tops.liste(db,meeting.id)).tops.length,2);assert.equal((await tops.liste(db,meeting.id)).revision,2);
+ await assert.rejects(tops.vorlagenUebernehmen(db,meeting.id,{revision:2,vorlagen:[{id:one.id,revision:1},{id:one.id,revision:1}]}),/doppelte Vorlage/);
+ await tops.vorlageAendern(db,'archivieren',{id:one.id,revision:1});
+ assert.equal((await tops.vorlagen(db)).length,1);assert.equal((await tops.liste(db,meeting.id)).tops[1].titel,'Eröffnung');
+ await assert.rejects(tops.vorlageAendern(db,'bearbeiten',{...two,revision:1}),e=>e.status===409);
+ await assert.rejects(tops.vorlageAendern(db,'anlegen',{name:'',titel:'Test'}),/Vorlagenname/);
+});

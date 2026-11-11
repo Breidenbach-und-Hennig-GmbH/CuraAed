@@ -635,3 +635,16 @@ CREATE TABLE IF NOT EXISTS versammlung_tops (
  beschlussvorschlag TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_etv_tops ON versammlung_tops(versammlung_id,position,id);
+
+CREATE TABLE IF NOT EXISTS top_vorlagen (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ name TEXT NOT NULL,
+ titel TEXT NOT NULL,
+ art TEXT NOT NULL DEFAULT 'besprechung',
+ erlaeuterung TEXT,
+ beschlussvorschlag TEXT,
+ revision INTEGER NOT NULL DEFAULT 1,
+ archiviert INTEGER NOT NULL DEFAULT 0,
+ erstellt_am TEXT NOT NULL DEFAULT (datetime('now')),
+ geaendert_am TEXT NOT NULL DEFAULT (datetime('now'))
+);

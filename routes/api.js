@@ -261,6 +261,9 @@ function baueApi(db, uploadDir, options = {}) {
   router.get('/objekte/:id/versammlungsorte',h(async(req,res)=>res.json(await versammlungenSvc.orte(db,req.params.id))));
   router.post('/objekte/:id/versammlungsorte',auth.erfordereSchreibrecht,h(async(req,res)=>res.status(201).json(await versammlungenSvc.ortMerken(db,req.params.id,req.body||{}))));
   router.get('/objekte/:id/etv-personen',h(async(req,res)=>res.json(await versammlungenSvc.teilnahmePersonen(db,req.params.id,req.query.datum))));
+  router.get('/top-vorlagen',h(async(req,res)=>res.json(await require('../services/tagesordnung').vorlagen(db))));
+  router.post('/top-vorlagen/:aktion',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await require('../services/tagesordnung').vorlageAendern(db,req.params.aktion,req.body||{}))));
+  router.post('/versammlungen/:vid/top-vorlagen-uebernehmen',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await require('../services/tagesordnung').vorlagenUebernehmen(db,req.params.vid,req.body||{}))));
   router.get('/versammlungen/:vid/tops',h(async(req,res)=>res.json(await require('../services/tagesordnung').liste(db,req.params.vid))));
   router.post('/versammlungen/:vid/tops/:aktion',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await require('../services/tagesordnung').aendern(db,req.params.vid,req.params.aktion,req.body||{}))));
   router.get('/versammlungen/:vid/tagesordnung.txt',h(async(req,res)=>{const txt=await require('../services/tagesordnung').text(db,req.params.vid);res.type('text/plain; charset=utf-8').attachment('Tagesordnung-'+Number(req.params.vid)+'.txt').send(txt);}));
