@@ -39,7 +39,7 @@ async function abstimmungDialog(vid,tid){
  async function rechnen(speichern){
   if(closed||busy)return;if(regelGeaendert){error.textContent='Bitte die geänderte Mehrheitsregel zuerst speichern.';return;}const n=++request;error.textContent='';
   if(speichern){busy=true;fieldset.disabled=true;save.disabled=true;countButton.disabled=true;}
-  const body={revision:s.revision,basis_hash:s.register.basis_hash,top_hash:s.top_hash,config_revision:s.config.revision,regel_revision:s.regel.revision,geprueft:checked.checked,stimmen:stimmen()};
+  const body={revision:s.revision,teilnahme_revision:s.teilnahme_revision,basis_hash:s.register.basis_hash,top_hash:s.top_hash,config_revision:s.config.revision,regel_revision:s.regel.revision,geprueft:checked.checked,stimmen:stimmen()};
   try{const r=await API.post(url+(speichern?'/abstimmung':'/auszaehlen'),body);if(closed||n!==request)return;
    ergebnis(r.ergebnis,preview);
    if(speichern){s.revision=r.revision;toast('Auszählung gespeichert · Version '+r.revision,'success');entwurf=body.stimmen;s=await API.get(url+'/abstimmung');if(!closed)render();}
@@ -77,7 +77,8 @@ async function abstimmungDialog(vid,tid){
   fieldset=el('fieldset',{'aria-label':'Stimmabgaben',disabled:!darfSchreiben(),style:'border:0;padding:0;margin:12px 0'});
   fieldset.append(el('label',{class:'check-inline'},[checked,document.createTextNode(' Eigentümergruppen und Einheiten sowie bei MEA-Zählung die Anteile geprüft')]));
   checked.addEventListener('change',()=>{request++;preview.replaceChildren(el('p',{text:'Eigentümerstand bestätigen und auszählen.'}));auto();});
-  const source=entwurf||(!s.historisch?s.auszaehlung?.snapshot.stimmen:null)||[];
+  if(s.teilnahme_geaendert)content.append(el('p',{role:'status',text:'Die Teilnehmerliste wurde seit dieser Auszählung geändert. Für eine neue Abstimmung wird die aktuelle Teilnahme übernommen; Stimmen und Ausschlüsse bitte neu erfassen.'}));
+  const source=entwurf||(!s.historisch&&!s.teilnahme_geaendert?s.auszaehlung?.snapshot.stimmen:null)||[];
   for(const g of s.register.gruppen){
    const alt=source.find(d=>d.key===g.key),a=alt||{...s.teilnahme[g.key],stimme:'keine',ausgeschlossen:false,stimme_textform:false,ausschlussgrund:''};
    const row={key:g.key};

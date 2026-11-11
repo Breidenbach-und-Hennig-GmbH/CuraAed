@@ -68,10 +68,10 @@ function topHash(t){return hash([t.id,t.versammlung_id,t.objekt_id,t.datum,t.tit
 async function stand(db,vid,tid){
  const t=await top(db,vid,tid),c=await config(db,t.objekt_id),r=await rule(db,t.id),reg=await register(db,t);
  const saved=await db.get('SELECT a.*,b.name AS benutzer FROM etv_abstimmungen a LEFT JOIN benutzer b ON b.id=a.benutzer_id WHERE a.top_id=?',[tid]);
- const attendance=JSON.parse((await db.get('SELECT daten FROM etv_teilnahme WHERE versammlung_id=?',[vid]))?.daten||'{}');
+ const attendance=await require('./teilnehmer').lesen(db,vid);
  const auszaehlung=saved?{revision:saved.revision,snapshot:JSON.parse(saved.snapshot),ergebnis:JSON.parse(saved.ergebnis),benutzer:saved.benutzer,erstellt_am:saved.erstellt_am}:null;
  const historisch=!!auszaehlung&&(auszaehlung.snapshot.basis_hash!==reg.basis_hash||auszaehlung.snapshot.top_hash!==topHash(t)||auszaehlung.snapshot.config_revision!==c.revision||auszaehlung.snapshot.regel_revision!==r.revision);
- return{top:t,config:c,regel:r,register:reg,top_hash:topHash(t),auszaehlung,historisch,teilnahme:attendance,revision:saved?.revision||0};
+ return{top:t,config:c,regel:r,register:reg,top_hash:topHash(t),auszaehlung,historisch,teilnahme:attendance.daten,teilnahme_revision:attendance.revision,teilnahme_geaendert:!!auszaehlung&&(auszaehlung.snapshot.teilnahme_revision||0)!==attendance.revision,revision:saved?.revision||0};
 }
 function zaehlen(reg,c,r,stimmen,geprueft){
  if(c.geprueft!==true||geprueft!==true)fail('Bitte Gemeinschaftsordnung/Stimmprinzip und Eigentümergruppen prüfen und bestätigen.');
@@ -126,14 +126,15 @@ async function auszaehlen(db,vid,tid,b,owner,speichern=false){
  return db.transaktion(async tx=>{
  const s=await stand(tx,vid,tid);
  if(s.top.art!=='beschluss')fail('Für diesen TOP bitte zuerst die Art Beschlussfassung wählen.');
+ if((b.teilnahme_revision??0)!==s.teilnahme_revision)fail('Teilnehmerliste inzwischen geändert. Bitte die Abstimmung neu öffnen.',409);
  if(b.basis_hash!==s.register.basis_hash||b.top_hash!==s.top_hash||b.config_revision!==s.config.revision||b.regel_revision!==s.regel.revision||b.revision!==s.revision)fail('Daten inzwischen geändert. Bitte die Abstimmung neu öffnen.',409);
  const r=zaehlen(s.register,s.config.daten,s.regel.daten,b.stimmen,b.geprueft);
  if(!speichern)return{ergebnis:r,revision:s.revision};
- const revision=s.revision+1,snapshot={top:s.top,basis_hash:s.register.basis_hash,top_hash:s.top_hash,config_revision:s.config.revision,regel_revision:s.regel.revision,config:s.config.daten,regel:s.regel.daten,register:s.register,stimmen:r.details,geprueft:true};
+ const attendanceRows=r.details.map(d=>{const ids=d.teilnahme!=='abwesend'?s.teilnahme[d.key]?.anwesende_eigentuemer:undefined;return{...d,anwesende_eigentuemer:ids?.length?ids:undefined};});
+ const attendance=await require('./teilnehmer').schreiben(tx,vid,s.register,attendanceRows,owner);
+ const revision=s.revision+1,snapshot={teilnahme_revision:attendance.revision,top:s.top,basis_hash:s.register.basis_hash,top_hash:s.top_hash,config_revision:s.config.revision,regel_revision:s.regel.revision,config:s.config.daten,regel:s.regel.daten,register:s.register,stimmen:r.details,geprueft:true};
  await tx.run("INSERT INTO etv_abstimmungen(top_id,revision,snapshot,ergebnis,benutzer_id) VALUES(?,?,?,?,?) ON CONFLICT(top_id) DO UPDATE SET revision=excluded.revision,snapshot=excluded.snapshot,ergebnis=excluded.ergebnis,benutzer_id=excluded.benutzer_id,erstellt_am=datetime('now')",[tid,revision,JSON.stringify(snapshot),JSON.stringify(r),owner]);
  await tx.run('INSERT INTO etv_abstimmungsverlauf(top_id,revision,snapshot,ergebnis,benutzer_id) VALUES(?,?,?,?,?)',[tid,revision,JSON.stringify(snapshot),JSON.stringify(r),owner]);
- const attendance=Object.fromEntries(r.details.map(d=>[d.key,{teilnahme:d.teilnahme,vertreter:d.vertreter,nachweis:d.nachweis,vollmacht_textform:d.vollmacht_textform}]));
- await tx.run('INSERT INTO etv_teilnahme(versammlung_id,daten) VALUES(?,?) ON CONFLICT(versammlung_id) DO UPDATE SET daten=excluded.daten',[vid,JSON.stringify(attendance)]);
  return{ergebnis:r,revision};
  });
 }
