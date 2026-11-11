@@ -21,6 +21,8 @@ async function spalten(db, tabelle) {
  */
 async function migrieren(db, filePath) {
   const sVersammlungen=await spalten(db,'versammlungen');
+  if(!sVersammlungen.has('top_revision'))await db.run('ALTER TABLE versammlungen ADD COLUMN top_revision INTEGER NOT NULL DEFAULT 1');
+  for(const [feld,tabelle] of [['beisitzer_id','benutzer'],['protokollfuehrer_id','benutzer'],['beirat_id','adressen'],['unterzeichner_id','adressen']])if(!sVersammlungen.has(feld))await db.run('ALTER TABLE versammlungen ADD COLUMN '+feld+' INTEGER REFERENCES '+tabelle+'(id) ON DELETE SET NULL');
   if(!sVersammlungen.has('leitung_id'))await db.run('ALTER TABLE versammlungen ADD COLUMN leitung_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL');
   for(const feld of ['ort_strasse','ort_plz','ort_stadt','ort_beschreibung'])if(!sVersammlungen.has(feld))await db.run('ALTER TABLE versammlungen ADD COLUMN '+feld+' TEXT');
   await db.run("INSERT OR IGNORE INTO versammlungsorte(objekt_id,ort,ort_strasse,ort_plz,ort_stadt,ort_beschreibung) SELECT objekt_id,TRIM(ort),COALESCE(ort_strasse,''),COALESCE(ort_plz,''),COALESCE(ort_stadt,''),COALESCE(ort_beschreibung,'') FROM versammlungen WHERE TRIM(COALESCE(ort,''))<>''");

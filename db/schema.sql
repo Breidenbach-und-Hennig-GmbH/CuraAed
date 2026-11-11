@@ -394,7 +394,12 @@ CREATE TABLE IF NOT EXISTS versammlungen (
   ort_plz TEXT,
   ort_stadt TEXT,
   ort_beschreibung TEXT,
+  top_revision INTEGER NOT NULL DEFAULT 1,
   leitung_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  beisitzer_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  protokollfuehrer_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  beirat_id INTEGER REFERENCES adressen(id) ON DELETE SET NULL,
+  unterzeichner_id INTEGER REFERENCES adressen(id) ON DELETE SET NULL,
   status       TEXT NOT NULL DEFAULT 'vorbereitung',
   notizen      TEXT,
   archiviert   INTEGER NOT NULL DEFAULT 0,
@@ -619,3 +624,14 @@ CREATE TABLE IF NOT EXISTS versammlungsorte (
  ort_beschreibung TEXT NOT NULL DEFAULT '',
  UNIQUE(objekt_id,ort,ort_strasse,ort_plz,ort_stadt,ort_beschreibung)
 );
+
+CREATE TABLE IF NOT EXISTS versammlung_tops (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ versammlung_id INTEGER NOT NULL REFERENCES versammlungen(id) ON DELETE CASCADE,
+ position INTEGER NOT NULL,
+ titel TEXT NOT NULL,
+ art TEXT NOT NULL DEFAULT 'besprechung',
+ erlaeuterung TEXT,
+ beschlussvorschlag TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_etv_tops ON versammlung_tops(versammlung_id,position,id);

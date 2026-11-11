@@ -7,11 +7,11 @@ const objekte = require('../services/objekte');
 const vs = require('../services/versammlungen');
 
 test('Versammlungen (ETV): anlegen, sortieren, suchen, archivieren, löschen', async () => {
-  const db = await openDatabase(':memory:');
+  const db = await openDatabase(':memory:');await db.run("INSERT INTO benutzer(id,benutzername,name,passwort_hash,rolle) VALUES(101,'standard','Testleitung','test','admin')");
   const o1 = await objekte.anlegen(db, { nummer: '100446', bezeichnung: 'Schlosserstraße 34-38' });
   const o2 = await objekte.anlegen(db, { nummer: '100502', bezeichnung: 'Burgkstr. 12' });
-  const a = await vs.anlegen(db, { objekt_id: o1.id, name: 'ETV - 2026', datum: '2026-10-14', uhrzeit: '18:00' });
-  const b = await vs.anlegen(db, { objekt_id: o2.id, nummer: '27', name: 'ETV 2026', datum: '2026-09-27', uhrzeit: '12:00', art: 'hybrid', status: 'durchgefuehrt' });
+  const a = await vs.anlegen(db, {leitung_id:101, objekt_id: o1.id, name: 'ETV - 2026', datum: '2026-10-14', uhrzeit: '18:00' });
+  const b = await vs.anlegen(db, {leitung_id:101, objekt_id: o2.id, nummer: '27', name: 'ETV 2026', datum: '2026-09-27', uhrzeit: '12:00', art: 'hybrid', status: 'durchgefuehrt' });
   assert.equal(a.art, 'praesenz');
   assert.equal(a.status, 'vorbereitung');
   assert.equal(b.nummer, 27);
@@ -20,10 +20,10 @@ test('Versammlungen (ETV): anlegen, sortieren, suchen, archivieren, löschen', a
   assert.deepEqual((await vs.liste(db, { sort: 'asc' })).map((x) => x.id), [b.id, a.id]);
   assert.deepEqual((await vs.liste(db, { suche: 'burgk' })).map((x) => x.id), [b.id], 'Suche im Objekt');
   assert.deepEqual((await vs.liste(db, { suche: '100446' })).map((x) => x.id), [a.id], 'Suche Objekt-ID');
-  await assert.rejects(() => vs.anlegen(db, { objekt_id: o1.id, name: 'X' }), /Datum/);
-  await assert.rejects(() => vs.anlegen(db, { objekt_id: 999, name: 'X', datum: '2026-01-01' }), /Objekt/);
-  await assert.rejects(() => vs.anlegen(db, { objekt_id: o1.id, name: 'X', datum: '2026-01-01', uhrzeit: '25:00' }), /HH:MM/);
-  await assert.rejects(() => vs.anlegen(db, { objekt_id: o1.id, name: 'X', datum: '2026-01-01', art: 'telepathie' }), /Art/);
+  await assert.rejects(() => vs.anlegen(db, {leitung_id:101, objekt_id: o1.id, name: 'X' }), /Datum/);
+  await assert.rejects(() => vs.anlegen(db, {leitung_id:101, objekt_id: 999, name: 'X', datum: '2026-01-01' }), /Objekt/);
+  await assert.rejects(() => vs.anlegen(db, {leitung_id:101, objekt_id: o1.id, name: 'X', datum: '2026-01-01', uhrzeit: '25:00' }), /HH:MM/);
+  await assert.rejects(() => vs.anlegen(db, {leitung_id:101, objekt_id: o1.id, name: 'X', datum: '2026-01-01', art: 'telepathie' }), /Art/);
   await vs.archivieren(db, b.id, true);
   assert.deepEqual((await vs.liste(db)).map((x) => x.id), [a.id]);
   assert.deepEqual((await vs.liste(db, { archiv: true })).map((x) => x.id), [b.id]);
@@ -33,34 +33,34 @@ test('Versammlungen (ETV): anlegen, sortieren, suchen, archivieren, löschen', a
 });
 
 test('ETV-Versammlungsort: strukturierte Adresse bleibt beim Bearbeiten, Kopieren und Archivieren erhalten',async t=>{
- const db=await openDatabase(':memory:');t.after(()=>db.close());
+ const db=await openDatabase(':memory:');await db.run("INSERT INTO benutzer(id,benutzername,name,passwort_hash,rolle) VALUES(101,'standard','Testleitung','test','admin')");t.after(()=>db.close());
  const objekt=await objekte.anlegen(db,{bezeichnung:'Testobjekt'});
  const location={ort:'Gemeindesaal · Raum 2',ort_strasse:'Testweg 12',ort_plz:'01234',ort_stadt:'Musterstadt',ort_beschreibung:'Eingang im Hof, 1. Etage'};
- const v=await vs.anlegen(db,{objekt_id:objekt.id,name:'ETV Test',datum:'2026-11-20',...location});
+ const v=await vs.anlegen(db,{leitung_id:101,objekt_id:objekt.id,name:'ETV Test',datum:'2026-11-20',...location});
  for(const [k,value] of Object.entries(location))assert.equal((await vs.holen(db,v.id))[k],value);
  const updated=await vs.aktualisieren(db,v.id,{name:'ETV geändert'});assert.equal(updated.ort_plz,'01234');
  for(const suche of ['01234','Musterstadt','Testweg','Eingang im Hof'])assert.equal((await vs.liste(db,{suche}))[0].id,v.id);
- const copy=await vs.anlegen(db,{...updated,name:'Kopie',datum:'2027-11-20'});assert.notEqual(copy.id,v.id);assert.equal(copy.ort_beschreibung,location.ort_beschreibung);
+ const copy=await vs.anlegen(db,{leitung_id:101,...updated,name:'Kopie',datum:'2027-11-20'});assert.notEqual(copy.id,v.id);assert.equal(copy.ort_beschreibung,location.ort_beschreibung);
  await vs.archivieren(db,v.id,true);assert.equal((await vs.liste(db,{archiv:true}))[0].ort_strasse,location.ort_strasse);
  await assert.rejects(vs.aktualisieren(db,v.id,{ort_stadt:'x'.repeat(101)}),/zu lang/);
  const cleared=await vs.aktualisieren(db,v.id,{ort_strasse:'',ort_plz:'',ort_stadt:'',ort_beschreibung:''});assert.equal(cleared.ort_strasse,null);assert.equal(cleared.ort,location.ort);
 });
 test('ETV-Migration: bestehender freier Versammlungsort bleibt unverändert, neue Felder werden idempotent ergänzt',async t=>{
- const db=await openDatabase(':memory:');t.after(()=>db.close());
+ const db=await openDatabase(':memory:');await db.run("INSERT INTO benutzer(id,benutzername,name,passwort_hash,rolle) VALUES(101,'standard','Testleitung','test','admin')");t.after(()=>db.close());
  const objekt=await objekte.anlegen(db,{bezeichnung:'Altbestand'});
- const old=await vs.anlegen(db,{objekt_id:objekt.id,name:'Bestehende ETV',datum:'2026-11-20',ort:'Altes Rathaus, Saal 3'});
+ const old=await vs.anlegen(db,{leitung_id:101,objekt_id:objekt.id,name:'Bestehende ETV',datum:'2026-11-20',ort:'Altes Rathaus, Saal 3'});
  for(const k of ['ort_strasse','ort_plz','ort_stadt','ort_beschreibung'])await db.run('ALTER TABLE versammlungen DROP COLUMN '+k);
  for(let i=0;i<2;i++)await require('../db/migrate').migrieren(db,':memory:');
  const restored=await vs.holen(db,old.id);assert.equal(restored.ort,'Altes Rathaus, Saal 3');assert.equal(restored.ort_stadt,null);assert.equal((await vs.liste(db)).length,1);
 });
 
 test('ETV-Ortslisten: je Objekt getrennt, dauerhaft nach Löschen einer Versammlung und ohne doppelte Einträge',async t=>{
- const db=await openDatabase(':memory:');t.after(()=>db.close());
+ const db=await openDatabase(':memory:');await db.run("INSERT INTO benutzer(id,benutzername,name,passwort_hash,rolle) VALUES(101,'standard','Testleitung','test','admin')");t.after(()=>db.close());
  const a=await objekte.anlegen(db,{bezeichnung:'A'}),b=await objekte.anlegen(db,{bezeichnung:'B'});
  const data={ort:'Rathaus',ort_strasse:'Testweg 12',ort_plz:'01234',ort_stadt:'Teststadt',ort_beschreibung:'Raum 2'};
  const ort=await vs.ortMerken(db,a.id,data),again=await vs.ortMerken(db,a.id,data);
  assert.equal(ort.id,again.id);assert.equal((await vs.orte(db,a.id)).length,1);assert.deepEqual(await vs.orte(db,b.id),[]);
- const meeting=await vs.anlegen(db,{objekt_id:a.id,name:'ETV',datum:'2026-11-20',...data});
+ const meeting=await vs.anlegen(db,{leitung_id:101,objekt_id:a.id,name:'ETV',datum:'2026-11-20',...data});
  await vs.loeschen(db,meeting.id);assert.equal((await vs.orte(db,a.id))[0].ort_plz,'01234');
  const other=await vs.ortMerken(db,b.id,{...data,ort_stadt:'Andere Stadt'});
  assert.notEqual(other.id,ort.id);assert.equal((await vs.orte(db,a.id))[0].ort_stadt,'Teststadt');
@@ -70,17 +70,34 @@ test('ETV-Ortslisten: je Objekt getrennt, dauerhaft nach Löschen einer Versamml
 });
 
 test('ETV-Leitung: aktive Mitarbeitende, Wiederöffnung, Kopie und erhaltene historische Zuordnung',async t=>{
- const db=await openDatabase(':memory:');t.after(()=>db.close());
+ const db=await openDatabase(':memory:');await db.run("INSERT INTO benutzer(id,benutzername,name,passwort_hash,rolle) VALUES(101,'standard','Testleitung','test','admin')");t.after(()=>db.close());
  const objekt=await objekte.anlegen(db,{bezeichnung:'ETV Test'});
  await db.run("INSERT INTO benutzer(id,benutzername,name,passwort_hash,rolle,kuerzel) VALUES(1,'leitung','Testleitung','test','mitarbeiter','TST'),(2,'leser','Leser','test','leser',NULL)");
- const v=await vs.anlegen(db,{objekt_id:objekt.id,name:'ETV',datum:'2026-11-20',leitung_id:'1'});
+ const v=await vs.anlegen(db,{leitung_id:101,objekt_id:objekt.id,name:'ETV',datum:'2026-11-20',leitung_id:'1'});
  assert.equal(v.leitung_name,'Testleitung');assert.equal((await vs.liste(db,{suche:'Testleitung'}))[0].id,v.id);
- const kopie=await vs.anlegen(db,{...v,datum:'2027-11-20'});assert.equal(kopie.leitung_id,1);
+ const kopie=await vs.anlegen(db,{leitung_id:101,...v,datum:'2027-11-20'});assert.equal(kopie.leitung_id,1);
  await assert.rejects(vs.aktualisieren(db,v.id,{leitung_id:2}),/aktiven Mitarbeitenden/);
  await assert.rejects(vs.aktualisieren(db,v.id,{leitung_id:999}),/aktiven Mitarbeitenden/);
  await assert.rejects(vs.aktualisieren(db,v.id,{leitung_id:true}),/Ungültige/);
  await db.run('UPDATE benutzer SET aktiv=0 WHERE id=1');
  assert.equal((await vs.aktualisieren(db,v.id,{notizen:'Weiter bearbeitet'})).leitung_id,1);
- await assert.rejects(vs.anlegen(db,{...v,name:'Neue ETV'}),/aktiven Mitarbeitenden/);
- assert.equal((await vs.aktualisieren(db,v.id,{leitung_id:''})).leitung_id,null);
+ await assert.rejects(vs.anlegen(db,{leitung_id:101,...v,name:'Neue ETV'}),/aktiven Mitarbeitenden/);
+ await assert.rejects(vs.aktualisieren(db,v.id,{leitung_id:''}),/Versammlungsleitung auswählen/);
+});
+
+test('ETV-Funktionen: vier optionale Personen, Objekt- und Stichtagsprüfung und verpflichtende Leitung',async t=>{
+ const db=await openDatabase(':memory:');t.after(()=>db.close());
+ await db.run("INSERT INTO benutzer(id,benutzername,name,passwort_hash,rolle) VALUES(1,'test','Testleitung','test','admin')");
+ await db.run("INSERT INTO objekte(id,nummer,bezeichnung) VALUES(1,'1001','Haus A'),(2,'1002','Haus B')");
+ await db.run("INSERT INTO adressen(id,nummer,nachname) VALUES(1,'A1','Beirat'),(2,'A2','Eigentümer'),(3,'A3','Fremder')");
+ await db.run("INSERT INTO rollen_zuordnungen(adresse_id,objekt_id,rolle,gueltig_von,gueltig_bis) VALUES(1,1,'beirat','2026-01-01',NULL),(2,1,'eigentuemer','2026-01-01','2026-12-31'),(3,2,'eigentuemer',NULL,NULL)");
+ const basis={objekt_id:1,name:'ETV',datum:'2026-11-20',leitung_id:1};
+ await assert.rejects(vs.anlegen(db,{...basis,leitung_id:''}),/Versammlungsleitung auswählen/);
+ const minimal=await vs.anlegen(db,basis);for(const key of ['beisitzer_id','protokollfuehrer_id','beirat_id','unterzeichner_id'])assert.equal(minimal[key],null);
+ const full=await vs.aktualisieren(db,minimal.id,{beisitzer_id:1,protokollfuehrer_id:1,beirat_id:1,unterzeichner_id:2});
+ assert.equal(full.beirat_name,'Beirat');assert.equal(full.unterzeichner_name,'Eigentümer');
+ await assert.rejects(vs.aktualisieren(db,full.id,{unterzeichner_id:3}),/passende Person/);
+ assert.deepEqual((await vs.teilnahmePersonen(db,1,'2027-01-01')).eigentuemer,[]);
+ await assert.rejects(vs.aktualisieren(db,full.id,{datum:'2027-01-01'}),/passende Person/);
+ assert.equal((await vs.aktualisieren(db,full.id,{unterzeichner_id:''})).unterzeichner_id,null);
 });

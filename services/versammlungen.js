@@ -7,8 +7,10 @@ const ARTEN = ['praesenz', 'hybrid', 'online'];
 const STATUS = ['vorbereitung', 'eingeladen', 'durchgefuehrt'];
 
 const SELECT = `
-  SELECT v.*, o.nummer AS objekt_nummer, o.bezeichnung AS objekt_bezeichnung, o.objekttyp, b.name AS leitung_name,b.kuerzel AS leitung_kuerzel,b.aktiv AS leitung_aktiv
-  FROM versammlungen v JOIN objekte o ON o.id = v.objekt_id LEFT JOIN benutzer b ON b.id=v.leitung_id`;
+  SELECT v.*, o.nummer AS objekt_nummer, o.bezeichnung AS objekt_bezeichnung, o.objekttyp, b.name AS leitung_name,b.kuerzel AS leitung_kuerzel,b.aktiv AS leitung_aktiv, bs.name AS beisitzer_name,pf.name AS protokollfuehrer_name,
+ CASE WHEN br.adresstyp='firma' THEN br.firmenname ELSE TRIM(COALESCE(br.vorname,'')||' '||COALESCE(br.nachname,'')) END AS beirat_name,
+ CASE WHEN uz.adresstyp='firma' THEN uz.firmenname ELSE TRIM(COALESCE(uz.vorname,'')||' '||COALESCE(uz.nachname,'')) END AS unterzeichner_name
+  FROM versammlungen v JOIN objekte o ON o.id = v.objekt_id LEFT JOIN benutzer b ON b.id=v.leitung_id LEFT JOIN benutzer bs ON bs.id=v.beisitzer_id LEFT JOIN benutzer pf ON pf.id=v.protokollfuehrer_id LEFT JOIN adressen br ON br.id=v.beirat_id LEFT JOIN adressen uz ON uz.id=v.unterzeichner_id`;
 
 async function liste(db, opts = {}) {
   const where = ['v.archiviert = ?'];
@@ -28,6 +30,16 @@ async function holen(db, id) {
   return db.get(`${SELECT} WHERE v.id = ?`, [id]);
 }
 
+
+async function teilnahmePersonen(db,objektId,datum){
+ const id=Number(objektId),date=datum||new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Berlin'});
+ if(!Number.isSafeInteger(id)||id<1||!await db.get('SELECT id FROM objekte WHERE id=?',[id]))throw new V.ValidationError('Objekt nicht gefunden.',404);
+ if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date)throw new V.ValidationError('Ungültiges Versammlungsdatum.');
+ const rows=await db.all("SELECT DISTINCT a.id,a.adresstyp,a.vorname,a.nachname,a.firmenname,a.nummer,z.rolle FROM rollen_zuordnungen z JOIN adressen a ON a.id=z.adresse_id LEFT JOIN einheiten e ON e.id=z.einheit_id WHERE COALESCE(z.objekt_id,e.objekt_id)=? AND a.archiviert=0 AND z.rolle IN ('beirat','eigentuemer') AND (z.gueltig_von IS NULL OR z.gueltig_von<=?) AND (z.gueltig_bis IS NULL OR z.gueltig_bis>=?) ORDER BY a.nachname,a.firmenname,a.id",[id,date,date]);
+ const named=rows.map(a=>({...a,name:require('./adressen').anzeigename(a)}));
+ return{beirat:named.filter(a=>a.rolle==='beirat'),eigentuemer:named.filter(a=>a.rolle==='eigentuemer')};
+}
+
 async function werte(db, data,bisher=null) {
   const objektId = Number(data.objekt_id);
   if (!objektId || !(await db.get('SELECT id FROM objekte WHERE id = ?', [objektId]))) throw new V.ValidationError('Bitte ein Objekt wählen.');
@@ -45,7 +57,18 @@ async function werte(db, data,bisher=null) {
     const person=await db.get("SELECT id,aktiv,rolle FROM benutzer WHERE id=?",[leitung]);
     if(!person||(!(person.aktiv&&['admin','mitarbeiter'].includes(person.rolle))&&bisher?.leitung_id!==leitung))throw new V.ValidationError('Bitte einen aktiven Mitarbeitenden als Versammlungsleitung auswählen.');
   }
+  if(!leitung)throw new V.ValidationError('Bitte eine Versammlungsleitung auswählen.');
+  const extra={},objektPersonen=await teilnahmePersonen(db,objektId,datum);
+  for(const [key,label,gruppe] of [['beisitzer_id','Beisitzer',null],['protokollfuehrer_id','Protokollführer',null],['beirat_id','Beirat','beirat'],['unterzeichner_id','Unterzeichnender Eigentümer','eigentuemer']]){
+    const value=data[key];extra[key]=null;if(value===null||value===undefined||value==='')continue;
+    const id=Number(value);if(!['string','number'].includes(typeof value)||!Number.isSafeInteger(id)||id<1)throw new V.ValidationError('Ungültige Person: '+label);
+    const historisch=bisher?.[key]===id&&bisher.objekt_id===objektId&&(!gruppe||bisher.datum===datum);
+    const valid=gruppe?objektPersonen[gruppe].some(p=>p.id===id):await db.get("SELECT id FROM benutzer WHERE id=? AND aktiv=1 AND rolle IN ('admin','mitarbeiter')",[id]);
+    if(!valid&&!historisch)throw new V.ValidationError(label+': Bitte eine passende Person auswählen.');
+    extra[key]=id;
+  }
   return {
+    ...extra,
     leitung_id:leitung,
     objekt_id: objektId,
     nummer: nr,
@@ -62,7 +85,7 @@ async function werte(db, data,bisher=null) {
     notizen: V.str(data.notizen),
   };
 }
-const SPALTEN = ['objekt_id', 'nummer', 'name', 'datum', 'uhrzeit', 'art', 'ort', 'ort_strasse', 'ort_plz', 'ort_stadt', 'ort_beschreibung', 'status', 'notizen', 'leitung_id'];
+const SPALTEN = ['objekt_id', 'nummer', 'name', 'datum', 'uhrzeit', 'art', 'ort', 'ort_strasse', 'ort_plz', 'ort_stadt', 'ort_beschreibung', 'status', 'notizen', 'leitung_id','beisitzer_id','protokollfuehrer_id','beirat_id','unterzeichner_id'];
 
 
 const ORTFELDER={ort:200,ort_strasse:200,ort_plz:20,ort_stadt:100,ort_beschreibung:2000};
@@ -114,4 +137,4 @@ async function loeschen(db, id) {
   if (!r.changes) throw new V.ValidationError('Versammlung nicht gefunden.', 404);
 }
 
-module.exports = { orte,ortMerken,ARTEN, STATUS, liste, holen, anlegen, aktualisieren, archivieren, loeschen };
+module.exports = { teilnahmePersonen,orte,ortMerken,ARTEN, STATUS, liste, holen, anlegen, aktualisieren, archivieren, loeschen };

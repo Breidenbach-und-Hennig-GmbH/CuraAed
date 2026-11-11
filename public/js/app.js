@@ -47,7 +47,7 @@ function route() {
   if (bereich === 'dms-uebernahme') return dmsUebernahmeMaske(params);
   if (bereich === 'dms') return dmsMaske(params);
   if (bereich === 'archiv') return archivMaske(params);
-  if (bereich === 'etv') return etvMaske(params);
+  if (bereich === 'etv') return id ? tagesordnungMaske(id) : etvMaske(params);
   if (bereich === 'fibu') return fibuMaske();
   if (bereich === 'pkto') return personenkontoMaske(id, params);
   if (bereich === 'benutzer') return benutzerMaske();

@@ -4,10 +4,10 @@ const tick=()=>new Promise(r=>setImmediate(r));
 test('ETV-Maske: Versammlungsort ist sichtbar, wird gespeichert und beim Kopieren vorbelegt',async t=>{
  const dom=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example/'});
  t.after(()=>dom.window.close());const w=dom.window;let saved;
- w.API={get:async url=>url==='/mitarbeiter'?[]:url.endsWith('/versammlungsorte')?[]:[{id:1,nummer:'1001',bezeichnung:'Testobjekt'}],put:async(url,data)=>{saved={url,data};},post:async(url,data)=>{saved={url,data};return{id:9,...data};}};
+ w.API={get:async url=>url==='/mitarbeiter'?[{id:1,name:'Testleitung'}]:url.endsWith('/versammlungsorte')?[]:[{id:1,nummer:'1001',bezeichnung:'Testobjekt'}],put:async(url,data)=>{saved={url,data};},post:async(url,data)=>{saved={url,data};return{id:9,...data};}};
  for(const file of ['ui','kern','dialoge','masken'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());
  w.neuLaden=()=>{};
- const v={id:7,objekt_id:1,name:'ETV Test',datum:'2026-11-20',ort:'Rathaus',ort_strasse:'Testweg 12',ort_plz:'01234',ort_stadt:'Musterstadt',ort_beschreibung:'<b>Hintereingang</b>'};
+ const v={id:7,objekt_id:1,leitung_id:1,name:'ETV Test',datum:'2026-11-20',ort:'Rathaus',ort_strasse:'Testweg 12',ort_plz:'01234',ort_stadt:'Musterstadt',ort_beschreibung:'<b>Hintereingang</b>'};
  await w.versammlungForm(v);
  assert.ok(w.document.querySelector('[aria-label="Versammlungsort"]'));
  assert.equal(w.document.getElementById('f_ort_plz').value,'01234');assert.equal(w.document.querySelector('[aria-label="Versammlungsort"] b'),null);

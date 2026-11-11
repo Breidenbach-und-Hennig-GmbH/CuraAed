@@ -1710,10 +1710,23 @@ async function versammlungForm(v, { kopie = false } = {}) {
   let objekte=[],mitarbeiter=[];
   try { [objekte,mitarbeiter]=await Promise.all([API.get('/objekte'),API.get('/mitarbeiter')]); } catch (e) { fehler(e); return; }
   const bearb = !!(v && v.id) && !kopie;
-  const x = v || {};
+  const x = v || {};let gespeichertId=x.id;
   const personen=mitarbeiter.map(p=>({value:p.id,label:p.name+(p.kuerzel?' · '+p.kuerzel:'')}));
   if(bearb&&x.leitung_id&&!mitarbeiter.some(p=>p.id===x.leitung_id))personen.push({value:x.leitung_id,label:(x.leitung_name||'Bisherige Versammlungsleitung')+' · bisher zugeordnet (nicht mehr aktiv)'});
   const leitung=kopie&&!mitarbeiter.some(p=>p.id===x.leitung_id)?'':x.leitung_id||'';
+  const internOptionen=key=>{
+    const list=mitarbeiter.map(p=>({value:p.id,label:p.name+(p.kuerzel?' · '+p.kuerzel:'')}));
+    if(bearb&&x[key]&&!list.some(p=>p.value===x[key]))list.push({value:x[key],label:(x[key.replace('_id','_name')]||'Bisherige Person')+' · bisher zugeordnet'});
+    return[{value:'',label:'– Optional –'},...list];
+  };
+  let objektPersonen={beirat:[],eigentuemer:[]};
+  if(x.objekt_id)try{objektPersonen=await API.get('/objekte/'+x.objekt_id+'/etv-personen'+(x.datum?'?datum='+encodeURIComponent(x.datum):''));}catch(e){fehler(e);return;}
+  const externOptionen=(key,gruppe)=>{
+    const list=(objektPersonen[gruppe]||[]).map(p=>({value:p.id,label:p.name+(p.nummer?' · '+p.nummer:'')}));
+    if(bearb&&x[key]&&!list.some(p=>p.value===x[key]))list.push({value:x[key],label:(x[key.replace('_id','_name')]||'Bisherige Person')+' · bisher zugeordnet'});
+    return[{value:'',label:'– Optional –'},...list];
+  };
+  const kopierPerson=(key,gruppe)=>kopie&&!(gruppe?(objektPersonen[gruppe]||[]):mitarbeiter).some(p=>p.id===x[key])?'':x[key]||'';
   let gespeicherteOrte=[];
   if(x.objekt_id)try{gespeicherteOrte=await API.get('/objekte/'+x.objekt_id+'/versammlungsorte');}catch(e){fehler(e);return;}
   formFenster({
@@ -1743,13 +1756,36 @@ async function versammlungForm(v, { kopie = false } = {}) {
       {felder:[{name:'ort_beschreibung',label:'Beschreibung des Versammlungsorts',type:'textarea',value:x.ort_beschreibung,hint:'z. B. Eingang, Etage oder Hinweise zur Anfahrt'}]},
       {grid:2,felder:[
         {name:'leitung_funktion',label:'Funktion',type:'select',value:'versammlungsleitung',options:[{value:'versammlungsleitung',label:'Versammlungsleitung'}]},
-        {name:'leitung_id',label:'Person',type:'select',value:leitung,options:[{value:'',label:'– Person wählen –'},...personen]},
+        {name:'leitung_id',label:'Person',required:true,type:'select',value:leitung,options:[{value:'',label:'– Person wählen –'},...personen]},
+      ]},
+      {grid:2,felder:[
+        {name:'beisitzer_id',label:'Beisitzer (optional)',type:'select',value:kopierPerson('beisitzer_id'),options:internOptionen('beisitzer_id')},
+        {name:'protokollfuehrer_id',label:'Protokollführer (optional)',type:'select',value:kopierPerson('protokollfuehrer_id'),options:internOptionen('protokollfuehrer_id')},
+      ]},
+      {grid:2,felder:[
+        {name:'beirat_id',label:'Beirat (optional)',type:'select',value:kopierPerson('beirat_id','beirat'),options:externOptionen('beirat_id','beirat')},
+        {name:'unterzeichner_id',label:'Eigentümer zur Protokollunterzeichnung (optional)',type:'select',value:kopierPerson('unterzeichner_id','eigentuemer'),options:externOptionen('unterzeichner_id','eigentuemer')},
       ]},
       { felder: [{ name: 'notizen', label: 'Notizen', type: 'textarea', value: kopie ? '' : x.notizen }] },
     ],
     nachAufbau:(inputs,form)=>{
       const teilnahme=inputs.leitung_id.closest('.field').parentElement;
-      const intern=el('section',{'aria-label':'Versammlungsteilnahme (intern)',class:'cu-karte',style:'padding:16px;margin:12px 0'},[el('h3',{text:'Versammlungsteilnahme (intern)'})]);form.insertBefore(intern,teilnahme);intern.append(teilnahme);
+      const intern=el('section',{'aria-label':'Versammlungsteilnahme (intern)',class:'cu-karte',style:'padding:16px;margin:12px 0'},[el('h3',{text:'Versammlungsteilnahme (intern)'})]);form.insertBefore(intern,teilnahme);intern.append(teilnahme,inputs.beisitzer_id.closest('.field').parentElement,inputs.beirat_id.closest('.field').parentElement);
+      let personenVersion=0;
+      const neueOptionen=(key,rows)=>{
+        inputs[key].replaceChildren(el('option',{value:'',text:'– Optional –'}),...rows.map(p=>el('option',{value:String(p.id),text:p.name+(p.nummer?' · '+p.nummer:'')})));
+        inputs[key].disabled=!inputs.objekt_id.value;
+      };
+      async function ladePersonen(){
+        const nr=++personenVersion,objekt=inputs.objekt_id.value;
+        for(const key of ['beirat_id','unterzeichner_id']){neueOptionen(key,[]);inputs[key].disabled=true;}
+        if(!objekt)return;
+        try{const r=await API.get('/objekte/'+objekt+'/etv-personen'+(inputs.datum.value?'?datum='+encodeURIComponent(inputs.datum.value):''));if(!form.isConnected||nr!==personenVersion)return;
+          neueOptionen('beirat_id',r.beirat||[]);neueOptionen('unterzeichner_id',r.eigentuemer||[]);
+        }catch(e){if(form.isConnected&&nr===personenVersion)fehler(e);}
+      }
+      inputs.objekt_id.addEventListener('change',ladePersonen);inputs.datum.addEventListener('change',ladePersonen);
+      for(const key of ['beirat_id','unterzeichner_id'])inputs[key].disabled=!inputs.objekt_id.value;
       const start=inputs.ort.closest('.field').parentElement,street=inputs.ort_strasse.closest('.field').parentElement,description=inputs.ort_beschreibung.closest('.field').parentElement;
       const section=el('section',{'aria-label':'Versammlungsort',class:'cu-karte',style:'padding:16px;margin:12px 0'},[el('h3',{text:'Versammlungsort'})]);form.insertBefore(section,start);section.append(start,street,description);
       for(const [key,max] of Object.entries({ort:200,ort_strasse:200,ort_plz:20,ort_stadt:100,ort_beschreibung:2000}))inputs[key].maxLength=max;
@@ -1803,10 +1839,10 @@ async function versammlungForm(v, { kopie = false } = {}) {
       });
 
     },
-    speichern: (w) => (bearb ? API.put('/versammlungen/' + x.id, w) : API.post('/versammlungen', w)),
-    loeschen: bearb ? () => API.del('/versammlungen/' + x.id) : null,
+    speichern: async(w)=>{if(!w.leitung_id)throw new Error('Bitte eine Versammlungsleitung auswählen.');const r=await (bearb?API.put('/versammlungen/'+x.id,w):API.post('/versammlungen',w));gespeichertId=r?.id||gespeichertId;return r;},
+    loeschen: bearb ? async()=>{await API.del('/versammlungen/'+x.id);gespeichertId=null;} : null,
     loeschFrage: `Versammlung „${x.name}" endgültig löschen?`,
-    danach: neuLaden,
+    danach: ()=>gespeichertId?geheZu('#/etv/'+gespeichertId):neuLaden(),
   });
 }
 
@@ -1839,6 +1875,7 @@ function etvMaske(params = new URLSearchParams()) {
           aktionKnopf(tab === 'archiv' ? 'auslagern' : 'einlagern', tab === 'archiv' ? 'Aus dem Archiv holen' : 'Archivieren', async () => {
             try { await API.post(`/versammlungen/${v.id}/archiv`, { archiviert: tab !== 'archiv' }); toast(tab === 'archiv' ? 'Wieder in der Übersicht' : 'Archiviert', 'success'); laden(); } catch (e) { fehler(e); }
           }),
+          el('a',{href:'#/etv/'+v.id,text:'Tagesordnung',onclick:e=>e.stopPropagation()}),
           aktionKnopf('copy', 'Kopieren (z. B. für das nächste Jahr)', () => versammlungForm(v, { kopie: true })),
           aktionKnopf('trash', 'Löschen', async () => {
             if (!(await bestaetigen(`Versammlung „${v.name}" (${v.objekt_nummer}, ${etvDatum(v)}) endgültig löschen?`, { danger: true, text: 'Löschen' }))) return;
