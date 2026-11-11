@@ -130,7 +130,7 @@ async function auszaehlen(db,vid,tid,b,owner,speichern=false){
  if(b.basis_hash!==s.register.basis_hash||b.top_hash!==s.top_hash||b.config_revision!==s.config.revision||b.regel_revision!==s.regel.revision||b.revision!==s.revision)fail('Daten inzwischen geändert. Bitte die Abstimmung neu öffnen.',409);
  const r=zaehlen(s.register,s.config.daten,s.regel.daten,b.stimmen,b.geprueft);
  if(!speichern)return{ergebnis:r,revision:s.revision};
- const attendanceRows=r.details.map(d=>{const ids=d.teilnahme!=='abwesend'?s.teilnahme[d.key]?.anwesende_eigentuemer:undefined;return{...d,anwesende_eigentuemer:ids?.length?ids:undefined};});
+ const attendanceRows=r.details.map(d=>{const ids=d.teilnahme!=='abwesend'?s.teilnahme[d.key]?.anwesende_eigentuemer:undefined;return{...d,kanal:s.teilnahme[d.key]?.kanal||'praesenz',zugang_gesperrt:d.teilnahme==='abwesend'&&s.teilnahme[d.key]?.zugang_gesperrt===true,anwesende_eigentuemer:ids?.length?ids:undefined};});
  const attendance=await require('./teilnehmer').schreiben(tx,vid,s.register,attendanceRows,owner);
  const revision=s.revision+1,snapshot={teilnahme_revision:attendance.revision,top:s.top,basis_hash:s.register.basis_hash,top_hash:s.top_hash,config_revision:s.config.revision,regel_revision:s.regel.revision,config:s.config.daten,regel:s.regel.daten,register:s.register,stimmen:r.details,geprueft:true};
  await tx.run("INSERT INTO etv_abstimmungen(top_id,revision,snapshot,ergebnis,benutzer_id) VALUES(?,?,?,?,?) ON CONFLICT(top_id) DO UPDATE SET revision=excluded.revision,snapshot=excluded.snapshot,ergebnis=excluded.ergebnis,benutzer_id=excluded.benutzer_id,erstellt_am=datetime('now')",[tid,revision,JSON.stringify(snapshot),JSON.stringify(r),owner]);

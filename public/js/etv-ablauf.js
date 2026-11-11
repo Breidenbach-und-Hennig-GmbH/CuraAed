@@ -21,7 +21,8 @@ function etvAblaufRahmen(id,schritt,inhalt){
  main.etvSchliessen=()=>gehen('#/etv/'+id+'?schritt=tagesordnung');
  return{layout,main,seitenkopf,merken:()=>etvMerkeStand(main)};
 }
-async function versammlungSchrittMaske(id,schritt){
+async function versammlungSchrittMaske(id,schritt,params=new URLSearchParams()){
+ if(schritt==='durchfuehrung'&&params.get('ansicht')==='buehne'){const lauf=S.lauf,host=el('div');if(zeigeAufDesktop(lauf,maskenFenster({titel:'Bühnenansicht',kopf:{ueberschrift:'Bühnenansicht',drucken:false},inhalt:host})))await einlassMaske(id,{container:host,buehne:true});return;}
  const lauf=S.lauf,titel={basisdaten:'Basisdaten',teilnehmer:'Teilnehmer',durchfuehrung:'Durchführung'}[schritt],content=el('div'),flow=etvAblaufRahmen(id,schritt,content);
  if(!zeigeAufDesktop(lauf,maskenFenster({titel,kopf:{ueberschrift:titel,brot:[{text:'ETV',href:'#/etv'},{text:titel}],drucken:false},inhalt:flow.layout})))return;
  try{
@@ -32,10 +33,11 @@ async function versammlungSchrittMaske(id,schritt){
    if(darfSchreiben())await versammlungForm(v,{container:flow.main});
    else content.append(el('h2',{text:v.name}),el('p',{text:'Objekt '+v.objekt_nummer+' · '+datum(v.datum)+' · '+(v.uhrzeit||'')}),el('p',{text:[v.ort,v.ort_strasse,v.ort_plz,v.ort_stadt].filter(Boolean).join(', ')}),el('p',{text:'Versammlungsleitung: '+(v.leitung_name||'Noch nicht zugeordnet')}));
   }else if(schritt==='teilnehmer')await teilnehmerDialog(id,{container:flow.main});
-  else{
-   content.append(el('p',{class:'small muted',text:'Hier erfassen Sie den Verlauf und das Versammlungsprotokoll. Die Abstimmung wird später in diesem Schritt ergänzt.'}));
+  else if(params.get('ansicht')==='protokoll'){
+   content.append(einlassReiter(id,'protokoll'));
    const host=el('div');content.append(host);host.etvSchliessen=flow.main.etvSchliessen;await protokollDialog(id,{container:host});
   }
+  else await einlassMaske(id,{container:content});
   if(lauf===S.lauf)flow.merken();
  }catch(e){if(lauf===S.lauf)fehler(e);}
 }
