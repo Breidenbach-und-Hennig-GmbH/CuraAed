@@ -648,3 +648,29 @@ CREATE TABLE IF NOT EXISTS top_vorlagen (
  erstellt_am TEXT NOT NULL DEFAULT (datetime('now')),
  geaendert_am TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS objekt_stimmregeln (
+ objekt_id INTEGER PRIMARY KEY REFERENCES objekte(id) ON DELETE CASCADE,
+ daten TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS top_stimmregeln (
+ top_id INTEGER PRIMARY KEY REFERENCES versammlung_tops(id) ON DELETE CASCADE,
+ daten TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS etv_abstimmungen (
+ top_id INTEGER PRIMARY KEY REFERENCES versammlung_tops(id) ON DELETE CASCADE,
+ revision INTEGER NOT NULL DEFAULT 1, snapshot TEXT NOT NULL, ergebnis TEXT NOT NULL,
+ benutzer_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+ erstellt_am TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS etv_abstimmungsverlauf (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ top_id INTEGER NOT NULL REFERENCES versammlung_tops(id) ON DELETE CASCADE,
+ revision INTEGER NOT NULL, snapshot TEXT NOT NULL, ergebnis TEXT NOT NULL,
+ benutzer_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+ erstellt_am TEXT NOT NULL DEFAULT (datetime('now')), UNIQUE(top_id,revision)
+);
+CREATE TABLE IF NOT EXISTS etv_teilnahme (
+ versammlung_id INTEGER PRIMARY KEY REFERENCES versammlungen(id) ON DELETE CASCADE,
+ daten TEXT NOT NULL
+);
