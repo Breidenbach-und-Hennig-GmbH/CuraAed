@@ -87,23 +87,22 @@ async function tagesordnungMaske(id){
 
  const neuerTop=darfSchreiben()?el('button',{type:'button',class:'btn-primary',text:'Tagesordnungspunkt anlegen',onclick:()=>topForm(null)}):null;
  const werkzeug=el('div',{class:'cu-etv-werkzeug'},[suche,el('span',{class:'hp-spacer'}),el('a',{href:'/api/versammlungen/'+id+'/tagesordnung.txt',download:'',class:'button',text:'Tagesordnung herunterladen'}),el('button',{type:'button',text:'TOP-Vorlagen',onclick:vorlagenDialog}),neuerTop]);
- const kopf=el('p',{class:'small muted'});
- root.append(el('div',{class:'cu-etv-werkzeug'},[el('button',{type:'button',text:'Versammlungsprotokoll',onclick:()=>protokollDialog(id).catch(fehler)}),el('button',{type:'button',text:'Einladung als PDF',onclick:()=>einladungDialog(id).catch(fehler)}),el('button',{type:'button',text:'Teilnehmerliste',onclick:()=>teilnehmerDialog(id).catch(fehler)}),el('a',{href:'#/etv',text:'← Versammlungen'}),el('button',{type:'button',text:'Basisdaten bearbeiten',onclick:()=>{if(stand&&darfSchreiben())versammlungForm(stand.versammlung);},disabled:!darfSchreiben()})]),kopf,werkzeug,hinweis,box);
+ const kopf=el('p',{class:'small muted'}),flow=etvAblaufRahmen(id,'tagesordnung',root);
+ root.append(el('div',{class:'cu-etv-werkzeug'},[el('button',{type:'button',text:'Versammlungsprotokoll',onclick:()=>geheZu('#/etv/'+id+'?schritt=durchfuehrung')}),el('button',{type:'button',text:'Einladung als PDF',onclick:()=>einladungDialog(id).catch(fehler)}),el('button',{type:'button',text:'Teilnehmerliste',onclick:()=>geheZu('#/etv/'+id+'?schritt=teilnehmer')}),el('a',{href:'#/etv',text:'← Versammlungen'}),el('button',{type:'button',text:'Basisdaten bearbeiten',onclick:()=>geheZu('#/etv/'+id+'?schritt=basisdaten'),disabled:!darfSchreiben()})]),kopf,werkzeug,hinweis,box);
  function zeichnen(){
-  const v=stand.versammlung;if(neuerTop)neuerTop.disabled=!v.leitung_id;kopf.textContent=v.name+' · Objekt '+v.objekt_nummer+' · '+datum(v.datum)+(v.uhrzeit?' · '+v.uhrzeit:'');
+  const v=stand.versammlung;flow.seitenkopf.replaceChildren(el('strong',{text:v.name}),el('span',{text:'Objekt '+v.objekt_nummer+' · '+datum(v.datum)}));if(neuerTop)neuerTop.disabled=!v.leitung_id;kopf.textContent=v.name+' · Objekt '+v.objekt_nummer+' · '+datum(v.datum)+(v.uhrzeit?' · '+v.uhrzeit:'');
   const q=suche.value.trim().toLocaleLowerCase('de'),rows=stand.tops.filter(t=>[t.position,t.titel,t.erlaeuterung,t.beschlussvorschlag].join(' ').toLocaleLowerCase('de').includes(q));
   hinweis.textContent=(!v.leitung_id?'Bitte zuerst die Basisdaten mit Versammlungsleitung speichern. ':'')+stand.tops.length+' Tagesordnungspunkt(e)'+(q?' · '+rows.length+' Treffer':'');
   box.replaceChildren(raster([{label:'TOP',render:t=>String(t.position)},{label:'Titel',render:t=>el('strong',{text:t.titel})},{label:'Art',render:t=>t.art==='beschluss'?'Beschlussfassung':'Besprechung'},{label:'Erläuterung',render:t=>t.erlaeuterung||'–'},{label:'Beschlussvorschlag',render:t=>t.beschlussvorschlag||'–'},{label:'Aktionen',render:t=>darfSchreiben()?el('div',{class:'cu-etv-aktionen'},[
    el('button',{type:'button',text:'↑',title:'TOP '+t.position+' nach oben','aria-label':'TOP '+t.position+' nach oben',disabled:t.position===1,onclick:e=>{e.stopPropagation();bewegen(t,-1);}}),
    el('button',{type:'button',text:'↓',title:'TOP '+t.position+' nach unten','aria-label':'TOP '+t.position+' nach unten',disabled:t.position===stand.tops.length,onclick:e=>{e.stopPropagation();bewegen(t,1);}}),
    el('button',{type:'button',text:'Bearbeiten',onclick:e=>{e.stopPropagation();topForm(t);}}),
-   el('button',{type:'button',text:'Mehrheit / Abstimmen',disabled:t.art!=='beschluss',onclick:e=>{e.stopPropagation();abstimmungDialog(id,t.id).catch(fehler);}}),
-   el('button',{type:'button',text:'Als Vorlage speichern',onclick:e=>{e.stopPropagation();vorlageForm(null,t);}}),
-   el('button',{type:'button',text:'Löschen',onclick:e=>{e.stopPropagation();loeschen(t);}})
+   el('button',{type:'button',class:'btn-danger',text:'Löschen','aria-label':'TOP '+t.position+' löschen',onclick:e=>{e.stopPropagation();loeschen(t);}}),
+   el('button',{type:'button',text:'Als Vorlage speichern',onclick:e=>{e.stopPropagation();vorlageForm(null,t);}})
   ]):''}],rows,{onOpen:t=>{if(darfSchreiben())topForm(t);},leer:q?'Keine passenden TOPs.':'Noch keine Tagesordnungspunkte. Über „Tagesordnungspunkt anlegen“ starten.'}));
  }
  suche.addEventListener('input',()=>{if(stand)zeichnen();});
  S.kontext={typ:'tagesordnung',erstellen:()=>topForm(null)};
- if(!zeigeAufDesktop(lauf,maskenFenster({titel:'Tagesordnung',kopf:{ueberschrift:'Tagesordnung',brot:[{text:'ETV',href:'#/etv'},{text:'Tagesordnung'}],drucken:false},inhalt:root})))return;
+ if(!zeigeAufDesktop(lauf,maskenFenster({titel:'Tagesordnung',kopf:{ueberschrift:'Tagesordnung',brot:[{text:'ETV',href:'#/etv'},{text:'Tagesordnung'}],drucken:false},inhalt:flow.layout})))return;
  await laden();
 }
