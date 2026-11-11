@@ -5,7 +5,7 @@ const reg=(gruppen)=>({gruppen,hinweise:[],meaHinweise:[]});
 const row=(key,stimme='ja',extra={})=>({key,teilnahme:'selbst',stimme,ausgeschlossen:false,vollmacht_textform:false,stimme_textform:false,vertreter:'',nachweis:'',ausschlussgrund:'',...extra});
 const count=(groups,rows,c={},r={})=>A.zaehlen(reg(groups),{...A.DEFAULT_CONFIG,geprueft:true,...c},{...A.DEFAULT_RULE,...r},rows,true);
 test('MEA: exakte gemischte Brüche und Dezimalstellen ohne Rundungsfehler',()=>{
- assert.equal(Q.str(Q.add(Q.parse('1/3'),Q.parse('2/3'))),'1');assert.equal(Q.str(Q.parse('0,125')),'1/8');
+ assert.equal(Q.str(Q.add(Q.parse('1/3'),Q.parse('2/3'))),'1');assert.equal(Q.str(Q.parse('0,125')),'1/8');assert.equal(Q.str(Q.parse('123.45678901234567')),'12345678901234567/100000000000000');
  for(const v of ['1/0','-1','NaN','1e4','1.000,2','1/2/3',{},null])assert.throws(()=>Q.parse(v));
  const result=count([group('1','1/3'),group('2','2/3')],[row('1','ja'),row('2','nein')],{prinzip:'mea'});assert.equal(result.status,'abgelehnt');assert.equal(result.summen.ja,'1/3');
 });
@@ -64,6 +64,8 @@ async function fixture(t){const db=await openDatabase(':memory:');t.after(()=>db
 const body=s=>({revision:s.revision,basis_hash:s.register.basis_hash,top_hash:s.top_hash,config_revision:s.config.revision,regel_revision:s.regel.revision,geprueft:true,stimmen:s.register.gruppen.map(g=>row(g.key))});
 test('Register fasst identische Eigentümergruppen zusammen und hält teilweise überlappende Gruppen getrennt',async t=>{
  const db=await fixture(t),s=await A.stand(db,1,1);assert.deepEqual(s.register.gruppen.map(g=>g.key),['1','1:2','2:3']);assert.equal(s.register.gruppen[0].einheiten.length,2);assert.equal(s.register.gruppen[0].mea,'1/2');assert.equal(s.register.hinweise.length,0);
+ await db.run("UPDATE einheiten SET mea='123.45678901234567' WHERE id IN(1,2)");assert.equal((await A.stand(db,1,1)).register.gruppen[0].mea,'12345678901234567/50000000000000');
+ await db.run('UPDATE rollen_zuordnungen SET inaktiv=1 WHERE einheit_id=4 AND adresse_id=3');assert.equal((await A.stand(db,1,1)).register.gruppen.some(g=>g.key==='2:3'),false);
  await db.run("UPDATE rollen_zuordnungen SET gueltig_von='2027-01-01' WHERE einheit_id=1");assert.match((await A.stand(db,1,1)).register.hinweise.join(' '),/keine Eigentümerzuordnung/);
 });
 test('Unvollständige Eigentumsanteile werden sichtbar und blockieren die Berechnung',async t=>{

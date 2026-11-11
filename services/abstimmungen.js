@@ -59,7 +59,7 @@ async function register(db,v){
   const key=owners.map(o=>o.adresse_id).sort((a,b)=>a-b).join(':');
   if(!groups.has(key))groups.set(key,{key,name:owners.map(o=>require('./adressen').anzeigename(o)).join(' / '),eigentumer:owners.map(o=>({id:o.adresse_id,name:require('./adressen').anzeigename(o)})),einheiten:[],mea:'0',mea_vollstaendig:true});
   const g=groups.get(key);g.einheiten.push({id:u.id,nummer:u.nummer,bezeichnung:u.bezeichnung,mea:u.mea});
-  try{const m=Q.parse(u.mea);if(m.n<=0n)throw Error();g.mea=Q.str(Q.add(Q.parse(g.mea),m));}catch{g.mea_vollstaendig=false;meaHinweise.push('Einheit '+(u.nummer||u.bezeichnung)+': MEA fehlen oder sind nicht eindeutig.');}
+  try{const m=Q.parse(u.mea);if(m.n<=0n)throw Error();g.mea=Q.str(Q.add(Q.parse(g.mea,true),m));}catch{g.mea_vollstaendig=false;meaHinweise.push('Einheit '+(u.nummer||u.bezeichnung)+': MEA fehlen oder sind nicht eindeutig.');}
  }
  const gruppen=[...groups.values()],basis={datum:v.datum,objekt_id:v.objekt_id,gruppen,hinweise,meaHinweise};
  return{...basis,basis_hash:hash(basis)};
@@ -84,7 +84,7 @@ function zaehlen(reg,c,r,stimmen,geprueft){
   const raw=map.get(g.key);if(!raw)fail('Unbekannte oder fehlende Stimmrechtsgruppe.');
   if(!['selbst','vollmacht','abwesend'].includes(raw.teilnahme)||!['ja','nein','enthaltung','ungueltig','keine'].includes(raw.stimme)||typeof raw.ausgeschlossen!=='boolean'||typeof raw.vollmacht_textform!=='boolean'||typeof raw.stimme_textform!=='boolean')fail('Ungültige Stimmabgabe.');
   const s={key:g.key,teilnahme:raw.teilnahme,stimme:raw.stimme,ausgeschlossen:raw.ausgeschlossen,vollmacht_textform:raw.vollmacht_textform,stimme_textform:raw.stimme_textform,vertreter:text(raw.vertreter,200),nachweis:text(raw.nachweis,500),ausschlussgrund:text(raw.ausschlussgrund,1000)};
-  const w=c.prinzip==='kopf'?Q.q(1n):c.prinzip==='einheiten'?Q.q(BigInt(g.einheiten.length)):Q.parse(g.mea),mea=Q.parse(g.mea);
+  const w=c.prinzip==='kopf'?Q.q(1n):c.prinzip==='einheiten'?Q.q(BigInt(g.einheiten.length)):Q.parse(g.mea,true),mea=Q.parse(g.mea,true);
   sums.alle_mea=Q.add(sums.alle_mea,mea);
   if(s.ausgeschlossen){
    if(!s.ausschlussgrund)fail('Bitte einen Stimmrechtsausschluss begründen: '+g.name);
