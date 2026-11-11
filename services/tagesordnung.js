@@ -42,4 +42,41 @@ async function text(db,id){
  return ['TAGESORDNUNG',v.name,'Objekt: '+v.objekt_nummer+' · '+v.objekt_bezeichnung,'Datum: '+v.datum+(v.uhrzeit?' · '+v.uhrzeit:''),'Versammlungsort: '+(ort||'–'),'Versammlungsleitung: '+(v.leitung_name||'–'),'',
  ...tops.flatMap(t=>['TOP '+t.position+' · '+t.titel,t.art==='beschluss'?'Beschlussfassung':'Besprechung',t.erlaeuterung||'',t.beschlussvorschlag?'Beschlussvorschlag:\n'+t.beschlussvorschlag:'',''])].join('\n');
 }
-module.exports={liste,aendern,text};
+
+async function vorlagen(db){return db.all('SELECT * FROM top_vorlagen WHERE archiviert=0 ORDER BY name COLLATE NOCASE,id');}
+async function vorlageAendern(db,aktion,b={}){
+ if(aktion!=='archivieren'&&typeof b.name!=='string')throw new V.ValidationError('Ungültiger Vorlagenname.');
+ const w=aktion==='archivieren'?null:{...daten(b),name:V.requireStr(V.str(b.name,200),'Vorlagenname')};
+ if(!['anlegen','bearbeiten','archivieren'].includes(aktion))throw new V.ValidationError('Ungültige Vorlagenaktion.');
+ if(aktion==='anlegen'){
+ const r=await db.run('INSERT INTO top_vorlagen(name,titel,art,erlaeuterung,beschlussvorschlag) VALUES(?,?,?,?,?)',[w.name,w.titel,w.art,w.erlaeuterung,w.beschlussvorschlag]);return db.get('SELECT * FROM top_vorlagen WHERE id=?',[r.lastID]);
+ }
+ if(!Number.isSafeInteger(b.id)||b.id<1||!Number.isSafeInteger(b.revision)||b.revision<1)throw new V.ValidationError('Ungültige Vorlagenversion.');
+ const args=aktion==='archivieren'?[b.id,b.revision]:[w.name,w.titel,w.art,w.erlaeuterung,w.beschlussvorschlag,b.id,b.revision];
+ const r=await db.run(aktion==='archivieren'?
+ "UPDATE top_vorlagen SET archiviert=1,revision=revision+1,geaendert_am=datetime('now') WHERE id=? AND revision=? AND archiviert=0":
+ "UPDATE top_vorlagen SET name=?,titel=?,art=?,erlaeuterung=?,beschlussvorschlag=?,revision=revision+1,geaendert_am=datetime('now') WHERE id=? AND revision=? AND archiviert=0",args);
+ if(!r.changes)throw new V.ValidationError('Vorlage inzwischen geändert oder entfernt. Bitte Vorlagen neu öffnen.',409);
+ return aktion==='archivieren'?{ok:true}:db.get('SELECT * FROM top_vorlagen WHERE id=?',[b.id]);
+}
+async function vorlagenUebernehmen(db,id,b={}){
+ if(!Number.isSafeInteger(b.revision)||b.revision<1||!Array.isArray(b.vorlagen)||b.vorlagen.length<1||b.vorlagen.length>100)throw new V.ValidationError('Bitte 1 bis 100 Vorlagen auswählen.');
+ const unique=new Set();for(const t of b.vorlagen){if(!t||!Number.isSafeInteger(t.id)||t.id<1||!Number.isSafeInteger(t.revision)||t.revision<1||unique.has(t.id))throw new V.ValidationError('Ungültige oder doppelte Vorlage.');unique.add(t.id);}
+ return db.transaktion(async tx=>{
+ const v=await tx.get('SELECT id,top_revision,leitung_id FROM versammlungen WHERE id=?',[id]);
+ if(!v)throw new V.ValidationError('Versammlung nicht gefunden.',404);
+ if(!v.leitung_id)throw new V.ValidationError('Bitte zuerst die Basisdaten mit Versammlungsleitung speichern.');
+ if(v.top_revision!==b.revision)throw new V.ValidationError('Tagesordnung inzwischen geändert. Bitte neu laden.',409);
+ const count=await tx.get('SELECT COUNT(*) AS n FROM versammlung_tops WHERE versammlung_id=?',[id]);
+ if(count.n+b.vorlagen.length>500)throw new V.ValidationError('Maximal 500 Tagesordnungspunkte.');
+ const ids=[];for(const [i,t] of b.vorlagen.entries()){
+ const p=await tx.get('SELECT * FROM top_vorlagen WHERE id=? AND revision=? AND archiviert=0',[t.id,t.revision]);
+ if(!p)throw new V.ValidationError('Eine Vorlage wurde inzwischen geändert oder entfernt. Bitte Auswahl neu laden.',409);
+ const r=await tx.run('INSERT INTO versammlung_tops(versammlung_id,position,titel,art,erlaeuterung,beschlussvorschlag) VALUES(?,?,?,?,?,?)',[id,count.n+i+1,p.titel,p.art,p.erlaeuterung,p.beschlussvorschlag]);ids.push(r.lastID);
+ }
+ await tx.run("UPDATE versammlungen SET top_revision=top_revision+1,geaendert_am=datetime('now') WHERE id=?",[id]);
+ return{ids,revision:v.top_revision+1};
+ });
+}
+module.exports={liste,aendern,text,vorlagen,vorlageAendern,vorlagenUebernehmen};
+
