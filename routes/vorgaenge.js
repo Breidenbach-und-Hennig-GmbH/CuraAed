@@ -16,6 +16,7 @@ function baueRouter(db,options={}){
  r.get('/',h(async(req,res)=>res.json(await svc.list(req.benutzer.id,req.query))));
  r.post('/',h(async(req,res)=>res.status(201).json(await svc.create(req.benutzer.id,req.body))));
  r.get('/:id/dokumente/:dateiId',h(async(req,res)=>{const file=await svc.document(req.benutzer.id,req.params.id,req.params.dateiId);res.set({'X-Content-Type-Options':'nosniff','Content-Security-Policy':"sandbox; default-src 'none'; frame-ancestors 'self'"});if(req.query.vorschau==='1'&&file.pdf)res.type('application/pdf').set('Content-Disposition','inline').sendFile(file.path);else res.attachment(file.name).type('application/octet-stream').sendFile(file.path);}));
+ r.post('/:id/auftragsdokumente',h(async(req,res)=>res.json(await svc.attach(req.benutzer.id,req.params.id,req.body||{}))));
  r.get('/:id',h(async(req,res)=>res.json(await svc.detail(req.benutzer.id,req.params.id))));
  r.put('/:id',h(async(req,res)=>res.json(await svc.update(req.benutzer.id,req.params.id,req.body))));
  r.post('/:id/vermerke',h(async(req,res)=>res.json(await svc.comment(req.benutzer.id,req.params.id,req.body))));

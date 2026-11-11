@@ -738,3 +738,7 @@ CREATE TABLE IF NOT EXISTS etv_live_audit (
  daten TEXT NOT NULL, zeit TEXT NOT NULL, benutzer_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
  anfrage_id TEXT REFERENCES etv_live_anfragen(id)
 );
+
+-- Eigene Auftragsdaten ergänzen bestehende Vorgänge ohne HP-Abhängigkeit.
+CREATE TABLE IF NOT EXISTS handwerkerauftraege (vorgang_id INTEGER PRIMARY KEY REFERENCES fach_vorgaenge(id) ON DELETE CASCADE,daten TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS handwerker_dokumente (vorgang_id INTEGER NOT NULL REFERENCES fach_vorgaenge(id) ON DELETE CASCADE,dokument_id INTEGER NOT NULL REFERENCES dokumente(id) ON DELETE CASCADE,PRIMARY KEY(vorgang_id,dokument_id));
