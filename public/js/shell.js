@@ -592,6 +592,7 @@ function MENUE() {
     { titel: 'FIBU', eintraege: fibuMenue() },
     { titel: 'System', eintraege: [
       { text: 'Benutzerverwaltung', nurAdmin: true, aktion: () => geheZu('#/benutzer') },
+      {text:'Firmenbriefköpfe und Logos',nurAdmin:true,aktion:()=>firmenBriefkoepfeDialog().catch(fehler)},
       { text: 'Passwort ändern …', aktion: passwortDialog },
       { text: 'Klassische Menüleiste', haken: () => !!S.klassik, aktion: klassikUmschalten },
       { text: 'Personenfunktionen (Codes)', aktion: pfktCodesDialog },
