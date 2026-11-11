@@ -125,6 +125,7 @@ function zaehlen(reg,c,r,stimmen,geprueft){
 async function auszaehlen(db,vid,tid,b,owner,speichern=false){
  return db.transaktion(async tx=>{
  const s=await stand(tx,vid,tid);
+ if(speichern&&await tx.get("SELECT id FROM etv_live_runden WHERE top_id=? AND status IN ('offen','geschlossen') LIMIT 1",[tid]))fail('Dieser TOP wird über die Live-Abstimmung geführt. Bitte dort arbeiten.',409);
  if(s.top.art!=='beschluss')fail('Für diesen TOP bitte zuerst die Art Beschlussfassung wählen.');
  if((b.teilnahme_revision??0)!==s.teilnahme_revision)fail('Teilnehmerliste inzwischen geändert. Bitte die Abstimmung neu öffnen.',409);
  if(b.basis_hash!==s.register.basis_hash||b.top_hash!==s.top_hash||b.config_revision!==s.config.revision||b.regel_revision!==s.regel.revision||b.revision!==s.revision)fail('Daten inzwischen geändert. Bitte die Abstimmung neu öffnen.',409);

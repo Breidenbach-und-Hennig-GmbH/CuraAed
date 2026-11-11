@@ -266,6 +266,16 @@ function baueApi(db, uploadDir, options = {}) {
   router.get('/firmenbriefkoepfe/:id',h(async(req,res)=>res.json(await require('../services/firmenbriefkoepfe').holen(db,req.params.id))));
   router.post('/firmenbriefkoepfe',auth.erfordereAdmin,h(async(req,res)=>res.json(await require('../services/firmenbriefkoepfe').speichern(db,null,req.body||{}))));
   router.put('/firmenbriefkoepfe/:id',auth.erfordereAdmin,h(async(req,res)=>res.json(await require('../services/firmenbriefkoepfe').speichern(db,req.params.id,req.body||{}))));
+  const etvLive=require('../services/etv-live'),etvOrigin=options.etvOrigin||process.env.PUBLIC_URL||'https://curaaed.onrender.com';
+  router.get('/versammlungen/:id/live',h(async(req,res)=>{res.set('Cache-Control','no-store');res.json(await etvLive.privateState(db,req.params.id,etvOrigin,req.benutzer.id));}));
+  router.put('/versammlungen/:id/live/raum',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await etvLive.setRoom(db,req.params.id,req.body||{},req.benutzer.id))));
+  router.get('/versammlungen/:id/live/qr.png',h(async(req,res)=>{const s=await etvLive.privateState(db,req.params.id,etvOrigin);if(!s.raum?.aktiv)return res.status(409).json({fehler:'Bitte den QR-Zugang zuerst öffnen.'});res.set('Cache-Control','no-store');res.type('png').send(await require('qrcode').toBuffer(s.raum.einwahl_url,{errorCorrectionLevel:'M',margin:4,width:360}));}));
+  router.post('/versammlungen/:id/live/zulassen',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await etvLive.approve(db,req.params.id,req.body||{},req.benutzer.id))));
+  router.post('/versammlungen/:id/live/manuell',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await etvLive.revoke(db,req.params.id,req.body||{},req.benutzer.id))));
+  router.post('/versammlungen/:id/live/top',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await etvLive.currentTop(db,req.params.id,req.body?.top_id,req.benutzer.id))));
+  router.post('/versammlungen/:id/live/runden',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await etvLive.startVote(db,req.params.id,req.body||{},req.benutzer.id))));
+  router.post('/versammlungen/:id/live/runden/:rid/stimme',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await etvLive.vote(db,req.params.id,req.params.rid,req.body||{},{user:req.benutzer.id}))));
+  router.post('/versammlungen/:id/live/runden/:rid/schliessen',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await etvLive.finishVote(db,req.params.id,req.params.rid,req.body||{},req.benutzer.id))));
   router.get('/versammlungen/:id/einlass',h(async(req,res)=>res.json(await require('../services/einlass').stand(db,req.params.id))));
   router.post('/versammlungen/:id/starten',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await require('../services/einlass').starten(db,req.params.id,req.body||{},req.benutzer.id))));
   router.get('/versammlungen/:id/protokoll',h(async(req,res)=>res.json(await require('../services/protokolle').stand(db,req.params.id))));

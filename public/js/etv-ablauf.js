@@ -33,6 +33,7 @@ async function versammlungSchrittMaske(id,schritt,params=new URLSearchParams()){
    if(darfSchreiben())await versammlungForm(v,{container:flow.main});
    else content.append(el('h2',{text:v.name}),el('p',{text:'Objekt '+v.objekt_nummer+' · '+datum(v.datum)+' · '+(v.uhrzeit||'')}),el('p',{text:[v.ort,v.ort_strasse,v.ort_plz,v.ort_stadt].filter(Boolean).join(', ')}),el('p',{text:'Versammlungsleitung: '+(v.leitung_name||'Noch nicht zugeordnet')}));
   }else if(schritt==='teilnehmer')await teilnehmerDialog(id,{container:flow.main});
+  else if(params.get('ansicht')==='live')await etvLiveMaske(id,{container:content});
   else if(params.get('ansicht')==='protokoll'){
    content.append(einlassReiter(id,'protokoll'));
    const host=el('div');content.append(host);host.etvSchliessen=flow.main.etvSchliessen;await protokollDialog(id,{container:host});

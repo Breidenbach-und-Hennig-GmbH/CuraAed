@@ -702,3 +702,39 @@ CREATE TABLE IF NOT EXISTS etv_durchfuehrung (
  gestartet_am TEXT NOT NULL, benutzer_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
  teilnahme_revision INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS etv_live (
+ versammlung_id INTEGER PRIMARY KEY REFERENCES versammlungen(id) ON DELETE CASCADE,
+ raum_token TEXT NOT NULL, aktiv INTEGER NOT NULL DEFAULT 1, generation INTEGER NOT NULL DEFAULT 1,
+ ablauf_am TEXT NOT NULL, teams_url TEXT NOT NULL DEFAULT '', aktueller_top_id INTEGER REFERENCES versammlung_tops(id) ON DELETE SET NULL,
+ revision INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS etv_live_anfragen (
+ id TEXT PRIMARY KEY, versammlung_id INTEGER NOT NULL REFERENCES versammlungen(id) ON DELETE CASCADE,
+ session_hash TEXT NOT NULL UNIQUE, generation INTEGER NOT NULL, name TEXT NOT NULL, kanal TEXT NOT NULL,
+ status TEXT NOT NULL DEFAULT 'wartend', erstellt_am TEXT NOT NULL, zugelassen_von INTEGER REFERENCES benutzer(id) ON DELETE SET NULL
+);
+CREATE TABLE IF NOT EXISTS etv_live_gruppen (
+ versammlung_id INTEGER NOT NULL REFERENCES versammlungen(id) ON DELETE CASCADE, gruppen_key TEXT NOT NULL,
+ anfrage_id TEXT REFERENCES etv_live_anfragen(id), modus TEXT NOT NULL DEFAULT 'manuell',
+ PRIMARY KEY(versammlung_id,gruppen_key)
+);
+CREATE TABLE IF NOT EXISTS etv_live_runden (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, versammlung_id INTEGER NOT NULL REFERENCES versammlungen(id) ON DELETE CASCADE,
+ top_id INTEGER NOT NULL REFERENCES versammlung_tops(id) ON DELETE CASCADE,
+ status TEXT NOT NULL DEFAULT 'offen', snapshot TEXT NOT NULL, ergebnis TEXT,
+ geoeffnet_am TEXT NOT NULL, geschlossen_am TEXT, benutzer_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS etv_live_eine_offene_runde ON etv_live_runden(versammlung_id) WHERE status='offen';
+CREATE TABLE IF NOT EXISTS etv_live_stimmen (
+ runde_id INTEGER NOT NULL REFERENCES etv_live_runden(id) ON DELETE CASCADE, gruppen_key TEXT NOT NULL,
+ stimme TEXT NOT NULL, quelle TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1,
+ anfrage_id TEXT REFERENCES etv_live_anfragen(id), benutzer_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+ zeit TEXT NOT NULL, PRIMARY KEY(runde_id,gruppen_key)
+);
+CREATE TABLE IF NOT EXISTS etv_live_audit (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, versammlung_id INTEGER NOT NULL REFERENCES versammlungen(id) ON DELETE CASCADE,
+ runde_id INTEGER REFERENCES etv_live_runden(id) ON DELETE SET NULL, aktion TEXT NOT NULL,
+ daten TEXT NOT NULL, zeit TEXT NOT NULL, benutzer_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+ anfrage_id TEXT REFERENCES etv_live_anfragen(id)
+);
