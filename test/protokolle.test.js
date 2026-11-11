@@ -12,7 +12,7 @@ test('Protokoll übernimmt TOPs, Beschlussentwurf und gespeicherte Auszählung, 
 });
 test('PDF zur Unterzeichnung enthält tatsächliche Beschlüsse, Zahlen, Vollmachten und die ausgewählten Personen',async t=>{
  const db=await fixture(t),s=await P.stand(db,1),b=ready(s);b.daten.tops[1].beschlusswortlaut='BESTÄTIGTER WORTLAUT: Der Wirtschaftsplan wird beschlossen.';b.daten.tops[1].ergebnis={ja:999};const pdf=await read(await P.speichern(db,1,b,true));
- for(const text of ['ZUR UNTERZEICHNUNG','BESTÄTIGTER WORTLAUT','Ja: 1 | Nein: 0 | Enthaltungen: 1','Verkündetes Ergebnis Angenommen','Gemeindesaal, Testweg 2, 01234 Musterstadt','Test-Protokollführung','Alpha','Testbeirat','DMS 42','Vertagt'])assert.ok(pdf.all.includes(text),text);assert.doesNotMatch(pdf.all,/999|ENTWURF/);assert.match(pdf.all,/keine elektronischen Unterschriften/);
+ for(const text of ['ZUR UNTERZEICHNUNG','BESTÄTIGTER WORTLAUT','Ja: 1 | Nein: 0 | Enthaltungen: 1','Verkündetes Ergebnis Angenommen','Gemeindesaal, Testweg 2, 01234 Musterstadt','Test-Protokollführung','Alpha','Testbeirat','DMS 42','Vertagt'])assert.ok(pdf.all.includes(text),text);assert.doesNotMatch(pdf.all,/999|ENTWURF/);assert.match(pdf.all,/keine elektronischen Unterschriften/);assert.match(pdf.all,/Niederschrift/);assert.doesNotMatch(pdf.all,/CuraAedificii/);assert.match(pdf.all,/mit insgesamt 1 von 1 MEA/);
  for(let i=0;i<pdf.pages;i++)assert.ok(pdf.texts[i].includes('Seite '+(i+1)+' von '+pdf.pages));assert.ok((await P.stand(db,1)).revision>0);
 });
 test('Fehlende, unbestätigte und historische Auszählungen sperren nur die Ausgabe zur Unterzeichnung',async t=>{
