@@ -1,0 +1,21 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),{openDatabase}=require('../db'),vs=require('../services/versammlungen'),tops=require('../services/tagesordnung');
+test('Tagesordnung: je Versammlung anlegen, bearbeiten, umsortieren, exportieren und Konflikte erkennen',async t=>{
+ const db=await openDatabase(':memory:');t.after(()=>db.close());
+ await db.run("INSERT INTO benutzer(id,benutzername,name,passwort_hash,rolle) VALUES(1,'leitung','Testleitung','test','admin')");
+ await db.run("INSERT INTO objekte(id,nummer,bezeichnung) VALUES(1,'1001','Testhaus')");
+ const a=await vs.anlegen(db,{objekt_id:1,name:'ETV A',datum:'2026-11-20',leitung_id:1}),b=await vs.anlegen(db,{objekt_id:1,name:'ETV B',datum:'2026-11-21',leitung_id:1});
+ const one=await tops.aendern(db,a.id,'anlegen',{revision:1,titel:'Eröffnung',art:'besprechung'});
+ const two=await tops.aendern(db,a.id,'anlegen',{revision:2,titel:'Budget',art:'beschluss',beschlussvorschlag:'Budget beschließen'});
+ await assert.rejects(tops.aendern(db,a.id,'anlegen',{revision:1,titel:'Veraltet'}),e=>e.status===409);
+ await assert.rejects(tops.aendern(db,b.id,'bearbeiten',{revision:1,id:one.id,titel:'Fremd'}),e=>e.status===404);
+ assert.equal((await tops.liste(db,b.id)).revision,1);
+ await tops.aendern(db,a.id,'verschieben',{revision:3,id:two.id,richtung:-1});
+ assert.deepEqual((await tops.liste(db,a.id)).tops.map(t=>t.titel),['Budget','Eröffnung']);
+ await tops.aendern(db,a.id,'bearbeiten',{revision:4,id:two.id,titel:'Jahresbudget',art:'beschluss',beschlussvorschlag:'Freigeben'});
+ assert.match(await tops.text(db,a.id),/TOP 1 · Jahresbudget/);assert.match(await tops.text(db,a.id),/Freigeben/);
+ await tops.aendern(db,a.id,'loeschen',{revision:5,id:two.id});
+ assert.equal((await tops.liste(db,a.id)).tops[0].position,1);
+ await assert.rejects(tops.aendern(db,a.id,'anlegen',{revision:6,titel:'',art:'beschluss'}),/Titel/);
+ assert.equal((await tops.liste(db,a.id)).revision,6);
+});
