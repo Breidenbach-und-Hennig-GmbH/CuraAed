@@ -51,6 +51,7 @@ function route() {
   if (bereich === 'etv') return id ? (['basisdaten','teilnehmer','durchfuehrung'].includes(params.get('schritt'))?versammlungSchrittMaske(id,params.get('schritt'),params):tagesordnungMaske(id)) : etvMaske(params);
   if (bereich === 'fibu') return fibuMaske();
   if (bereich === 'pkto') return personenkontoMaske(id, params);
+  if (bereich === 'verwaltungen') return verwaltungenMaske();
   if (bereich === 'benutzer') return benutzerMaske();
   if (bereich === 'plaud') return plaudRueckkehr(params);
   if (bereich === 'hausperfekt') return hausperfektMaske();

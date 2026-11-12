@@ -577,6 +577,7 @@ function MENUE() {
     ] },
     { titel: 'Sprünge', alt: 's', eintraege: SPRUENGE.map(sprung) },
     { titel: 'Verw.Bestand/Stammdaten', eintraege: [
+      {text:'Verwaltungen',aktion:()=>geheZu('#/verwaltungen')},
       { text: 'Objekte', taste: 'Alt+S, O', aktion: () => geheZu('#/objekte') },
       { text: 'Wohnungen / Einheiten', taste: 'Alt+S, W', aktion: () => geheZu('#/einheiten') },
       { text: 'Adressen', taste: 'Alt+S, A', aktion: () => geheZu('#/adressen') },
@@ -592,7 +593,7 @@ function MENUE() {
     { titel: 'FIBU', eintraege: fibuMenue() },
     { titel: 'System', eintraege: [
       { text: 'Benutzerverwaltung', nurAdmin: true, aktion: () => geheZu('#/benutzer') },
-      {text:'Firmenbriefköpfe und Logos',nurAdmin:true,aktion:()=>firmenBriefkoepfeDialog().catch(fehler)},
+      {text:'Stammdaten – Verwaltungen',aktion:()=>geheZu('#/verwaltungen')},
       { text: 'Passwort ändern …', aktion: passwortDialog },
       { text: 'Klassische Menüleiste', haken: () => !!S.klassik, aktion: klassikUmschalten },
       { text: 'Personenfunktionen (Codes)', aktion: pfktCodesDialog },
@@ -833,7 +834,7 @@ const NAV = [
   { text: 'ETV', icon: 'users', hash: '#/etv', titel: 'Eigentümerversammlungen (ETV)', aktiv: (h) => /^#\/etv\b/.test(h) },
   { text: 'Dokumente', icon: 'file', hash: '#/dms', aktiv: (h) => /^#\/(archiv|dms|dms-uebernahme)\b/.test(h) },
   { text: 'Auswertungen', icon: 'chart', menue: 'Auswertungen / Listen', aktiv: (h) => /liste\b/.test(h) },
-  { text: 'Einstellungen', icon: 'settings', menue: 'System', aktiv: (h) => /^#\/benutzer\b/.test(h) },
+  { text: 'Einstellungen', icon: 'settings', menue: 'System', aktiv: (h) => /^#\/(benutzer|verwaltungen)\b/.test(h) },
 ];
 
 function navAktualisieren() {
@@ -1122,6 +1123,7 @@ function applikationOeffnen() {
     { text: 'Arbeitsbereiche', info: 'Akten, Aufträge, Wiedervorlagen, ZIS und Notizen', hash: '#/vorgaenge' },
     { text: 'Archiv', info: 'zentrale Ablage', hash: '#/archiv' },
     { text: 'Archiv – nicht zugeordnete Einträge', info: 'Eingang ohne Zuordnung', hash: '#/archiv?ohne=1' },
+    { text: 'Verwaltungen', info: 'Stammdaten', hash: '#/verwaltungen' },
     { text: 'Benutzerverwaltung', info: 'System', hash: '#/benutzer', nurAdmin: true },
     { text: 'Finanzbuchhaltung (FIBU)', folgt: SPAETER },
     { text: 'E-Banking / SEPA-Export', folgt: STUFE4 },
