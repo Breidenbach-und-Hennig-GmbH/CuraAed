@@ -7,6 +7,7 @@ function date(v,k){if(v===null||v==='')return null;if(typeof v!=='string'||!/^\d
 async function prepare(tx,owner,b){
  if(b===null||typeof b!=='object'||Array.isArray(b))fail('Ungültige Auftragsdaten.');
  const d={};
+ if(b.status_code!==undefined){if(typeof b.status_code!=='string'||!require('../public/js/hwa-status')[b.status_code])fail('Unbekannter Handwerkerauftrags-Status.');d.status_code=b.status_code;}
  for(const [k,max] of Object.entries({vorgang:40,sachkonto:20,betreff2:500,pfkt:3})){const v=b[k]??(k==='pfkt'?'010':'');if(typeof v!=='string'||v.length>max)fail('Ungültiges Auftragsfeld: '+k);d[k]=v.trim();}
  if(d.pfkt&&!/^\d{3}$/.test(d.pfkt))fail('PFkt bitte dreistellig eingeben.');
  for(const k of ['rechnungsempfaenger_drucken','leistungsempfaenger_drucken']){d[k]=b[k]??true;if(typeof d[k]!=='boolean')fail('Ungültige Druckoption.');}
@@ -30,7 +31,7 @@ async function prepare(tx,owner,b){
  if(d.erledigt_am&&d.datum&&d.erledigt_am<d.datum)fail('Erledigungsdatum liegt vor dem Auftragsdatum.');
  return d;
 }
-async function save(tx,id,d){await tx.run('INSERT INTO handwerkerauftraege(vorgang_id,daten) VALUES(?,?) ON CONFLICT(vorgang_id) DO UPDATE SET daten=excluded.daten',[id,JSON.stringify(d)]);}
+async function save(tx,id,d){if(!d.status_code){const old=await tx.get('SELECT daten FROM handwerkerauftraege WHERE vorgang_id=?',[id]);if(old)d.status_code=JSON.parse(old.daten).status_code;}await tx.run('INSERT INTO handwerkerauftraege(vorgang_id,daten) VALUES(?,?) ON CONFLICT(vorgang_id) DO UPDATE SET daten=excluded.daten',[id,JSON.stringify(d)]);}
 async function load(db,r){
  const row=await db.get('SELECT daten FROM handwerkerauftraege WHERE vorgang_id=?',[r.id]);
  const hp=r.remote_snapshot||{},refs=r.bezuege||[];
@@ -41,14 +42,15 @@ async function load(db,r){
  const remoteObject=!row&&sourceObject?{id:null,nummer:String(sourceObject.hp_id??''),bezeichnung:sourceObject.search||refs.find(b=>b.typ==='objekt')?.name||'',strasse:sourceObject.address?.street||'',plz:sourceObject.address?.zip||'',ort:sourceObject.address?.city||'',nur_original:true}:null;
  const remoteUnit=!row&&sourceUnit?{id:null,nummer:String(sourceUnit.hp_id??''),bezeichnung:sourceUnit.position||'',nur_original:true}:null;
  const handwerker=d.handwerker_id?await db.get('SELECT * FROM adressen WHERE id=?',[d.handwerker_id]):null;
- const objekt=d.objekt_id?await db.get('SELECT id,nummer,bezeichnung,strasse,plz,ort FROM objekte WHERE id=?',[d.objekt_id]):null;
+ const objekt=d.objekt_id?await db.get('SELECT id,nummer,bezeichnung,strasse,plz,ort,objekttyp FROM objekte WHERE id=?',[d.objekt_id]):null;
  const einheit=d.einheit_id?await db.get('SELECT id,nummer,bezeichnung,objekt_id FROM einheiten WHERE id=?',[d.einheit_id]):null;
  const adressaten=[];
  if(!row){for(const p of hp.persons||[]){const ref=refs.find(b=>b.typ==='adresse'&&Number(b.remote_id)===Number(p.person?.id));if(ref?.ziel_id&&ref.ziel_id!==d.handwerker_id&&!d.adressaten.some(a=>a.adresse_id===ref.ziel_id))d.adressaten.push({adresse_id:ref.ziel_id,bezeichnung:p.role?.name||p.person_type?.name||'Ansprechpartner',pfkt:p.role?.hp_id||''});}}
  for(const a of d.adressaten){const person=await db.get('SELECT id,nummer,firmenname,vorname,nachname,telefon,mobil,email FROM adressen WHERE id=?',[a.adresse_id]);if(person)adressaten.push({...person,anzeigename:name(person),bezeichnung:a.bezeichnung,pfkt:a.pfkt||''});}
  const kommunikation=handwerker?{telefone:await db.all('SELECT * FROM adress_telefone WHERE adresse_id=? ORDER BY id',[handwerker.id]),emails:await db.all('SELECT * FROM adress_emails WHERE adresse_id=? ORDER BY standard DESC,id',[handwerker.id]),ansprechpartner:await db.all('SELECT * FROM adress_ansprechpartner WHERE adresse_id=? ORDER BY id',[handwerker.id])}:{telefone:[],emails:[],ansprechpartner:[]};
  const dokumente=await db.all('SELECT d.id,d.titel,d.original_name,d.kategorie,d.dokument_datum FROM handwerker_dokumente h JOIN dokumente d ON d.id=h.dokument_id WHERE h.vorgang_id=? ORDER BY d.id DESC',[r.id]);
- return {...d,betrag:d.betrag===null?'':(d.betrag/100).toFixed(2).replace('.',','),originaltext:typeof hp.status_text?.text==='string'?hp.status_text.text:'',source_sb:[hp.team?.hp_id,[hp.team?.first_name,hp.team?.last_name].filter(Boolean).join(' ')].filter(Boolean).join(' · '),source_status:!row?[hp.status?.hp_id,hp.status?.name].filter(Boolean).join(' · '):null,handwerker:handwerker?{...handwerker,anzeigename:name(handwerker)}:null,objekt:objekt||remoteObject,einheit:einheit||remoteUnit,adressaten_details:adressaten,kommunikation,dokumente};
+ const status_code=d.status_code||(require('../public/js/hwa-status')[String(hp.status?.hp_id||'').padStart(3,'0')]?String(hp.status.hp_id).padStart(3,'0'):({offen:'001',in_bearbeitung:'002',beauftragt:'004',storniert:'007',erledigt:'004'}[r.status]||'004'));
+ return {...d,status_code,status_text:require('../public/js/hwa-status')[status_code].text,betrag:d.betrag===null?'':(d.betrag/100).toFixed(2).replace('.',','),originaltext:typeof hp.status_text?.text==='string'?hp.status_text.text:'',source_sb:[hp.team?.hp_id,[hp.team?.first_name,hp.team?.last_name].filter(Boolean).join(' ')].filter(Boolean).join(' · '),source_status:!row?[hp.status?.hp_id,hp.status?.name].filter(Boolean).join(' · '):null,handwerker:handwerker?{...handwerker,anzeigename:name(handwerker)}:null,objekt:objekt||remoteObject,einheit:einheit||remoteUnit,adressaten_details:adressaten,kommunikation,dokumente};
 }
 async function invoices(db,owner,id){
  // Resolve ownership before this function; invoice document access is still checked
