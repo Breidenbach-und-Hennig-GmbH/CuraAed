@@ -23,9 +23,7 @@ async function stand(db,user,heute=datumBerlin()){
  const wv="SELECT id,titel,prioritaet,faellig_am,uhrzeit,'vorgang' AS quelle,NULL AS adresse_id FROM fach_vorgaenge WHERE "+personal+" AND "+active+" AND art='wiedervorlage' UNION ALL SELECT id,betreff AS titel,'normal',faellig_am,NULL,'adresse',adresse_id FROM wiedervorlagen WHERE "+legacy;
  const args=[user.id,user.id,user.id,user.id];
  const wiedervorlagen={gesamt:(await db.get('SELECT COUNT(*) AS n FROM ('+wv+')',args)).n,eintraege:await db.all('SELECT * FROM ('+wv+') ORDER BY faellig_am,uhrzeit,id LIMIT 12',args)};
- const ticket=await db.get("SELECT SUM(CASE WHEN faellig_am>? OR faellig_am IS NULL THEN 1 ELSE 0 END) AS zeitplan,SUM(faellig_am=?) AS faellig,SUM(faellig_am<?) AS ueberfaellig FROM fach_vorgaenge WHERE "+personal+" AND "+active+" AND art IN ('handwerker','wiedervorlage')",[heute,heute,heute,user.id,user.id]);
- const legacyCounts=await db.get('SELECT SUM(faellig_am>?) AS zeitplan,SUM(faellig_am=?) AS faellig,SUM(faellig_am<?) AS ueberfaellig FROM wiedervorlagen WHERE '+legacy,[heute,heute,heute,user.id,user.id]);
- const tickets=Object.fromEntries(['zeitplan','faellig','ueberfaellig'].map(k=>[k,(ticket[k]||0)+(legacyCounts[k]||0)]));
+ const tickets=await require('./tickets').zaehler(db,user,heute);
  const prozesse=await db.get("SELECT COALESCE(SUM(status IN ('in_bearbeitung','beauftragt')),0) AS in_arbeit,COALESCE(SUM(status='offen'),0) AS nicht_gestartet FROM fach_vorgaenge WHERE "+personal+" AND art='akte' AND "+active,[user.id,user.id]);
  const telWhere='k.eingang=1 AND k.erledigt=0 AND (k.rueckruf_sb_id=? OR k.rueckruf_sb_id IS NULL)';
  const telefone={gesamt:(await db.get('SELECT COUNT(*) AS n FROM kontakte k WHERE '+telWhere,[user.id])).n,eintraege:await db.all("SELECT k.id,k.adresse_id,k.zeitpunkt,COALESCE(NULLIF(k.anrufer_name,''),a.firmenname,TRIM(COALESCE(a.vorname,'')||' '||COALESCE(a.nachname,''))) AS anrufer,k.betreff,k.notiz,b.kuerzel FROM kontakte k JOIN adressen a ON a.id=k.adresse_id LEFT JOIN benutzer b ON b.id=k.rueckruf_sb_id WHERE "+telWhere+' ORDER BY k.zeitpunkt,k.id LIMIT 12',[user.id])};
