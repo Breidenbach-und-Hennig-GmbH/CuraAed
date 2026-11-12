@@ -751,3 +751,5 @@ CREATE TABLE IF NOT EXISTS tickets (id INTEGER PRIMARY KEY AUTOINCREMENT,kontakt
 CREATE INDEX IF NOT EXISTS idx_tickets_zustaendig ON tickets(zustaendig_id,status,faellig_am);
 CREATE INDEX IF NOT EXISTS idx_tickets_objekt ON tickets(objekt_id);
 CREATE TABLE IF NOT EXISTS ticket_verlauf (id INTEGER PRIMARY KEY AUTOINCREMENT,ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,benutzer_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,aktion TEXT NOT NULL,daten TEXT NOT NULL,erstellt_am TEXT NOT NULL DEFAULT (datetime('now')));
+
+CREATE TABLE IF NOT EXISTS ticket_handwerkerauftraege (ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,vorgang_id INTEGER NOT NULL UNIQUE REFERENCES fach_vorgaenge(id) ON DELETE CASCADE,entwurf_id TEXT NOT NULL,payload_hash TEXT NOT NULL,erstellt_am TEXT NOT NULL DEFAULT (datetime('now')),PRIMARY KEY(ticket_id,entwurf_id));
