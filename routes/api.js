@@ -124,6 +124,7 @@ function baueApi(db, uploadDir, options = {}) {
   router.get('/cockpit',auth.erfordereSchreibrecht,h(async(req,res)=>res.set('Cache-Control','no-store').json(await require('../services/cockpit').stand(db,req.benutzer))));
   router.get('/cockpit/einstellungen',h(async(req,res)=>res.set('Cache-Control','no-store').json(await require('../services/cockpit').einstellungen(db,req.benutzer))));
   router.put('/cockpit/einstellungen',h(async(req,res)=>{let origin;try{origin=new URL(options.hausperfekt?.publicUrl||process.env.APP_PUBLIC_URL||process.env.RENDER_EXTERNAL_URL).origin;}catch{}if(!origin||req.get('origin')!==origin||!req.is('application/json'))throw new ValidationError('Bitte die Firmenauswahl aus den Einstellungen öffnen.',403);res.set('Cache-Control','no-store').json(await require('../services/cockpit').speichern(db,req.benutzer,req.body||{}));}));
+  router.use('/tickets',require('./tickets')(db,options.hausperfekt?.publicUrl));
   router.use('/plaud', require('./plaud').bauePlaudRouter(db, options.plaud));
   const hpRouter = require('./hausperfekt').baueHausperfektRouter(db, { ...options.hausperfekt, archivDir: path.join(uploadDir, 'hp-dms') });
   router.hpArchiv = hpRouter.archiv;
@@ -510,7 +511,7 @@ function baueApi(db, uploadDir, options = {}) {
   router.post('/telefoneingaenge', auth.erfordereSchreibrecht,
     h(async (req, res) => res.status(201).json(await telefonSvc.anlegen(db, req.body || {}, req.benutzer.id))));
   router.put('/telefoneingaenge/:kid', auth.erfordereSchreibrecht,
-    h(async (req, res) => res.json(await telefonSvc.aktualisieren(db, req.params.kid, req.body || {}))));
+    h(async (req, res) => res.json(await telefonSvc.aktualisieren(db, req.params.kid, req.body || {}, req.benutzer.id))));
   router.get('/adressen/:id/kontakte', h(async (req, res) => res.json(await kontakteSvc.kontakteListe(db, req.params.id))));
   router.post('/adressen/:id/kontakte', auth.erfordereSchreibrecht,
     h(async (req, res) => res.status(201).json(await kontakteSvc.kontaktAnlegen(db, req.params.id, req.body || {}, req.benutzer.id))));

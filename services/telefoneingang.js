@@ -69,12 +69,13 @@ const FELDER = ['adresse_id', 'anrufer_adresse_id', 'anrufer_name', 'rueckruf_te
 async function holen(db, id) {
   const k = await db.get(`${K.KONTAKT_SELECT} WHERE k.id = ?`, [id]);
   if (!k) throw new V.ValidationError('Telefoneingang nicht gefunden.', 404);
-  return k;
+  const ticket=await db.get('SELECT id,status FROM tickets WHERE kontakt_id=?',[k.id]);
+  return {...k,ticket:ticket?{...ticket,nummer:require('./tickets').nummer(ticket.id)}:null};
 }
 
 async function anlegen(db, data, benutzerId) {
-  const w = await werte(db, data);
   const id = await db.transaktion(async (tx) => {
+    const w = await werte(tx, data);
     const r = await tx.run(
       `INSERT INTO kontakte (art, richtung, eingang, erfasst_von, ${FELDER.join(', ')}) VALUES ('anruf', 'eingehend', 1, ?${',?'.repeat(FELDER.length)})`,
       [benutzerId || null, ...FELDER.map((f) => w[f])]
@@ -89,17 +90,21 @@ async function anlegen(db, data, benutzerId) {
           w.rueckruf_sb_id || benutzerId || null, benutzerId || null]
       );
     }
+    await require('./tickets').syncTelefon(tx,{...w,id:r.lastID,erfasst_von:benutzerId},benutzerId);
     return r.lastID;
   });
   return holen(db, id);
 }
 
-async function aktualisieren(db, id, data) {
-  const vorh = await db.get('SELECT * FROM kontakte WHERE id = ? AND eingang = 1', [id]);
-  if (!vorh) throw new V.ValidationError('Telefoneingang nicht gefunden.', 404);
-  const w = await werte(db, { ...data, zeitpunkt: data.zeitpunkt || vorh.zeitpunkt });
-  await db.run(`UPDATE kontakte SET ${FELDER.map((f) => f + '=?').join(', ')} WHERE id = ?`, [...FELDER.map((f) => w[f]), id]);
-  return holen(db, id);
+async function aktualisieren(db, id, data, benutzerId) {
+  await db.transaktion(async tx=>{
+    const vorh=await tx.get('SELECT * FROM kontakte WHERE id=? AND eingang=1',[id]);
+    if(!vorh)throw new V.ValidationError('Telefoneingang nicht gefunden.',404);
+    const w=await werte(tx,{...data,zeitpunkt:data.zeitpunkt||vorh.zeitpunkt});
+    await tx.run('UPDATE kontakte SET '+FELDER.map(f=>f+'=?').join(', ')+' WHERE id=?',[...FELDER.map(f=>w[f]),id]);
+    await require('./tickets').syncTelefon(tx,{...w,id:Number(id),erfasst_von:vorh.erfasst_von},benutzerId||vorh.erfasst_von,vorh);
+  });
+  return holen(db,id);
 }
 
 /** Offene Rückrufe (nicht erledigt) – eigene bzw. alle. */

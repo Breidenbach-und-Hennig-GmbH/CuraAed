@@ -1536,6 +1536,9 @@ async function telefonEingang(vorgabe = {}, k = null, danach = null) {
     zis: el('input', { id: 'tel_zis', type: 'checkbox' }),
     wv: el('input', { id: 'tel_wv', type: 'checkbox' }),
   };
+  const ticketInfo=el('p',{class:'small',role:'status','aria-live':'polite'});
+  const ticketPruefen=()=>{f.ticket.checked=!!(f.objekt.value.trim()||f.wohnung.value.trim()||k?.ticket);ticketInfo.replaceChildren(...(k?.ticket?[document.createTextNode('Verknüpft mit '+k.ticket.nummer+' · '),el('a',{href:'#/tickets/'+k.ticket.id,target:'_blank',rel:'noopener',text:'Ticket öffnen'})]:[document.createTextNode(f.ticket.checked?'Ticketentwurf zum ausgewählten Objekt: wird beim Speichern automatisch angelegt.':'Objekt auswählen: das Ticket wird automatisch vorbereitet.')]));};
+  f.objekt.addEventListener('input',ticketPruefen);f.objekt.addEventListener('change',ticketPruefen);f.wohnung.addEventListener('input',ticketPruefen);
   const wohnungText = el('span', { class: 'tel-wtext' });
   const plaud = plaudBlock(f.bemerkung, () => [adresse && adresse.anzeigename, f.anrName.value && 'Anrufer: ' + f.anrName.value,
     f.wohnung.value && 'Wohnung ' + f.wohnung.value].filter(Boolean).join(', '), k);
@@ -1550,7 +1553,7 @@ async function telefonEingang(vorgabe = {}, k = null, danach = null) {
   const pfktSetzen = (z) => {
     f.pfkt.value = z.pfkt_code || '';
     f.objekt.value = z.objekt_nummer || '';
-    f.wohnung.value = z.einheit_nummer || '';
+    f.wohnung.value = z.einheit_nummer || '';ticketPruefen();
     wohnungText.textContent = z.einheit_bezeichnung ? '/ ' + z.einheit_bezeichnung : '/';
   };
   const infoZeigen = async (a) => {
@@ -1607,7 +1610,7 @@ async function telefonEingang(vorgabe = {}, k = null, danach = null) {
     if (vorgabe.objekt) f.objekt.value = vorgabe.objekt.nummer || '';
     if (vorgabe.einheit) { f.wohnung.value = vorgabe.einheit.nummer || ''; wohnungText.textContent = '/ ' + (vorgabe.einheit.bezeichnung || ''); }
   }
-  wvPruefen();
+  wvPruefen();ticketPruefen();
   const ladeAdresse = async (id) => { try { const a = await API.get('/adressen/' + id); adr.wahl(a); return a; } catch (e) { fehler(e); return null; } };
   if (k) {
     adresse = await ladeAdresse(k.adresse_id);
@@ -1616,6 +1619,7 @@ async function telefonEingang(vorgabe = {}, k = null, danach = null) {
     f.objekt.value = k.objekt_nummer || ''; f.wohnung.value = k.einheit_nummer || ''; f.tel.value = k.rueckruf_tel || '';
   } else if (vorgabe.adresse) ladeAdresse(vorgabe.adresse.id);
 
+  ticketPruefen();
   const links = el('div', { class: 'tel-links' }, [
     el('fieldset', { class: 'tel-block' }, [
       zeile('Adresse / Firma:', 'tel_adr_nr', f.adrNr, f.adrName, adr.liste),
@@ -1638,7 +1642,7 @@ async function telefonEingang(vorgabe = {}, k = null, danach = null) {
         el('span', { class: 'tel-sb' }, [el('span', { text: 'SB:' }), el('strong', { text: kuerzelVon(k ? k.erfasst_von_name : S.benutzer.name), title: k ? k.erfasst_von_name || '' : S.benutzer.name })]),
       ]),
     ]),
-    haken(f.ticket, 'Ticket anlegen?', 'Tickets folgen später'),
+    haken(f.ticket, 'Ticket automatisch zum Objekt', 'Das Ticket wird zusammen mit dem Telefoneingang gespeichert.'),ticketInfo,
   ]);
   const rechts = el('div', { class: 'tel-rechts' }, [
     info,
@@ -1678,10 +1682,12 @@ async function telefonEingang(vorgabe = {}, k = null, danach = null) {
         };
         ev.target.disabled = true;
         try {
-          await (k ? API.put('/telefoneingaenge/' + k.id, daten) : API.post('/telefoneingaenge', daten));
-          toast(k ? 'Telefoneingang gespeichert' : 'Telefoneingang erfasst' + (daten.wiedervorlage ? ' – Wiedervorlage angelegt' : ''), 'success');
+          const gespeichert=await (k ? API.put('/telefoneingaenge/' + k.id, daten) : API.post('/telefoneingaenge', daten));
+          toast((k ? 'Telefoneingang gespeichert' : 'Telefoneingang erfasst')+(gespeichert.ticket?' · '+gespeichert.ticket.nummer+' verknüpft':'')+(daten.wiedervorlage?' · Wiedervorlage angelegt':''), 'success');
           close();
+          if(typeof glockeAktualisieren==='function')glockeAktualisieren();
           if (danach) danach();
+          else if(S.kontext?.typ==='cockpit')cockpitMaske();
           else if (S.kontext && (S.kontext.typ === 'adresse' || S.kontext.typ === 'objekt' || S.kontext.typ === 'einheit')) neuLaden();
         } catch (e) { fehler(e); ev.target.disabled = false; }
       } }),

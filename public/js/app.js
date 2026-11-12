@@ -42,6 +42,7 @@ function route() {
   if (bereich === 'objektliste') return objektSuche();
   if (bereich === 'einheitenliste') return einheitSuche();
   if (bereich === 'adressliste') return adressListe();
+  if (bereich === 'tickets') return ticketsMaske(id,params);
   if (bereich === 'kalender') return vorgangKalender(params);
   if (bereich === 'hwa') return handwerkerStart();
   if (bereich === 'vorgaenge') return id ? vorgangDetail(id, params) : vorgaengeMaske(params);
