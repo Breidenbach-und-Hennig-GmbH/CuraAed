@@ -90,7 +90,7 @@ async function dmsUebernahmeMaske(params = new URLSearchParams()) {
   const status = el('p', { role: 'status', 'aria-live': 'polite' }), uebernahme = el('div', { class: 'hp-hinweis' });
   root.append(el('h1', { text: 'Dokumente – Übernahme aus HausPerfekt' }),
     el('p', { text: 'Dokumente samt Zuordnungen dauerhaft in CuraAed übernehmen. Gesicherte Dateien bleiben auch ohne HP-Mobile erreichbar.' }),
-    el('p', {}, [el('a', { href: '#/archiv', text: 'CuraAed-Archiv öffnen' }), document.createTextNode(' · '), el('a', { href: '#/hausperfekt', text: 'HP-Verbindung verwalten' })]), status);
+    el('p', {}, [el('a', { href: '#/archiv', text: 'CuraAed-Archiv öffnen' })]), status);
   if (!darfSchreiben()) { status.textContent = 'Die persönliche HP-Verbindung ist für Administratoren und Mitarbeiter verfügbar.'; return; }
   const verbindung = el('select', { id: 'dms-verbindung', 'aria-label': 'HP-Kundenbestand' }),
     suche = el('input', { type: 'search', id: 'dms-suche', maxlength: '200', placeholder: 'Dokumenttitel oder Dateiname', 'aria-label': 'Dokumente suchen' }),

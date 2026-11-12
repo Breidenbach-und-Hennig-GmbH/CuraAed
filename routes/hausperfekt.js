@@ -43,6 +43,7 @@ function baueHausperfektRouter(db, options = {}) {
   router.get('/dms/:id/dokumente/:dateiId/download', h(async (req, res) => {
     await sendFile(req,res);
   }));
+  router.use(auth.erfordereAdmin);
   router.get('/status', (req, res) => res.json(service.status()));
   router.get('/verbindungen', h(async (req, res) => res.json({ verbindungen: await service.liste(req.benutzer.id) })));
   router.post('/verbinden', sameOrigin, h(async (req, res) => {
