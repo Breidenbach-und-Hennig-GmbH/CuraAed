@@ -89,7 +89,7 @@ async function vorgaengeMaske(params=new URLSearchParams()){
   el('nav',{class:'tel-plaud-knoepfe'},[el('a',{href:'#/vorgaenge',text:'Alle Bereiche'}),...Object.entries(VORGANG_ART).map(([key,text])=>el('a',{href:'#/vorgaenge?art='+key,text}))]));
  const imports=el('details',{},[el('summary',{text:'Vorhandene HP-Daten übernehmen'})]),body=el('div'),list=el('div');imports.append(body);root.append(imports,list);const context=['adresse','objekt','einheit'].includes(params.get('typ'))&&Number(params.get('ziel'))>0?{typ:params.get('typ'),id:Number(params.get('ziel'))}:null;const refreshList=vorgaengeListe(list,{art,kontext:context,lauf});
  async function refresh(){try{
-  const [info,connections]=await Promise.all([API.get('/vorgaenge/uebersicht'),API.get('/hausperfekt/verbindungen')]);if(lauf!==S.lauf)return;
+  const [info,connections]=await Promise.all([API.get('/vorgaenge/uebersicht'),API.get('/hausperfekt/dms/verbindungen')]);if(lauf!==S.lauf)return;
   refreshList();
   body.replaceChildren(el('p',{text:info.bereiche.map(b=>VORGANG_ART[b.art]+': '+b.gesamt+(b.konflikte?' ('+b.konflikte+' Konflikte)':'')).join(' · ')||'Noch keine HP-Fachbereiche übernommen.'}));
   for(const job of info.auftraege){body.append(el('p',{role:'status',text:(VORGANG_ART[{records:'akte',craftsman_tasks:'handwerker',tasks:'wiedervorlage',cis:'zis',notes:'notiz'}[job.resource]]||job.resource)+' · Seite '+job.seite+' · '+(job.status==='laeuft'?'Übernahme läuft':job.status==='fertig'?'Durchlauf abgeschlossen':'Übernahme angehalten')+' · '+job.fehler+' Fehler'+(job.meldung?' · '+job.meldung:'')}));

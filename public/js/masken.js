@@ -9,27 +9,7 @@ const telHref = (nr) => 'tel:' + String(nr || '').replace(/[^0-9+]/g, '');
 // ---------------------------------------------------------------------
 //  Startmaske – leerer Arbeitsbereich wie beim Start von HausPerfekt
 // ---------------------------------------------------------------------
-/** Übersicht (Start): Begrüßung und Kacheln zu den Bereichen. */
-function startMaske() {
-  if (!zeigeAufDesktop(S.lauf, null)) return;
-  const h = new Date().getHours();
-  const gruss = h < 11 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend';
-  const kachel = (ic, titel, text, hash, taste) => el('a', { class: 'cu-kachel', href: hash }, [
-    el('span', { class: 'cu-kachel-icon' }, [icon(ic)]),
-    el('strong', { text: titel }), el('span', { class: 'cu-unterzeile', text }), taste ? el('kbd', { text: taste }) : null,
-  ]);
-  document.getElementById('hp-desktop').appendChild(el('div', { class: 'cu-start' }, [
-    el('h1', { text: `${gruss}, ${S.benutzer.name}` }),
-    el('p', { class: 'cu-unterzeile', text: 'Bereich wählen oder direkt per Tastatur springen – F1 zeigt alle Tastenkürzel.' }),
-    el('div', { class: 'cu-kacheln' }, [
-      kachel('building', 'Objekte', 'Objektstammdaten, Verteilerschlüssel, Bankkonten', '#/objekte', 'Alt+S, O'),
-      kachel('house', 'Wohnungen', 'Einheiten mit Eigentümern und Mietern', '#/einheiten', 'Alt+S, W'),
-      kachel('user', 'Adressen', 'Personen und Firmen, Kontakte, Z.I.S, Wiedervorlagen', '#/adressen', 'Alt+S, A'),
-      kachel('file', 'Dokumente', 'DMS-Posteingang mit Sachbearbeiterauswahl', '#/dms', 'Alt+S, D'),
-      darfSchreiben() ? kachel('settings', 'HP-Verbindung', 'Eigenes HP-Kundenkonto verbinden und Datenzugriff prüfen', '#/hausperfekt') : null,
-    ]),
-  ]));
-}
+function startMaske(){return cockpitMaske();}
 
 // ---------------------------------------------------------------------
 //  Generische Suchmaske

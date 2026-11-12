@@ -99,6 +99,8 @@ test('HP-Verbindungen: Kundenschlüssel bleibt nach einem Prozessneustart verfü
 
 test('HP API: Login, Zustimmung und Origin erforderlich; Leser und fremde Verbindungen sind gesperrt', async t => {
   const f = await fixture(t);
+  await f.db.run("UPDATE benutzer SET rolle='admin' WHERE id IN (?,?)",[f.a.id,f.b.id]);
+  await users.anlegen(f.db,{benutzername:'mitarbeiter',name:'Mitarbeiter',rolle:'mitarbeiter',passwort:'test12345'});
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'curaaed-hp-api-'));
   const app = baueApp(f.db, { uploadDir: dir, hausperfekt: f.options });
   const server = app.listen(0, '127.0.0.1');
@@ -112,6 +114,9 @@ test('HP API: Login, Zustimmung und Origin erforderlich; Leser und fremde Verbin
   const cookie = await login('eins'), reader = await login('leser'), other = await login('zwei');
   assert.equal((await fetch(base + '/api/hausperfekt/status')).status, 401);
   assert.equal((await fetch(base + '/api/hausperfekt/status', { headers: { Cookie: reader } })).status, 403);
+  const employee=await login('mitarbeiter');
+  assert.equal((await fetch(base+'/api/hausperfekt/verbindungen',{headers:{Cookie:employee}})).status,403);
+  assert.equal((await fetch(base+'/api/hausperfekt/verbinden',{method:'POST',headers:{Cookie:employee,Origin:APP,'Content-Type':'application/json'},body:'{}'})).status,403);
   const payload = { portalUrl: 'https://kunde-a.hausperfekt-mobile.de/', benutzername: 'alice', passwort: 'private-test-password', zustimmung: true };
   const post = (body, origin = APP) => fetch(base + '/api/hausperfekt/verbinden', { method: 'POST', headers: { Cookie: cookie, Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   assert.equal((await post(payload, 'https://fremd.invalid')).status, 403);

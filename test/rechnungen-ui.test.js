@@ -49,9 +49,8 @@ test('Alt+S, R öffnet die Rechnungsmaske auch aus der Dokumentvorschau',async t
  w.document.activeElement.dispatchEvent(new w.KeyboardEvent('keydown',{key:'r',code:'KeyR',bubbles:true,cancelable:true}));await tick();assert.ok(w.document.querySelector('.cu-rechnungsmaske'));
 });
 
-test('Startseite: Dokumente öffnet das DMS mit Sachbearbeiterauswahl',t=>{
- const w=setup(t,async()=>({}));w.eval(fs.readFileSync(path.join(__dirname,'../public/js/masken.js'),'utf8')+'\nstartMaske();');
- const tile=[...w.document.querySelectorAll('a.cu-kachel')].find(a=>a.querySelector('strong').textContent==='Dokumente');assert.equal(tile.getAttribute('href'),'#/dms');
+test('Startseite delegiert an das Verwaltercockpit',t=>{
+ const w=setup(t,async()=>({}));let called=0;w.cockpitMaske=()=>called++;w.eval(fs.readFileSync(path.join(__dirname,'../public/js/masken.js'),'utf8')+'\nstartMaske();');assert.equal(called,1);assert.equal(w.document.querySelectorAll('.cu-kachel').length,0);
 });
 
 test('Rechnungserkennung überschreibt eine bereits gespeicherte Rechnung nicht',async t=>{

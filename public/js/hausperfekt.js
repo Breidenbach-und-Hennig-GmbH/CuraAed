@@ -1,6 +1,7 @@
 'use strict';
 
 async function hausperfektMaske() {
+  if(!istAdmin()){toast('HP-Verbindungen sind nur für Administratoren verfügbar.','error');geheZu('#/');return;}
   const lauf = S.lauf;
   if (!zeigeAufDesktop(lauf, null)) return;
   const desktop = document.getElementById('hp-desktop');

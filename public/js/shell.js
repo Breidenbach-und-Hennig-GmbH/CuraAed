@@ -593,6 +593,8 @@ function MENUE() {
     { titel: 'FIBU', eintraege: fibuMenue() },
     { titel: 'System', eintraege: [
       { text: 'Benutzerverwaltung', nurAdmin: true, aktion: () => geheZu('#/benutzer') },
+      {text:'HP-Verbindungen',nurAdmin:true,aktion:()=>geheZu('#/hausperfekt')},
+      {text:'Firma auswählen',aktion:()=>cockpitFirmaDialog().catch(fehler)},
       {text:'Stammdaten – Verwaltungen',aktion:()=>geheZu('#/verwaltungen')},
       { text: 'Passwort ändern …', aktion: passwortDialog },
       { text: 'Klassische Menüleiste', haken: () => !!S.klassik, aktion: klassikUmschalten },
@@ -834,7 +836,7 @@ const NAV = [
   { text: 'ETV', icon: 'users', hash: '#/etv', titel: 'Eigentümerversammlungen (ETV)', aktiv: (h) => /^#\/etv\b/.test(h) },
   { text: 'Dokumente', icon: 'file', hash: '#/dms', aktiv: (h) => /^#\/(archiv|dms|dms-uebernahme)\b/.test(h) },
   { text: 'Auswertungen', icon: 'chart', menue: 'Auswertungen / Listen', aktiv: (h) => /liste\b/.test(h) },
-  { text: 'Einstellungen', icon: 'settings', menue: 'System', aktiv: (h) => /^#\/(benutzer|verwaltungen)\b/.test(h) },
+  { text: 'Einstellungen', icon: 'settings', menue: 'System', aktiv: (h) => /^#\/(benutzer|verwaltungen|hausperfekt)\b/.test(h) },
 ];
 
 function navAktualisieren() {
