@@ -1,15 +1,16 @@
 'use strict';
+const HWA_HINWEISE='Bitte beachten Sie, dass wir auf eine ordnungsgemäße Durchführung und auf einen termingerechten Abschluss des Ihnen erteilten Auftrages Wert legen. Bitte informieren Sie uns zeitnah, wenn Sie den Auftrag nicht oder nicht termingerecht ausführen können.\n\nWir sind gehalten, Rechnungen nur dann zu begleichen, wenn ein unterschriebener Stundenzettel/Rapport der Rechnung beigefügt ist, sofern nicht ein Festpreis vereinbart wurde. Unterschreiben darf bei Maßnahmen innerhalb einer Wohnung nur der Wohnungseigentümer oder Mieter, außerhalb der Wohnungen nur der Hausmeister oder eine bevollmächtigte Person.\n\nDie Rechnung wollen Sie bitte mit dem Namen des Eigentümers / der Wohnungseigentümergemeinschaft zu unseren Händen adressieren.\n\nSofern uns noch keine Freistellungsbescheinigung bezüglich der Bauabzugssteuer nach § 48b EStG übermittelt wurde, so ist diese mit der Rechnung zu übersenden. Bitte teilen Sie die Rechnung gemäß § 35a EStG in den Lohn- und Materialanteil auf.';
 const HWA_STATI=Object.freeze({
  '001':{text:'Angebot angefordert',workflow:'offen',einleitung:'hiermit bitten wir Sie um ein Angebot für die nachfolgend beschriebene Leistung.'},
  '002':{text:'Angebotsabgabe angemahnt !',workflow:'in_bearbeitung',einleitung:'wir erinnern an die Abgabe Ihres Angebots für die nachfolgend beschriebene Leistung.'},
- '003':{text:'Auftrag erteilt !',workflow:'beauftragt',einleitung:'hiermit erteilen wir Ihnen im Namen und auf Rechnung des nachstehend genannten Auftraggebers folgenden Auftrag:'},
- '004':{text:'Auftrag erteilt !',workflow:'beauftragt',einleitung:'hiermit erteilen wir Ihnen im Namen und auf Rechnung des nachstehend genannten Auftraggebers folgenden Auftrag:'},
+ '003':{hinweise:HWA_HINWEISE,text:'Auftrag erteilt !',workflow:'beauftragt',einleitung:'hiermit erteilen wir Ihnen im Namen und auf Rechnung des nachstehend genannten Auftraggebers folgenden Auftrag:'},
+ '004':{hinweise:HWA_HINWEISE,text:'Auftrag erteilt !',workflow:'beauftragt',einleitung:'hiermit erteilen wir Ihnen im Namen und auf Rechnung des nachstehend genannten Auftraggebers folgenden Auftrag:'},
  '005':{text:'Mahnung des Auftr.(Stufe 1)',workflow:'in_bearbeitung',einleitung:'wir erinnern an die Erledigung des nachfolgend bezeichneten Auftrags. Bitte teilen Sie uns den Bearbeitungsstand und den Ausführungstermin mit.'},
  '006':{text:'Mahnung des Auftr.(Stufe 2)',workflow:'in_bearbeitung',einleitung:'wir erinnern erneut an die Erledigung des nachfolgend bezeichneten Auftrags. Bitte melden Sie sich umgehend zum Bearbeitungsstand und Ausführungstermin.'},
  '007':{text:'Auftrag entzogen !',workflow:'storniert',einleitung:'hiermit entziehen wir Ihnen den nachfolgend bezeichneten Auftrag. Dieses Schreiben enthält keine neue Beauftragung.'},
  '008':{text:'Reklamation',workflow:'in_bearbeitung',einleitung:'zu dem nachfolgend bezeichneten Auftrag reklamieren wir die unten beschriebenen Leistungen. Bitte nehmen Sie hierzu Stellung und stimmen Sie das weitere Vorgehen mit uns ab.'},
  '009':{text:'Materialbestellung',workflow:'beauftragt',einleitung:'hiermit bestellen wir im Namen und auf Rechnung des nachstehend genannten Auftraggebers die unten beschriebenen Materialien:'},
  '010':{text:'Ergänzung',workflow:'in_bearbeitung',einleitung:'zu dem nachfolgend bezeichneten Auftrag teilen wir Ihnen folgende Ergänzung mit:'},
- '011':{text:'Dauerauftrag',workflow:'beauftragt',einleitung:'hiermit erteilen wir Ihnen im Namen und auf Rechnung des nachstehend genannten Auftraggebers den nachfolgend beschriebenen Dauerauftrag:'}
+ '011':{hinweise:HWA_HINWEISE,text:'Dauerauftrag',workflow:'beauftragt',einleitung:'hiermit erteilen wir Ihnen im Namen und auf Rechnung des nachstehend genannten Auftraggebers den nachfolgend beschriebenen Dauerauftrag:'}
 });
 if(typeof module!=='undefined')module.exports=HWA_STATI;
