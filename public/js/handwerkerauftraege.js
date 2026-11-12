@@ -40,11 +40,11 @@ function hwaVerlauf(r,root){
 function handwerkerMaske(r,params=new URLSearchParams()){
  const lauf=S.lauf,a=r.auftrag,basis=r.id?'#/vorgaenge/'+r.id:'#/hwa',tab=params.get('tab')||'allgemein',supplier=a.handwerker;
  if(r.id)S.hwaLetzter=r.id;
- S.kontext={typ:'handwerker',id:r.id,hwaRecord:r,bearbeiten:()=>handwerkerForm(r),erstellen:()=>handwerkerForm(),drucken:()=>window.print(),rechnungGespeichert:async()=>neuLaden()};
+ S.kontext={typ:'handwerker',id:r.id,hwaRecord:r,bearbeiten:()=>handwerkerForm(r),erstellen:()=>handwerkerForm(),drucken:()=>hwaDruckDialog(r.id).catch(fehler),rechnungGespeichert:async()=>neuLaden()};
  const tabs=[{key:'allgemein',label:'Allgemein'},{key:'korrespondenz',label:'Korrespondenz'},{key:'archiv',label:'Archiv'},{key:'rechnung',label:'Rechnung'},{key:'vorgaenge',label:'Akten / Vorgänge'},{key:'historie',label:'Historie'}];
  const ref=(row,path)=>row&&!row.id?el('span',{text:[row.nummer,hwaName(row),'(Originalzuordnung)'].filter(Boolean).join(' · ')}):row?el('a',{href:'#/'+path+'/'+row.id,text:[row.nummer,hwaName(row)].filter(Boolean).join(' · ')}):'–';
  const oben=[el('div',{class:'cu-hwa-kopf'},[
-  panel([['Auftrags-Nr.',hwaNr(r)],['Status',a.source_status||HWA_STATUS[r.status]||r.status,el('span',{text:'Firma: '+(a.firma||'–')})],['Sachbearbeiter',r.zustaendig||r.auftrag_sb_name||a.source_sb||'Nicht zugewiesen',el('span',{text:'Betrag: '+(a.betrag?a.betrag+' EUR':'–')})]]),
+  panel([['Auftrags-Nr.',hwaNr(r)],['Status',a.status_code&&HWA_STATI[a.status_code]?a.status_code+' · '+HWA_STATI[a.status_code].text:a.source_status||HWA_STATUS[r.status]||r.status,el('span',{text:'Firma: '+(a.firma||'–')})],['Sachbearbeiter',r.zustaendig||r.auftrag_sb_name||a.source_sb||'Nicht zugewiesen',el('span',{text:'Betrag: '+(a.betrag?a.betrag+' EUR':'–')})]]),
   panel([['Akte',a.akte_id?el('a',{href:'#/vorgaenge/'+a.akte_id,text:'CA-'+a.akte_id}):'–'],['Objekt/Wohnung',el('span',{},[ref(a.objekt,'objekte'),document.createTextNode(' / '),ref(a.einheit,'einheiten')])],['Datum',datum(a.datum),el('span',{text:'Frist: '+datum(r.faellig_am)+' · erledigt: '+datum(a.erledigt_am)})]]),
  ]),el('div',{class:'cu-karte cu-hwa-betreff'},[el('span',{class:'small muted',text:'Betreff'}),el('h2',{text:r.titel||'Kein Handwerkerauftrag ausgewählt'}),a.betreff2?el('div',{text:a.betreff2}):null,el('span',{class:'cu-chip',text:HWA_ART[a.auftragsart]||a.auftragsart})])];
  const content=el('div',{class:'cu-hwa-inhalt'});
@@ -81,7 +81,7 @@ function handwerkerMaske(r,params=new URLSearchParams()){
  }else if(tab==='vorgaenge'){
   const refs=r.bezuege.filter(b=>b.typ!=='dokument');content.append(el('button',{text:'Zuordnung ergänzen',onclick:()=>vorgangZuordnung(r)}),abschnitt('Akten / Vorgänge und Zuordnungen',refs.length?el('ul',{},refs.map(b=>el('li',{},[vorgangLink(b)]))):el('p',{text:'Keine weiteren Verknüpfungen.'})));if(a.akte_id)content.append(el('a',{href:'#/vorgaenge/'+a.akte_id,text:'Akte CA-'+a.akte_id+' öffnen'}));
  }else hwaVerlauf(r,content);
- const fenster=maskenFenster({titel:'Handwerkerauftrag Nr. '+hwaNr(r),kopf:{brot:[{text:'Handwerkeraufträge',href:'#/vorgaenge?art=handwerker'},{text:hwaNr(r)}],ueberschrift:'Handwerkerauftrag '+hwaNr(r),badge:VORGANG_STATUS[r.status],unterzeile:[a.objekt?.bezeichnung,a.einheit?.nummer].filter(Boolean).join(' · ')},inhalt:maskenRaster({oben,seite,unten:[reiterLeiste(tabs,tab,basis),content]})});fenster.classList.add('cu-hwa-anzeige');zeigeAufDesktop(lauf,fenster);
+ const fenster=maskenFenster({titel:'Handwerkerauftrag Nr. '+hwaNr(r),kopf:{drucken:false,knoepfe:[{text:'Drucken',icon:'printer',onclick:()=>hwaDruckDialog(r.id).catch(fehler)}],brot:[{text:'Handwerkeraufträge',href:'#/vorgaenge?art=handwerker'},{text:hwaNr(r)}],ueberschrift:'Handwerkerauftrag '+hwaNr(r),badge:a.status_text||VORGANG_STATUS[r.status],unterzeile:[a.objekt?.bezeichnung,a.einheit?.nummer].filter(Boolean).join(' · ')},inhalt:maskenRaster({oben,seite,unten:[reiterLeiste(tabs,tab,basis),content]})});fenster.classList.add('cu-hwa-anzeige');zeigeAufDesktop(lauf,fenster);
 }
 
 function hwaDokumentWaehlen(r){

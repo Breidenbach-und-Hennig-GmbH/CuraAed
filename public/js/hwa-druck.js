@@ -1,0 +1,26 @@
+'use strict';
+let hwaDruckOeffnet=false;
+async function hwaDruckDialog(id,entwurf={}){
+ if(document.querySelector('.cu-hwa-form')){toast('Bitte den Auftrag zuerst speichern oder die Neuanlage abbrechen.');return;}
+ if(!id||!darfSchreiben()||hwaDruckOeffnet||document.querySelector('.hwa-druckdialog'))return;
+ hwaDruckOeffnet=true;const lauf=S.lauf;let s;try{s=await API.get('/vorgaenge/'+id+'/druck');}finally{hwaDruckOeffnet=false;}if(lauf!==S.lauf)return;
+ const d={...s.daten,...entwurf},r=s.auftrag,u=formular([
+  {grid:2,felder:[{name:'firma_id',label:'Firmenbriefkopf / Logo',type:'select',value:d.firma_id||'',options:[{value:'',label:'Bitte Firma auswählen'},...s.firmen.map(f=>({value:f.id,label:f.name+(f.hat_logo?'':' (Logo fehlt)')}))]},{name:'datum',label:'Briefdatum',type:'date',value:d.datum,required:true}]},
+  {grid:3,felder:[{name:'ansprechpartner',label:'Ansprechpartner Verwaltung',value:d.ansprechpartner,required:true},{name:'durchwahl',label:'Durchwahl / Telefon',value:d.durchwahl},{name:'email',label:'E-Mail Verwaltung',value:d.email}]},
+  {grid:2,felder:[{name:'handwerker_anschrift',label:'Empfänger / Handwerkeranschrift',type:'textarea',value:d.handwerker_anschrift,required:true},{name:'rechnungsempfaenger',label:'Angebots-/Rechnungsstellung an',type:'textarea',value:d.rechnungsempfaenger,required:r.auftrag.rechnungsempfaenger_drucken!==false}]},
+  {felder:[{name:'leistungsempfaenger',label:'Leistungsempfänger (falls gesondert anzugeben)',type:'textarea',value:d.leistungsempfaenger},{name:'einleitung',label:'Einleitung für diesen Status',type:'textarea',value:d.einleitung,required:true},{name:'auftragstext',label:'Auftragstext / Leistungsbeschreibung im Ausdruck',type:'textarea',value:d.auftragstext,required:true},{name:'hinweise',label:'Hinweise / Rechnungsanforderungen',type:'textarea',value:d.hinweise}]}
+ ]);
+ for(const [k,i] of Object.entries(u.inputs)){const label=u.form.querySelector('label[for="'+i.id+'"]');i.id='hwa-druck-'+k;if(label)label.htmlFor=i.id;}
+ const logo=el('div'),error=el('p',{role:'alert',class:'cu-hwa-fehler'}),meldung=el('p',{role:'status'});let busy=false,closed=false,button;
+ function preview(){const f=s.firmen.find(f=>String(f.id)===u.inputs.firma_id.value);logo.replaceChildren(...(f?.logo_url?[el('img',{src:f.logo_url,alt:'Firmenlogo '+f.name,style:'max-width:230px;max-height:65px'})]:[el('span',{class:'small muted',text:'Für den Ausdruck bitte einen Firmenbriefkopf mit Logo auswählen.'})]));}u.inputs.firma_id.addEventListener('change',preview);preview();
+ const content=el('div',{class:'hwa-druckdialog'},[el('p',{},[el('strong',{text:(r.hp_nummer||'CA-'+id)+' · '+s.daten.status_code+' · '+HWA_STATI[s.daten.status_code].text}),el('br'),document.createTextNode(r.titel)]),logo,u.form,el('details',{},[el('summary',{text:'Kontaktanlage · '+s.kontakte.length+' Ansprechpartner'}),...s.kontakte.map(p=>el('p',{text:[p.bezeichnung,p.name,...p.telefone.map(t=>t.art+': '+t.nummer),...p.emails.map(e=>e.adresse)].filter(Boolean).join('\n'),style:'white-space:pre-line'}))]),error,meldung]);
+ const m=modal({titel:'Handwerkerauftrag als PDF drucken',wide:true,inhalt:content,onClose:()=>closed=true,footer:close=>[el('button',{type:'button',text:'Schließen',onclick:close}),button=el('button',{type:'button',class:'btn-primary',text:'PDF erstellen',onclick:download})]});
+ if(istAdmin())content.insertBefore(el('button',{type:'button',text:'Firmenbriefköpfe / Logos verwalten',onclick:()=>firmenBriefkoepfeDialog(firma=>{const draft=u.werte();if(!draft.firma_id&&firma)draft.firma_id=firma;m.close();hwaDruckDialog(id,draft).catch(fehler);}).catch(fehler)}),error);
+ async function download(){if(busy||!u.form.reportValidity())return;busy=true;button.disabled=true;error.textContent='';meldung.textContent='PDF wird erstellt …';try{
+  const res=await fetch('/api/vorgaenge/'+id+'/auftrag.pdf',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:s.revision,druck_revision:s.druck_revision,basis_hash:s.basis_hash,daten:{...u.werte(),firma_id:Number(u.inputs.firma_id.value)}})});
+  if(!res.ok){const body=await res.json().catch(()=>null);throw new Error(body?.fehler||'PDF konnte nicht erstellt werden.');}if(!res.headers.get('content-type')?.includes('application/pdf'))throw new Error('Keine gültige PDF erhalten.');
+  const blob=await res.blob();if(closed)return;const url=URL.createObjectURL(blob),link=el('a',{href:url,download:'Handwerkerauftrag-'+(r.hp_nummer||'CA-'+id)+'.pdf'});document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);m.close();toast('Handwerkerauftrag als PDF erstellt','success');
+ }catch(e){if(!closed){error.textContent=e.message;meldung.textContent='';}}finally{busy=false;if(!closed)button.disabled=false;}}
+ u.form.addEventListener('submit',e=>{e.preventDefault();download();});
+}
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.code==='KeyP'&&S.kontext?.typ==='handwerker'&&S.kontext.id&&!document.querySelector('.modal')){e.preventDefault();hwaDruckDialog(S.kontext.id).catch(fehler);}});
