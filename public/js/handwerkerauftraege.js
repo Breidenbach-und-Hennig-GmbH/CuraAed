@@ -2,13 +2,13 @@
 const HWA_ART={normal:'Normalauftrag',eilauftrag:'Eilauftrag',notdienst:'Notdienst',angebot:'Angebotsanfrage'};
 const HWA_STATUS={offen:'001 · Offen',in_bearbeitung:'002 · In Bearbeitung',beauftragt:'004 · Auftrag erteilt',erledigt:'Erledigt',storniert:'Storniert'};
 const hwaName=a=>a?.anzeigename||a?.firmenname||[a?.vorname,a?.nachname].filter(Boolean).join(' ')||a?.bezeichnung||'';
-const hwaNr=r=>r.hp_nummer||'CA-'+r.id;
+const hwaNr=r=>r.hp_nummer||(r.id?'CA-'+r.id:'–');
 let handwerkerSprungLaeuft=false;
 async function handwerkerSprung(){
  if(!darfSchreiben()){toast('Keine Schreibberechtigung.');return;}
  if(handwerkerSprungLaeuft||document.querySelector('.cu-hwa-form'))return;
  handwerkerSprungLaeuft=true;
- try{await handwerkerForm();}catch(e){fehler(e);}finally{handwerkerSprungLaeuft=false;}
+ try{geheZu('#/hwa');}catch(e){fehler(e);}finally{handwerkerSprungLaeuft=false;}
 }
 
 function hwaAuswahl(typ,chosen,{objektId}={}){
@@ -23,39 +23,7 @@ function hwaAuswahl(typ,chosen,{objektId}={}){
  input.addEventListener('input',debounce(load));m=modal({titel:label+' auswählen',wide:true,inhalt:el('div',{class:'cu-hwa-auswahldialog'},[input,hint,body]),footer:close=>[el('button',{text:'Abbrechen',onclick:close})]});load();input.focus();
 }
 
-async function handwerkerForm(r={},kontext=null){
- const lauf=S.lauf;let users;try{users=await API.get('/mitarbeiter');if(lauf!==S.lauf)return;}catch(e){fehler(e);return;}
- const a=r.auftrag||{},today=new Date().toLocaleDateString('sv-SE'),selected={handwerker:a.handwerker||null,objekt:a.objekt?.id?a.objekt:null,einheit:a.einheit?.id?a.einheit:null,akte:a.akte_id?{id:a.akte_id,titel:'CA-'+a.akte_id}:null},recipients=(a.adressaten_details||[]).map(p=>({...p}));
- if(!r.id&&kontext&&['objekt','einheit','adresse'].includes(kontext.typ)){
-  try{const row=await API.get('/'+({objekt:'objekte',einheit:'einheiten',adresse:'adressen'}[kontext.typ])+'/'+kontext.id);if(lauf!==S.lauf)return;selected[{objekt:'objekt',einheit:'einheit',adresse:'handwerker'}[kontext.typ]]=row;if(kontext.typ==='einheit')selected.objekt=await API.get('/objekte/'+row.objekt_id);}catch(e){fehler(e);return;}
- }
- const {form,werte,inputs}=formular([
-  {grid:2,felder:[{name:'titel',label:'Betreff',required:true,value:r.titel||''},{name:'auftragsart',label:'Auftragsart',type:'select',options:opt(HWA_ART),value:a.auftragsart||'normal'}]},
-  {grid:3,felder:[{name:'status',label:'Status',type:'select',options:opt(HWA_STATUS),value:r.status||'offen'},{name:'zustaendig_id',label:'Sachbearbeiter',type:'select',options:[{value:'',label:'Nicht zugewiesen'},...users.map(u=>({value:String(u.id),label:[u.kuerzel,u.name].filter(Boolean).join(' · ')}))],value:String(r.zustaendig_id||S.benutzer.id||'')},{name:'firma',label:'Firma / Verwaltungskennung',value:a.firma||''}]},
-  {grid:3,felder:[{name:'datum',label:'Auftragsdatum',type:'date',value:a.datum||today},{name:'faellig_am',label:'Frist',type:'date',value:r.faellig_am||''},{name:'erledigt_am',label:'Erledigt am',type:'date',value:a.erledigt_am||''}]},
-  {grid:2,felder:[{name:'betrag',label:'Auftragsbetrag (EUR)',value:a.betrag||'',placeholder:'z. B. 250,00'},{name:'prioritaet',label:'Priorität',type:'select',options:opt({normal:'Normal',hoch:'Hoch',dringend:'Dringend'}),value:r.prioritaet||'normal'}]},
-  {felder:[{name:'text',label:'Auftragstext / Leistungsbeschreibung',type:'textarea',value:r.text||a.originaltext||''}]},
-  {grid:2,felder:[{name:'gewaehrleistung_bis',label:'Gewährleistung bis',type:'date',value:a.gewaehrleistung_bis||''},{name:'garantie_notiz',label:'Gewährleistung / Hinweise',value:a.garantie_notiz||''}]},
- ]);
- if(a.objekt?.nur_original||a.einheit?.nur_original)form.prepend(el('p',{class:'hp-hinweis',text:'Übernommene Originalzuordnung: '+[a.objekt?.nummer,a.objekt?.bezeichnung,a.einheit?.nummer,a.einheit?.bezeichnung].filter(Boolean).join(' · ')+'. Vor dem Speichern den passenden lokalen Stammdatensatz auswählen.'}));
- const refs=el('fieldset',{class:'cu-hwa-referenzen'},[el('legend',{text:'Auftrag zuordnen'})]),refGrid=el('div',{class:'grid-2'}),refLabels={};
- for(const [key,typ,label] of [['handwerker','adresse','Handwerker / Auftragnehmer'],['objekt','objekt','Objekt'],['einheit','einheit','Wohnung'],['akte','akte','Akte']]){
-  const value=el('span',{class:'cu-hwa-auswahlwert'});refLabels[key]=value;
-  refGrid.append(el('div',{class:'cu-hwa-referenz'},[el('strong',{text:label}),value,el('div',{},[el('button',{type:'button',text:label+' auswählen',onclick:()=>hwaAuswahl(typ,async row=>{selected[key]=row;if(key==='objekt'&&selected.einheit?.objekt_id!==row.id)selected.einheit=null;if(key==='einheit'){try{selected.objekt=await API.get('/objekte/'+row.objekt_id);}catch(e){selected.einheit=null;fehler(e);}}showRefs();},{objektId:key==='einheit'?selected.objekt?.id:undefined})}),el('button',{type:'button',text:'Entfernen',onclick:()=>{selected[key]=null;if(key==='objekt')selected.einheit=null;showRefs();}})])]));
- }
- function showRefs(){for(const [k,value] of Object.entries(refLabels)){const row=selected[k];value.textContent=row?[row.nummer||'CA-'+row.id,hwaName(row)||row.titel].filter(Boolean).join(' · '):'Nicht ausgewählt';}}showRefs();refs.append(refGrid);form.prepend(refs);
- const people=el('div'),peopleSection=el('fieldset',{class:'cu-hwa-referenzen'},[el('legend',{text:'Weitere Adressaten / Ansprechpartner vor Ort'}),people,el('button',{type:'button',text:'Adressat hinzufügen',onclick:()=>hwaAuswahl('adresse',p=>{if(recipients.some(x=>x.id===p.id))return;recipients.push({...p,bezeichnung:'Ansprechpartner vor Ort'});showPeople();})})]);
- function showPeople(){people.replaceChildren(...recipients.map(p=>{const desc=el('input',{'aria-label':'Funktion von '+hwaName(p),maxlength:100,value:p.bezeichnung||'',oninput:e=>p.bezeichnung=e.target.value});return el('div',{class:'cu-hwa-adressat'},[el('span',{text:hwaName(p)}),desc,el('button',{type:'button',text:'Adressat entfernen',onclick:()=>{recipients.splice(recipients.indexOf(p),1);showPeople();}})]);}));}showPeople();form.append(peopleSection);
- if(r.id&&r.benutzer_id!==S.benutzer.id)inputs.zustaendig_id.disabled=true;
- form.classList.add('cu-hwa-form');form.id='hwa-form';inputs.titel.maxLength=500;inputs.text.maxLength=65535;inputs.firma.maxLength=30;inputs.garantie_notiz.maxLength=2000;inputs.betrag.inputMode='decimal';
- const error=el('p',{role:'alert'});form.append(error);let m;const save=el('button',{type:'submit',form:form.id,class:'btn-primary',text:'Speichern'});
- form.addEventListener('submit',async e=>{e.preventDefault();if(save.disabled)return;save.disabled=true;error.textContent='';try{
-  const v=werte(),auftrag={handwerker_id:selected.handwerker?.id||null,objekt_id:selected.objekt?.id||null,einheit_id:selected.einheit?.id||null,akte_id:selected.akte?.id||null,firma:v.firma,auftragsart:v.auftragsart,datum:v.datum,erledigt_am:v.erledigt_am,betrag:v.betrag,gewaehrleistung_bis:v.gewaehrleistung_bis,garantie_notiz:v.garantie_notiz,adressaten:recipients.map(p=>({adresse_id:p.id,bezeichnung:p.bezeichnung||''}))};
-  const body={art:'handwerker',titel:v.titel,text:v.text,status:v.status,prioritaet:v.prioritaet,faellig_am:v.faellig_am||null,uhrzeit:r.uhrzeit||null,zustaendig_id:v.zustaendig_id,revision:r.revision,auftrag};
-  const result=r.id?await API.put('/vorgaenge/'+r.id,body):await API.post('/vorgaenge',body);m.close();toast('Handwerkerauftrag gespeichert','success');geheZu('#/vorgaenge/'+result.id);glockeAktualisieren();
- }catch(e){error.textContent=e.message;}finally{save.disabled=false;}});
- m=modal({titel:r.id?'Handwerkerauftrag bearbeiten':'Handwerkerauftrag anlegen',wide:true,inhalt:form,footer:close=>[el('button',{text:'Abbrechen',onclick:close}),save]});
-}
+async function handwerkerForm(r={},kontext=null){return handwerkerErfassung(r,{kontext});}
 
 function hwaMail(r){
  const a=r.auftrag,supplier=a.handwerker,mail=a.kommunikation.emails.find(e=>e.ist_email)?.adresse||supplier?.email;
@@ -70,14 +38,15 @@ function hwaVerlauf(r,root){
 }
 
 function handwerkerMaske(r,params=new URLSearchParams()){
- const lauf=S.lauf,a=r.auftrag,basis='#/vorgaenge/'+r.id,tab=params.get('tab')||'allgemein',supplier=a.handwerker;
- S.kontext={typ:'handwerker',id:r.id,bearbeiten:()=>handwerkerForm(r),erstellen:()=>handwerkerForm(),drucken:()=>window.print(),rechnungGespeichert:async()=>neuLaden()};
+ const lauf=S.lauf,a=r.auftrag,basis=r.id?'#/vorgaenge/'+r.id:'#/hwa',tab=params.get('tab')||'allgemein',supplier=a.handwerker;
+ if(r.id)S.hwaLetzter=r.id;
+ S.kontext={typ:'handwerker',id:r.id,hwaRecord:r,bearbeiten:()=>handwerkerForm(r),erstellen:()=>handwerkerForm(),drucken:()=>window.print(),rechnungGespeichert:async()=>neuLaden()};
  const tabs=[{key:'allgemein',label:'Allgemein'},{key:'korrespondenz',label:'Korrespondenz'},{key:'archiv',label:'Archiv'},{key:'rechnung',label:'Rechnung'},{key:'vorgaenge',label:'Akten / Vorgänge'},{key:'historie',label:'Historie'}];
  const ref=(row,path)=>row&&!row.id?el('span',{text:[row.nummer,hwaName(row),'(Originalzuordnung)'].filter(Boolean).join(' · ')}):row?el('a',{href:'#/'+path+'/'+row.id,text:[row.nummer,hwaName(row)].filter(Boolean).join(' · ')}):'–';
  const oben=[el('div',{class:'cu-hwa-kopf'},[
-  panel([['Auftrags-Nr.',hwaNr(r)],['Status',a.source_status||HWA_STATUS[r.status]||r.status],['Sachbearbeiter',r.zustaendig||r.auftrag_sb_name||a.source_sb||'Nicht zugewiesen'],['Firma',a.firma||'–'],['Betrag',a.betrag?a.betrag+' EUR':'–']]),
-  panel([['Akte',a.akte_id?el('a',{href:'#/vorgaenge/'+a.akte_id,text:'CA-'+a.akte_id}):'–'],['Objekt',ref(a.objekt,'objekte')],['Wohnung',ref(a.einheit,'einheiten')],['Datum',datum(a.datum)],['Frist',datum(r.faellig_am)],['Erledigt',datum(a.erledigt_am)]]),
- ]),el('div',{class:'cu-karte cu-hwa-betreff'},[el('span',{class:'small muted',text:'Betreff'}),el('h2',{text:r.titel}),el('span',{class:'cu-chip',text:HWA_ART[a.auftragsart]||a.auftragsart})])];
+  panel([['Auftrags-Nr.',hwaNr(r)],['Status',a.source_status||HWA_STATUS[r.status]||r.status,el('span',{text:'Firma: '+(a.firma||'–')})],['Sachbearbeiter',r.zustaendig||r.auftrag_sb_name||a.source_sb||'Nicht zugewiesen',el('span',{text:'Betrag: '+(a.betrag?a.betrag+' EUR':'–')})]]),
+  panel([['Akte',a.akte_id?el('a',{href:'#/vorgaenge/'+a.akte_id,text:'CA-'+a.akte_id}):'–'],['Objekt/Wohnung',el('span',{},[ref(a.objekt,'objekte'),document.createTextNode(' / '),ref(a.einheit,'einheiten')])],['Datum',datum(a.datum),el('span',{text:'Frist: '+datum(r.faellig_am)+' · erledigt: '+datum(a.erledigt_am)})]]),
+ ]),el('div',{class:'cu-karte cu-hwa-betreff'},[el('span',{class:'small muted',text:'Betreff'}),el('h2',{text:r.titel||'Kein Handwerkerauftrag ausgewählt'}),a.betreff2?el('div',{text:a.betreff2}):null,el('span',{class:'cu-chip',text:HWA_ART[a.auftragsart]||a.auftragsart})])];
  const content=el('div',{class:'cu-hwa-inhalt'});
  const changeTab=t=>geheZu(basis+'?tab='+t);
  const upload=()=>archivUpload(a.objekt?.id?{typ:'objekt',nummer:a.objekt.nummer,kategorie:tab==='rechnung'?'rechnung':'korrespondenz'}:null,async saved=>{try{const latest=await API.get('/vorgaenge/'+r.id);await API.post('/vorgaenge/'+r.id+'/auftragsdokumente',{dokument_id:saved.id,revision:latest.revision});neuLaden();}catch(e){fehler(new Error('Datei ist im Archiv gespeichert; Auftragszuordnung fehlgeschlagen: '+e.message));}});
@@ -112,7 +81,7 @@ function handwerkerMaske(r,params=new URLSearchParams()){
  }else if(tab==='vorgaenge'){
   const refs=r.bezuege.filter(b=>b.typ!=='dokument');content.append(el('button',{text:'Zuordnung ergänzen',onclick:()=>vorgangZuordnung(r)}),abschnitt('Akten / Vorgänge und Zuordnungen',refs.length?el('ul',{},refs.map(b=>el('li',{},[vorgangLink(b)]))):el('p',{text:'Keine weiteren Verknüpfungen.'})));if(a.akte_id)content.append(el('a',{href:'#/vorgaenge/'+a.akte_id,text:'Akte CA-'+a.akte_id+' öffnen'}));
  }else hwaVerlauf(r,content);
- zeigeAufDesktop(lauf,maskenFenster({titel:'Handwerkerauftrag Nr. '+hwaNr(r),kopf:{brot:[{text:'Handwerkeraufträge',href:'#/vorgaenge?art=handwerker'},{text:hwaNr(r)}],ueberschrift:'Handwerkerauftrag '+hwaNr(r),badge:VORGANG_STATUS[r.status],unterzeile:[a.objekt?.bezeichnung,a.einheit?.nummer].filter(Boolean).join(' · ')},inhalt:maskenRaster({oben,seite,unten:[reiterLeiste(tabs,tab,basis),content]})}));
+ const fenster=maskenFenster({titel:'Handwerkerauftrag Nr. '+hwaNr(r),kopf:{brot:[{text:'Handwerkeraufträge',href:'#/vorgaenge?art=handwerker'},{text:hwaNr(r)}],ueberschrift:'Handwerkerauftrag '+hwaNr(r),badge:VORGANG_STATUS[r.status],unterzeile:[a.objekt?.bezeichnung,a.einheit?.nummer].filter(Boolean).join(' · ')},inhalt:maskenRaster({oben,seite,unten:[reiterLeiste(tabs,tab,basis),content]})});fenster.classList.add('cu-hwa-anzeige');zeigeAufDesktop(lauf,fenster);
 }
 
 function hwaDokumentWaehlen(r){

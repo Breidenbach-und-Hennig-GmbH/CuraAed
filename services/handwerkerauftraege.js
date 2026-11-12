@@ -7,6 +7,9 @@ function date(v,k){if(v===null||v==='')return null;if(typeof v!=='string'||!/^\d
 async function prepare(tx,owner,b){
  if(b===null||typeof b!=='object'||Array.isArray(b))fail('Ungültige Auftragsdaten.');
  const d={};
+ for(const [k,max] of Object.entries({vorgang:40,sachkonto:20,betreff2:500,pfkt:3})){const v=b[k]??(k==='pfkt'?'010':'');if(typeof v!=='string'||v.length>max)fail('Ungültiges Auftragsfeld: '+k);d[k]=v.trim();}
+ if(d.pfkt&&!/^\d{3}$/.test(d.pfkt))fail('PFkt bitte dreistellig eingeben.');
+ for(const k of ['rechnungsempfaenger_drucken','leistungsempfaenger_drucken']){d[k]=b[k]??true;if(typeof d[k]!=='boolean')fail('Ungültige Druckoption.');}
  for(const [k,max] of Object.entries({firma:30,auftragsart:30,garantie_notiz:2000})){if(typeof b[k]!=='string'||b[k].length>max)fail('Ungültiges Auftragsfeld: '+k);d[k]=b[k].trim();}
  if(!['normal','eilauftrag','notdienst','angebot'].includes(d.auftragsart))fail('Bitte eine gültige Auftragsart wählen.');
  for(const k of ['datum','erledigt_am','gewaehrleistung_bis'])d[k]=date(b[k],k);
@@ -20,6 +23,7 @@ async function prepare(tx,owner,b){
   d[k]=id;
  }
  if(d.einheit_id){const e=await tx.get('SELECT objekt_id FROM einheiten WHERE id=?',[d.einheit_id]);if(d.objekt_id&&d.objekt_id!==e.objekt_id)fail('Die Wohnung gehört nicht zum ausgewählten Objekt.');d.objekt_id=e.objekt_id;}
+ if(d.sachkonto&&d.sachkonto!=='0'&&(!d.objekt_id||!await tx.get('SELECT id FROM sachkonten WHERE objekt_id=? AND nummer=? AND aktiv=1',[d.objekt_id,d.sachkonto])))fail('Sachkonto für dieses Objekt nicht gefunden.');
  if(!Array.isArray(b.adressaten)||b.adressaten.length>50)fail('Bitte höchstens 50 Auftragsadressaten angeben.');
  d.adressaten=[];const seen=new Set();
  for(const a of b.adressaten){if(!a||!Number.isSafeInteger(a.adresse_id)||a.adresse_id<1||typeof a.bezeichnung!=='string'||a.bezeichnung.length>100)fail('Ungültiger Auftragsadressat.');if(seen.has(a.adresse_id))fail('Adresse doppelt zugeordnet.');seen.add(a.adresse_id);if(!await tx.get('SELECT id FROM adressen WHERE id=? AND archiviert=0',[a.adresse_id]))fail('Auftragsadressat nicht verfügbar.');d.adressaten.push({adresse_id:a.adresse_id,bezeichnung:a.bezeichnung.trim()});}
@@ -52,4 +56,22 @@ async function invoices(db,owner,id){
  const rows=await db.all("SELECT r.id,r.dokument_schluessel,r.daten,r.geaendert_am FROM eingangsrechnungen r WHERE upper(json_extract(r.daten,'$.hwa_nr')) IN (?,?) ORDER BY r.id DESC",['CA-'+Number(id),String(Number(id))]);
  const out=[];for(const r of rows){const parts=r.dokument_schluessel.split(':');if(parts[0]==='hp'&&!await db.get('SELECT id FROM hp_dms_quellen WHERE id=? AND benutzer_id=?',[parts[1],owner]))continue;out.push({...r,daten:JSON.parse(r.daten)});}return out;
 }
-module.exports={prepare,save,load,invoices,today};
+async function resolve(db,owner,b){
+ if(!b||typeof b.nummer!=='string'||!b.nummer.trim()||b.nummer.length>100)fail('Bitte eine gültige Nummer eingeben.');
+ const n=b.nummer.trim(),typ=b.typ;let rows;
+ if(typ==='akte'){
+  rows=await db.all("SELECT id,titel AS anzeigename,hp_nummer FROM fach_vorgaenge WHERE art='akte' AND (benutzer_id=? OR zustaendig_id=?) AND (hp_nummer=? OR ('CA-'||id)=? COLLATE NOCASE)",[owner,owner,n,n]);
+  if(!rows.length&&/^\d+$/.test(n))rows=await db.all("SELECT id,titel AS anzeigename,hp_nummer FROM fach_vorgaenge WHERE art='akte' AND (benutzer_id=? OR zustaendig_id=?) AND id=?",[owner,owner,Number(n)]);
+  rows=rows.map(r=>({...r,nummer:r.hp_nummer||'CA-'+r.id}));
+ }else if(typ==='einheit'){
+  if(!Number.isSafeInteger(b.objekt_id)||b.objekt_id<1)fail('Bitte zuerst die Objekt-Nr. eingeben.');
+  const all=await db.all('SELECT id,nummer,bezeichnung AS anzeigename,objekt_id FROM einheiten WHERE objekt_id=? AND archiviert=0',[b.objekt_id]);
+  rows=all.filter(r=>String(r.nummer).toLowerCase()===n.toLowerCase());
+  if(!rows.length&&/^\d+$/.test(n))rows=all.filter(r=>{const tail=String(r.nummer).split('-').at(-1);return /^\d+$/.test(tail)&&Number(tail)===Number(n);});
+ }else if(typ==='handwerker'||typ==='adresse')rows=await db.all("SELECT id,nummer,firmenname,vorname,nachname,strasse,plz,ort,telefon,mobil,email FROM adressen WHERE archiviert=0 AND (nummer=? COLLATE NOCASE OR nummer=? COLLATE NOCASE)",[n,'HP-'+n]);
+ else if(typ==='objekt')rows=await db.all('SELECT id,nummer,bezeichnung AS anzeigename,strasse,plz,ort FROM objekte WHERE archiviert=0 AND (nummer=? COLLATE NOCASE OR nummer=? COLLATE NOCASE)',[n,'HP-'+n]);
+ else fail('Unbekannte Nummernart.');
+ if(rows.length!==1)fail(rows.length?'Nummer ist nicht eindeutig. Bitte die vollständige Nummer eingeben.':'Nummer nicht gefunden.',rows.length?409:404);
+ const r=rows[0];return {...r,anzeigename:r.anzeigename||name(r)};
+}
+module.exports={prepare,save,load,invoices,today,resolve};
