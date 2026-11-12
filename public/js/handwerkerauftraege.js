@@ -3,6 +3,13 @@ const HWA_ART={normal:'Normalauftrag',eilauftrag:'Eilauftrag',notdienst:'Notdien
 const HWA_STATUS={offen:'001 · Offen',in_bearbeitung:'002 · In Bearbeitung',beauftragt:'004 · Auftrag erteilt',erledigt:'Erledigt',storniert:'Storniert'};
 const hwaName=a=>a?.anzeigename||a?.firmenname||[a?.vorname,a?.nachname].filter(Boolean).join(' ')||a?.bezeichnung||'';
 const hwaNr=r=>r.hp_nummer||'CA-'+r.id;
+let handwerkerSprungLaeuft=false;
+async function handwerkerSprung(){
+ if(!darfSchreiben()){toast('Keine Schreibberechtigung.');return;}
+ if(handwerkerSprungLaeuft||document.querySelector('.cu-hwa-form'))return;
+ handwerkerSprungLaeuft=true;
+ try{await handwerkerForm();}catch(e){fehler(e);}finally{handwerkerSprungLaeuft=false;}
+}
 
 function hwaAuswahl(typ,chosen,{objektId}={}){
  const label={adresse:'Adresse',objekt:'Objekt',einheit:'Wohnung',akte:'Akte'}[typ];

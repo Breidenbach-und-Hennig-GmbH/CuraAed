@@ -130,7 +130,7 @@ const SPRUENGE = [
   { taste: 'a', icon: 'pin', text: 'Adresse', aktion: () => geheZu('#/adressen') },
   { taste: 'b', icon: 'calendar', text: 'Buchung erfassen', folgt: FIBU },
   { taste: 'd', text: 'HP DMS System (Archiv)', aktion: () => geheZu('#/dms') },
-  { taste: 'h', icon: 'wrench', text: 'Handwerkerauftrag', aktion: () => geheZu('#/vorgaenge?art=handwerker') },
+  { taste: 'h', icon: 'wrench', text: 'Handwerkerauftrag', aktion: () => handwerkerSprung() },
   { taste: 'j', icon: 'calendar', text: 'Kalender', aktion: () => geheZu('#/kalender') },
   { taste: 'k', icon: 'mail', text: 'Korrespondenz', aktion: () => befehl('k') },
   { taste: 'l', icon: 'building', text: 'Lieferantenkonto', folgt: FIBU },
