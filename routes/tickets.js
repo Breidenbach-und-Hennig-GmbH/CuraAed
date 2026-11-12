@@ -3,6 +3,8 @@ const express=require('express'),auth=require('../lib/auth'),{ValidationError}=r
 const h=f=>(req,res,next)=>Promise.resolve(f(req,res)).catch(next);
 module.exports=function(db,publicUrl){const r=express.Router();r.use(auth.erfordereSchreibrecht);r.use((req,res,next)=>{res.set('Cache-Control','no-store');if(req.method==='GET')return next();let origin;try{origin=new URL(publicUrl||process.env.APP_PUBLIC_URL||process.env.RENDER_EXTERNAL_URL).origin;}catch{}if(!origin||req.get('origin')!==origin||!req.is('application/json'))return next(new ValidationError('Bitte das Ticket aus CuraAed bearbeiten.',403));next();});
  r.get('/',h(async(req,res)=>res.json(await svc.liste(db,req.benutzer,req.query))));
+ r.get('/:id/handwerkerauftrag',h(async(req,res)=>res.json(await require('../services/ticket-handwerkerauftrag').vorlage(db,req.benutzer,req.params.id))));
+ r.post('/:id/handwerkerauftraege',h(async(req,res)=>res.status(201).json(await require('../services/ticket-handwerkerauftrag').erstellen(db,req.benutzer,req.params.id,req.body||{}))));
  r.get('/:id',h(async(req,res)=>res.json(await svc.detail(db,req.benutzer,req.params.id))));
  r.put('/:id',h(async(req,res)=>res.json(await svc.speichern(db,req.benutzer,req.params.id,req.body||{}))));
  r.post('/:id/vermerke',h(async(req,res)=>res.json(await svc.vermerk(db,req.benutzer,req.params.id,req.body||{}))));return r;};

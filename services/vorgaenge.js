@@ -39,13 +39,14 @@ function baueVorgaenge(db,{hp,archiv}={}){
   const name=row.bezeichnung||row.firmenname||[row.vorname,row.nachname].filter(Boolean).join(' ')||row.nummer;
   await tx.run('INSERT OR IGNORE INTO fach_bezuege(vorgang_id,typ,ziel_id,name) VALUES(?,?,?,?)',[id,ref.typ,row.id,name]);
  }
- async function create(owner,b){
-  const r=input(b);return db.transaktion(async tx=>{await user(tx,r.zustaendig_id);
+ async function create(owner,b){return db.transaktion(tx=>createInTransaction(tx,owner,b));}
+ async function createInTransaction(tx,owner,b){
+  const r=input(b);await user(tx,r.zustaendig_id);
    const auftrag=r.art==='handwerker'&&b.auftrag!==undefined?await hwa.prepare(tx,owner,b.auftrag):null;
    if(auftrag&&r.status==='beauftragt'&&(!auftrag.handwerker_id||!auftrag.objekt_id))fail('Für einen erteilten Auftrag bitte Handwerker und Objekt auswählen.');
    const result=await tx.run(`INSERT INTO fach_vorgaenge(benutzer_id,art,titel,text,status,prioritaet,faellig_am,uhrzeit,zustaendig_id,quelle_status) VALUES(?,?,?,?,?,?,?,?,?,'lokal')`,[owner,r.art,...FELDER.map(k=>r[k]),r.zustaendig_id]);
    if(auftrag)await hwa.save(tx,result.lastID,auftrag);
-   await localRef(tx,result.lastID,b.kontext,owner);await log(tx,result.lastID,owner,'angelegt',null,{...r,...(auftrag?{auftrag}:{})});return {id:result.lastID};});
+   await localRef(tx,result.lastID,b.kontext,owner);await log(tx,result.lastID,owner,'angelegt',null,{...r,...(auftrag?{auftrag}:{})});return {id:result.lastID};
  }
  async function update(owner,id,b){
   const r=input(b);if(!Number.isSafeInteger(b.revision))fail('Die aktuelle Vorgangsversion fehlt.',409);
@@ -120,7 +121,8 @@ function baueVorgaenge(db,{hp,archiv}={}){
   const auftrag=r.art==='handwerker'?await hwa.load(db,{...r,remote_snapshot:r.remote_snapshot?JSON.parse(r.remote_snapshot):null,bezuege:refs}):undefined;
   const rechnungen=r.art==='handwerker'?await hwa.invoices(db,owner,id):undefined;
   const sb=r.zustaendig_id?await db.get('SELECT name,kuerzel FROM benutzer WHERE id=?',[r.zustaendig_id]):null;
-  return {...r,auftrag,rechnungen,auftrag_sb_name:sb?[sb.kuerzel,sb.name].filter(Boolean).join(' · '):null,basis:undefined,remote_hash:undefined,remote_snapshot:r.remote_snapshot?JSON.parse(r.remote_snapshot):null,incoming:r.incoming?JSON.parse(r.incoming):null,bezuege:refs,verlauf:history,subdomain:s?.subdomain||null};
+  const ticket_quellen=r.art==='handwerker'?await db.all("SELECT t.id FROM ticket_handwerkerauftraege l JOIN tickets t ON t.id=l.ticket_id WHERE l.vorgang_id=? AND (t.erstellt_von=? OR t.zustaendig_id=? OR EXISTS(SELECT 1 FROM benutzer WHERE id=? AND rolle='admin'))",[r.id,owner,owner,owner]):[];
+  return {...r,auftrag,rechnungen,ticket_quellen:ticket_quellen.map(t=>({...t,nummer:require('./tickets').nummer(t.id)})),auftrag_sb_name:sb?[sb.kuerzel,sb.name].filter(Boolean).join(' · '):null,basis:undefined,remote_hash:undefined,remote_snapshot:r.remote_snapshot?JSON.parse(r.remote_snapshot):null,incoming:r.incoming?JSON.parse(r.incoming):null,bezuege:refs,verlauf:history,subdomain:s?.subdomain||null};
  }
  async function resolve(owner,id,b){
   if(!['lokal','hp'].includes(b.fassung))fail('Bitte eine Fassung auswählen.');
@@ -187,6 +189,6 @@ function baueVorgaenge(db,{hp,archiv}={}){
  }
  async function due(owner){return (await list(owner,{art:'wiedervorlage',faellig:'1'})).eintraege.map(v=>({id:'fach-'+v.id,vorgang_id:v.id,faellig_am:v.faellig_am,betreff:v.titel,name:v.zustaendig||'CuraAed'}));}
  async function attach(owner,id,b){return db.transaktion(async tx=>{const r=await own(tx,owner,id);if(r.art!=='handwerker')fail('Kein Handwerkerauftrag.');if(r.revision!==b.revision)fail('Auftrag inzwischen geändert. Bitte neu laden.',409);if(!Number.isSafeInteger(b.dokument_id)||!await tx.get('SELECT id FROM dokumente WHERE id=?',[b.dokument_id]))fail('Archivdokument nicht gefunden.');await tx.run('INSERT OR IGNORE INTO handwerker_dokumente(vorgang_id,dokument_id) VALUES(?,?)',[id,b.dokument_id]);await tx.run("UPDATE fach_vorgaenge SET revision=revision+1,geaendert_am=datetime('now') WHERE id=?",[id]);await log(tx,id,owner,'dokument_zugeordnet',null,{dokument_id:b.dokument_id});return {id};});}
- return {attach,create,update,list,detail,resolve,addRef,comment,overview,start,stop,due,timeline,calendar,document,importOne};
+ return {attach,create,createInTransaction,update,list,detail,resolve,addRef,comment,overview,start,stop,due,timeline,calendar,document,importOne};
 }
 module.exports={baueVorgaenge,input,ARTEN,STATUS};
