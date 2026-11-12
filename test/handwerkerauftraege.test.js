@@ -8,6 +8,18 @@ async function setup(t){const db=await openDatabase(':memory:');t.after(()=>db.c
  await db.run("UPDATE adressen SET vorname='Anna',nachname='Muster' WHERE id=2");await db.run("INSERT INTO adress_telefone(adresse_id,art,nummer) VALUES(1,'Notdienst','0211-123456')");
  return{db,owner,other,s:baueVorgaenge(db)};}
 const body=()=>({art:'handwerker',titel:'Toilettenabfluss undicht',text:'Abfluss prüfen und abdichten.',status:'beauftragt',prioritaet:'normal',faellig_am:'2026-11-20',uhrzeit:null,zustaendig_id:null,auftrag:{handwerker_id:1,objekt_id:1,einheit_id:1,akte_id:null,firma:'BUH',auftragsart:'normal',datum:'2026-11-11',erledigt_am:null,betrag:'250,50',gewaehrleistung_bis:null,garantie_notiz:'',adressaten:[{adresse_id:2,bezeichnung:'Mieter / Ansprechpartner'}]}});
+test('HWA-Nummern lösen native HP-Nummern und kurze Wohnungsnummern nur im richtigen Objekt eindeutig auf',async t=>{
+ const f=await setup(t),resolve=b=>require('../services/handwerkerauftraege').resolve(f.db,f.owner,b);
+ await f.db.run("UPDATE adressen SET nummer='HP-31359' WHERE id=1");
+ assert.equal((await resolve({typ:'handwerker',nummer:'31359'})).id,1);assert.equal((await resolve({typ:'objekt',nummer:'21350'})).id,1);assert.equal((await resolve({typ:'einheit',objekt_id:1,nummer:'7'})).id,1);assert.equal((await resolve({typ:'einheit',objekt_id:1,nummer:'0007'})).id,1);
+ await assert.rejects(resolve({typ:'einheit',nummer:'7'}),/zuerst die Objekt/);await assert.rejects(resolve({typ:'einheit',objekt_id:2,nummer:'7'}),e=>e.status===404);await assert.rejects(resolve({typ:'objekt',nummer:'2135'}),e=>e.status===404);
+ await f.db.run("INSERT INTO adressen(nummer,nachname) VALUES('31359','Andere Person')");await assert.rejects(resolve({typ:'adresse',nummer:'31359'}),e=>e.status===409);
+ const foreign=await f.s.create(f.other,{...body(),art:'akte',auftrag:undefined}),own=await f.s.create(f.owner,{...body(),art:'akte',auftrag:undefined});await assert.rejects(resolve({typ:'akte',nummer:'CA-'+foreign.id}),e=>e.status===404);assert.equal((await resolve({typ:'akte',nummer:'CA-'+own.id})).id,own.id);
+});
+test('Neuanlage speichert zweite Betreffzeile, Vorgang, Druckoptionen und PFkt; Sachkonten werden am Objekt geprüft',async t=>{
+ const f=await setup(t),b=body();Object.assign(b.auftrag,{vorgang:'1',sachkonto:'0',betreff2:'Termin mit Mieter abstimmen',pfkt:'010',rechnungsempfaenger_drucken:false,leistungsempfaenger_drucken:true});const r=await f.s.create(f.owner,b),a=(await f.s.detail(f.owner,r.id)).auftrag;assert.equal(a.betreff2,b.auftrag.betreff2);assert.equal(a.vorgang,'1');assert.equal(a.pfkt,'010');assert.equal(a.rechnungsempfaenger_drucken,false);
+ await assert.rejects(f.s.create(f.owner,{...b,auftrag:{...b.auftrag,sachkonto:'9999'}}),/Sachkonto/);await assert.rejects(f.s.create(f.owner,{...b,auftrag:{...b.auftrag,pfkt:'AB'}}),/PFkt/);await assert.rejects(f.s.create(f.owner,{...b,auftrag:{...b.auftrag,rechnungsempfaenger_drucken:'ja'}}),/Druckoption/);
+});
 test('Übernommene HWA zeigen Originalobjekt, Wohnung, Sachbearbeiter, Text und Adressaten auch ohne lokale Objektzuordnung',async t=>{
  const f=await setup(t),r=await f.s.create(f.owner,{...body(),auftrag:undefined});
  const hp={craftsman_person:{id:11},estimated_price:'0.00',to_occur:'2026-11-05T00:00:00Z',status:{hp_id:'003',name:'Auftrag erteilt !'},status_text:{text:'Gespeicherte Leistungsbeschreibung'},team:{hp_id:'ET',first_name:'Test',last_name:'Team'},persons:[{person:{id:22},role:{hp_id:'005',name:'Mieter'}}],units:[{hp_id:5,position:'II. OG links',building:{hp_id:21570,search:'Testobjekt',address:{street:'Musterweg 6',zip:'12345',city:'Musterstadt'}}}]};

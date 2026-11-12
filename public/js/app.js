@@ -43,6 +43,7 @@ function route() {
   if (bereich === 'einheitenliste') return einheitSuche();
   if (bereich === 'adressliste') return adressListe();
   if (bereich === 'kalender') return vorgangKalender(params);
+  if (bereich === 'hwa') return handwerkerStart();
   if (bereich === 'vorgaenge') return id ? vorgangDetail(id, params) : vorgaengeMaske(params);
   if (bereich === 'dms-uebernahme') return dmsUebernahmeMaske(params);
   if (bereich === 'dms') return dmsMaske(params);

@@ -9,6 +9,7 @@ function baueRouter(db,options={}){
   let origin;try{origin=new URL(options.publicUrl||process.env.APP_PUBLIC_URL||process.env.RENDER_EXTERNAL_URL).origin;}catch{}
   if(!origin||req.get('origin')!==origin||!req.is('application/json'))return next(new ValidationError('Bitte Vorgänge aus CuraAed heraus bearbeiten.',403));next();});
  r.post('/aufloesen',h(async(req,res)=>{if(!Array.isArray(req.body.nummern)||req.body.nummern.length!==1||typeof req.body.nummern[0]!=='string'||req.body.nummern[0].length>100)throw new ValidationError('Bitte eine gültige Nummer angeben.');if(require('../services/vorgaenge').ARTEN.includes(req.body.typ)){const id=Number(req.body.nummern[0].replace(/^CA-/i,''));const target=await svc.detail(req.benutzer.id,id);if(target.art!==req.body.typ)throw new ValidationError('Die Vorgangsart stimmt nicht überein.');res.json([{id:target.id,gefunden:true,nummer:'CA-'+target.id,label:target.titel}]);}else res.json(await require('../services/archiv').nummernAufloesen(db,req.body.typ,req.body.nummern));}));
+ r.post('/hwa-nummer',h(async(req,res)=>res.json(await require('../services/handwerkerauftraege').resolve(db,req.benutzer.id,req.body))));
  r.get('/kalender',h(async(req,res)=>res.json(await svc.calendar(req.benutzer.id,req.query.monat))));
  r.get('/uebersicht',h(async(req,res)=>res.json(await svc.overview(req.benutzer.id))));
  r.post('/uebernahme',h(async(req,res)=>res.json(await svc.start(req.benutzer.id,req.body.verbindung))));
