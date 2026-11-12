@@ -23,7 +23,8 @@ async function erstellen(db,user,id,b){
   await tx.run('INSERT INTO ticket_handwerkerauftraege(ticket_id,vorgang_id,entwurf_id,payload_hash) VALUES(?,?,?,?)',[id,result.id,b.entwurf_id,payload_hash]);
   await tx.run("UPDATE tickets SET revision=revision+1,geaendert_am=datetime('now') WHERE id=?",[id]);
   await tx.run("INSERT INTO ticket_verlauf(ticket_id,benutzer_id,aktion,daten) VALUES(?,?,'handwerkerauftrag_erstellt',?)",[id,user.id,JSON.stringify({vorgang_id:result.id,nummer:'CA-'+result.id})]);
-  await tx.run("INSERT INTO fach_verlauf(vorgang_id,benutzer_id,aktion,nachher) VALUES(?,?,'aus_ticket_erstellt',?)",[result.id,user.id,JSON.stringify({ticket_id:t.id,ticket_nummer:t.nummer})]);return result;
+  await tx.run("INSERT INTO fach_verlauf(vorgang_id,benutzer_id,aktion,nachher) VALUES(?,?,'aus_ticket_erstellt',?)",[result.id,user.id,JSON.stringify({ticket_id:t.id,ticket_nummer:t.nummer})]);
+  await require('./ticket-status').abgleichen(tx,t.id,user.id,'Handwerkerauftrag aus Ticket erstellt');return result;
  });
 }
 module.exports={vorlage,erstellen};

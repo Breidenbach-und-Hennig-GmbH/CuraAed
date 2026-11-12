@@ -201,6 +201,7 @@ async function migrieren(db, filePath) {
   // ---- 5) HP-Objekte, Einheiten, Konten und Jahresverteilung vorbereiten ---
   await require('./hpStrukturen').migrieren(db, filePath);
   await require('./hpImport').migrieren(db);
+  await require('../services/ticket-status').initialisieren(db);
 }
 
 module.exports = { migrieren };

@@ -56,7 +56,7 @@ function baueVorgaenge(db,{hp,archiv}={}){
    const oldAuftrag=(await tx.get('SELECT daten FROM handwerkerauftraege WHERE vorgang_id=?',[id]))?.daten||null;
    if(auftrag)await hwa.save(tx,id,auftrag);
    await tx.run(`UPDATE fach_vorgaenge SET ${FELDER.map(k=>k+'=?').join(',')},zustaendig_id=?,revision=revision+1,geaendert_am=datetime('now'),quelle_status=CASE WHEN quelle_status='konflikt' THEN 'konflikt' WHEN quelle_id IS NULL THEN 'lokal' ELSE 'lokal_geaendert' END WHERE id=?`,[...FELDER.map(k=>r[k]),r.zustaendig_id,id]);
-   await log(tx,id,owner,'bearbeitet',{...pick(old),auftrag:oldAuftrag},{...r,...(auftrag?{auftrag}:{})});return {id};});
+   await log(tx,id,owner,'bearbeitet',{...pick(old),auftrag:oldAuftrag},{...r,...(auftrag?{auftrag}:{})});if(r.art==='handwerker'&&old.status!==r.status)await require('./ticket-status').nachAuftrag(tx,id,owner);return {id};});
  }
  async function importOne(owner,source,resource,data){
   const art=BEREICHE[resource];if(!art)fail('Unbekannter Importbereich.');
@@ -79,6 +79,7 @@ function baueVorgaenge(db,{hp,archiv}={}){
      await references(tx,id,data.bezuege);await log(tx,id,owner,'hp_abgleich',pick(old),merged);
     }
    }
+   if(art==='handwerker'&&old){const next=await tx.get('SELECT status FROM fach_vorgaenge WHERE id=?',[id]);if(next.status!==old.status)await require('./ticket-status').nachAuftrag(tx,id,owner);}
    return {id};
   });
  }
@@ -128,7 +129,7 @@ function baueVorgaenge(db,{hp,archiv}={}){
   if(!['lokal','hp'].includes(b.fassung))fail('Bitte eine Fassung auswählen.');
   return db.transaktion(async tx=>{const old=await own(tx,owner,id);if(old.revision!==b.revision)fail('Vorgang inzwischen geändert.',409);if(!old.incoming)fail('Kein offener Konflikt.');const data=JSON.parse(old.incoming),next=b.fassung==='hp'?pick(data.werte):pick(old),snapshot=json(data.snapshot);
    await tx.run(`UPDATE fach_vorgaenge SET ${FELDER.map(k=>k+'=?').join(',')},basis=?,remote_snapshot=?,remote_hash=?,incoming=NULL,quelle_status=?,revision=revision+1,geaendert_am=datetime('now') WHERE id=?`,[...FELDER.map(k=>next[k]),json(pick(data.werte)),snapshot,sourceHash(data),b.fassung==='hp'?'uebernommen':'lokal_geaendert',id]);
-   await references(tx,id,data.bezuege);await log(tx,id,owner,'konflikt_'+b.fassung,pick(old),next);return {id};});
+   await references(tx,id,data.bezuege);await log(tx,id,owner,'konflikt_'+b.fassung,pick(old),next);if(old.art==='handwerker'&&old.status!==next.status)await require('./ticket-status').nachAuftrag(tx,id,owner);return {id};});
  }
  async function addRef(owner,id,b){return db.transaktion(async tx=>{const r=await own(tx,owner,id);if(r.revision!==b.revision)fail('Vorgang inzwischen geändert.',409);await localRef(tx,id,b,owner);await tx.run("UPDATE fach_vorgaenge SET revision=revision+1,geaendert_am=datetime('now') WHERE id=?",[id]);await log(tx,id,owner,'zugeordnet',null,{typ:b.typ,id:b.id});return {id};});}
  async function comment(owner,id,b){if(typeof b.text!=='string'||!b.text.trim()||b.text.length>10000)fail('Bitte einen Vermerk mit höchstens 10.000 Zeichen eingeben.');return db.transaktion(async tx=>{await own(tx,owner,id);await log(tx,id,owner,'vermerk',null,{text:b.text.trim()});return {ok:true};});}
