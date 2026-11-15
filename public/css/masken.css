@@ -7,7 +7,8 @@
  .cu-frame-inhalt>h3{font-size:14px}
  .cu-frame-inhalt>.hp-panel{margin:10px 0;box-shadow:none}
  .cu-frame-inhalt>.hp-filter{padding:8px 0}
- .cu-frame-inhalt>.tel-plaud-knoepfe{margin:10px 0;gap:6px;flex-wrap:wrap}
+ .cu-frame-inhalt>.tel-plaud-knoepfe{display:flex;align-items:center;margin:10px 0;gap:6px;flex-wrap:wrap}
+ .cu-frame-inhalt>.tel-plaud-knoepfe>input{width:auto;max-width:100%;flex:0 1 210px}
  .cu-frame-inhalt>nav.tel-plaud-knoepfe a{padding:5px 9px;border:1px solid var(--cu-rand,#e5e0ec);border-radius:5px;text-decoration:none}
  .cu-frame-inhalt>details{margin:12px 0}
  .cu-frame-inhalt summary{cursor:pointer}
