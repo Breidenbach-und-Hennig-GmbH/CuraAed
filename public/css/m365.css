@@ -1,0 +1,14 @@
+/* Microsoft-Einrichtung nutzt dieselben Masken, Panels und Aktionen wie Adressen. */
+.cu-m365-form{padding:12px}
+.cu-m365-form .hp-panel{border:0;box-shadow:none;padding:0;background:transparent}
+.cu-m365 .hp-zeile{grid-template-columns:170px minmax(0,1fr);gap:6px 14px;padding:5px 0}
+.cu-m365 .hp-zeile input,.cu-m365 .hp-zeile select{width:100%;max-width:440px}
+.cu-m365 .cu-aktionen{margin-top:12px;justify-content:flex-start}
+.cu-m365 .small{margin:8px 0;overflow-wrap:anywhere}
+.cu-m365-hinweise{margin:12px 0;color:var(--cu-grau)}
+.cu-m365-hinweise summary{cursor:pointer}
+@media(max-width:600px){
+ .cu-m365 .hp-zeile{grid-template-columns:1fr;gap:3px}
+ .cu-m365 .hp-zeile .hp-w1:last-child{grid-column:auto}
+ .cu-m365 .hp-zeile input,.cu-m365 .hp-zeile select{max-width:none}
+}
