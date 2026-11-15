@@ -107,20 +107,4 @@ async function vorgaengeMaske(params=new URLSearchParams()){
  refresh();
 }
 
-async function vorgangKalender(params=new URLSearchParams()) {
- const lauf=S.lauf,now=new Date(),month=params.get('monat')||now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'),root=el('section');
- if(!arbeitsMaske(lauf,root,{titel:'Kalender',info:[['Termine','Wiedervorlagen und Vorgänge mit Fälligkeitsdatum']],aktionen:[{text:'Wiedervorlagen',onclick:()=>geheZu('#/vorgaenge?art=wiedervorlage')},{text:'Arbeitsbereiche',onclick:()=>geheZu('#/vorgaenge')}]}))return;
- const input=el('input',{type:'month',value:month,'aria-label':'Kalendermonat'}),body=el('div'),message=el('p',{role:'status'});let version=0;
- const move=step=>()=>{const [y,m]=input.value.split('-').map(Number),d=new Date(Date.UTC(y,m-1+step,1));input.value=d.toISOString().slice(0,7);load();};
- root.append(el('p',{text:'Offene Wiedervorlagen und Vorgänge mit Fälligkeitsdatum. Die Microsoft-365-Kalenderanbindung wird später eingerichtet.'}),el('div',{class:'tel-plaud-knoepfe'},[el('button',{text:'Vorheriger Monat',onclick:move(-1)}),input,el('button',{text:'Nächster Monat',onclick:move(1)}),el('button',{text:'Neue Wiedervorlage',onclick:()=>vorgangForm({art:'wiedervorlage',faellig_am:input.value+'-01'})})]),message,body);
- input.addEventListener('change',load);
- async function load(){const current=++version;try{const r=await API.get('/vorgaenge/kalender'+API.qs({monat:input.value}));if(lauf!==S.lauf||current!==version)return;
-  const [year,month]=r.monat.split('-').map(Number),first=new Date(Date.UTC(year,month-1,1)),days=new Date(Date.UTC(year,month,0)).getUTCDate(),offset=(first.getUTCDay()+6)%7,grid=el('div',{style:'display:grid;grid-template-columns:repeat(7,minmax(100px,1fr));gap:4px;min-width:728px'});
-  for(const day of ['Mo','Di','Mi','Do','Fr','Sa','So'])grid.append(el('strong',{text:day}));
-  for(let i=0;i<offset;i++)grid.append(el('div'));
-  for(let i=1;i<=days;i++){const date=r.monat+'-'+String(i).padStart(2,'0'),cell=el('section',{'aria-label':date,style:'border:1px solid #e4e1ed;border-radius:6px;min-height:85px;padding:6px'},[el('strong',{text:String(i)})]);
-   for(const item of r.eintraege.filter(e=>e.faellig_am===date))cell.append(el('p',{style:'margin:4px 0'},[el('a',{href:item.vorgang_id?'#/vorgaenge/'+item.vorgang_id:'#/adressen/'+item.adresse_id,text:(item.uhrzeit?item.uhrzeit+' ':'')+item.titel})]));grid.append(cell);}
-  body.replaceChildren(el('div',{style:'overflow-x:auto'},[grid]));message.textContent=r.eintraege.length+' fällige Vorgänge in diesem Monat'+(r.mehr?' · mehr als 1.000 Einträge; bitte die Vorgangsliste verwenden.':'');
- }catch(e){if(lauf===S.lauf&&current===version)message.textContent=e.message;}}
- load();
-}
+async function vorgangKalender(params=new URLSearchParams()){return m365KalenderMaske(params);}

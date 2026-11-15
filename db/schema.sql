@@ -833,3 +833,8 @@ CREATE TABLE IF NOT EXISTS etv_teams(
  firma_id INTEGER REFERENCES firmenbriefkoepfe(id),dauer INTEGER NOT NULL DEFAULT 180,external_id TEXT NOT NULL,meeting_id TEXT,join_url TEXT,organizer TEXT,basis_hash TEXT,
  status TEXT NOT NULL DEFAULT 'ausstehend',meldung TEXT NOT NULL DEFAULT '',geaendert_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS m365_oauth_kalender(state_hash TEXT PRIMARY KEY REFERENCES m365_oauth(state_hash) ON DELETE CASCADE);
+CREATE TABLE IF NOT EXISTS m365_persoenliche_kalender(benutzer_id INTEGER PRIMARY KEY REFERENCES benutzer(id) ON DELETE CASCADE,token TEXT NOT NULL,konto TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS m365_kalender_oauth(state_hash TEXT PRIMARY KEY,benutzer_id INTEGER NOT NULL REFERENCES benutzer(id) ON DELETE CASCADE,sitzung_hash TEXT NOT NULL,verifier TEXT NOT NULL,config_hash TEXT NOT NULL,ablauf_am INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS m365_kalender_auftraege(benutzer_id INTEGER NOT NULL REFERENCES benutzer(id) ON DELETE CASCADE,auftrag_id TEXT NOT NULL,quelle TEXT NOT NULL,identitaet TEXT NOT NULL,anfrage_hash TEXT NOT NULL,event_id TEXT,status TEXT NOT NULL DEFAULT 'ausstehend',PRIMARY KEY(benutzer_id,auftrag_id));

@@ -12,3 +12,6 @@
  .cu-m365 .hp-zeile .hp-w1:last-child{grid-column:auto}
  .cu-m365 .hp-zeile input,.cu-m365 .hp-zeile select{max-width:none}
 }
+
+.cu-kalender .cu-aktionen{justify-content:flex-start;flex-wrap:wrap;margin:8px 0}
+.cu-kalender-quellen{padding:8px 0;border-bottom:1px solid #ded8e8}.cu-kalender-quelle{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:5px 0}.cu-kalender-quelle button{font-size:12px;padding:3px 8px}.cu-kalender-monat{display:grid;grid-template-columns:repeat(7,minmax(100px,1fr));gap:4px;min-width:728px}.cu-kalender-tag{border:1px solid #e4e1ed;border-radius:4px;min-height:85px;padding:6px}.cu-kalender-tag p{margin:4px 0}.cu-kalender-termin{display:block;text-align:left;width:100%;font-size:12px;padding:3px 5px;margin:4px 0;overflow-wrap:anywhere;border-left:3px solid var(--cu-akzent,#7653c3)}
