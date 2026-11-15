@@ -711,17 +711,18 @@ async function pktoAnlegen(p) {
     toast(`Für „${L.rolle[p.rolle] || p.rolle}" ist noch kein Personenfunktions-Code angelegt (Einstellungen › Personenfunktionen).`, 'error');
     return;
   }
+  let codeInput;
   formFenster({
     titel: `Personenkonto anlegen – ${pktoRolle(p)} ${p.name}`,
     felder: [
       { grid: 2, felder: [
-        { name: 'pfkt_code', label: 'Personenfunktion', type: 'select', value: p.pfkt_code || (codes.length === 1 ? codes[0].code : ''),
-          options: [{ value: '', label: '– bitte wählen –' }].concat(codes.map((c) => ({ value: c.code, label: `${c.code} ${c.bezeichnung}` }))) },
+        { name: 'pfkt_code', label: 'Personenfunktion', type: 'text', placeholder:'z. B. 002', value: p.pfkt_code || (codes.length === 1 ? codes[0].code : '') },
         { name: 'nummer', label: 'PKto-Nr. (leer = automatisch)', type: 'text', placeholder: 'Funktion + Wechsler + Einheit' },
       ] },
       { felder: [{ name: 'ref_nr', label: 'Ref.-Nr.' }] },
     ],
-    speichern: async (v) => { const k = await API.post('/personenkonten', { ...v, zuordnung_id: p.zuordnung_id }); setTimeout(() => geheZu('#/pkto/' + k.pkto_id), 0); return k; },
+    nachAufbau:inputs=>{codeInput=inputs.pfkt_code;pfktCodeEingabe(codeInput,codes);},
+    speichern: async (v) => { if(!codeInput.pfktPruefen()){codeInput.reportValidity();throw new Error('Bitte einen gültigen Personenfunktionscode eingeben.');}v.pfkt_code=codeInput.value;const k = await API.post('/personenkonten', { ...v, zuordnung_id: p.zuordnung_id }); setTimeout(() => geheZu('#/pkto/' + k.pkto_id), 0); return k; },
     danach: () => {},
   });
 }

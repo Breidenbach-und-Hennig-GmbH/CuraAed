@@ -217,6 +217,29 @@ async function zuordnungBeenden(z, reload) {
   form.addEventListener('submit', (e) => e.preventDefault());
 }
 
+/** Direkte Eingabe von HP-Personenfunktionscodes, inklusive Buchstaben und $. */
+function pfktCodeEingabe(input,codes,{rolle,rollenErlaubt}={}){
+ input.maxLength=3;input.autocomplete='off';input.setAttribute('autocapitalize','characters');input.classList.add('cu-pfkt-code');
+ const hint=el('span',{id:input.id+'_bezeichnung',class:'small muted cu-pfkt-bezeichnung',role:'status','aria-live':'polite'});
+ input.after(hint);input.setAttribute('aria-describedby',hint.id);
+ const find=value=>codes.find(c=>c.code===value);
+ const pruefen=(fertig=false)=>{
+  let value=input.value.trim().toUpperCase();let code=find(value);
+  if(fertig&&!code&&/^\d{1,2}$/.test(value)){const padded=value.padStart(3,'0');if(find(padded)){value=padded;code=find(value);}}
+  if(fertig)input.value=value;
+  let error='';
+  if(value&&!code)error='Unbekannter Personenfunktionscode: '+value;
+  else if(code&&rollenErlaubt&&!rollenErlaubt.includes(code.rolle))error='Diese Personenfunktion kann hier nicht angelegt werden. Eigentümer und Mieter gehören zur Wohnung.';
+  hint.textContent=error||code?.bezeichnung||'Code eingeben, z. B. 002';
+  hint.classList.toggle('cu-code-fehler',!!error);input.setCustomValidity(error);
+  if(code&&!error&&rolle&&rolle.value!==code.rolle){rolle.value=code.rolle;rolle.dispatchEvent(new Event('change',{bubbles:true}));}
+  return !error;
+ };
+ input.addEventListener('input',()=>pruefen());input.addEventListener('blur',()=>pruefen(true));
+ input.addEventListener('keydown',e=>{if(e.key==='Tab')pruefen(true);});
+ input.pfktPruefen=()=>pruefen(true);pruefen();return{pruefen};
+}
+
 async function zuordnungFormular(kontext, reload) {
   const bearb = !!kontext.id;
   // Bezug: wenn adresse_id vorgegeben, Objekt/Einheit wählbar; sonst fix
@@ -237,7 +260,7 @@ async function zuordnungFormular(kontext, reload) {
   // HausPerfekt-Code der Personenfunktion (001 Eigentümer eigengenutzt, 002 Eigentümer fremdvermietet …)
   let codes = [];
   try { codes = await API.get('/pfkt-codes'); } catch (e) { fehler(e); }
-  felder1.push({ name: 'pfkt_code', label: 'Personenfunktion (Code)', type: 'select', options: [{ value: '', label: '–' }], value: kontext.pfkt_code || '' });
+  felder1.push({ name: 'pfkt_code', label: 'Personenfunktion (Code)', type: 'text', placeholder:'z. B. 002', value: kontext.pfkt_code || '' });
 
   const gruppen = [{ grid: 2, felder: felder1 }];
 
@@ -257,16 +280,12 @@ async function zuordnungFormular(kontext, reload) {
   gruppen.push({ felder: [{ name: 'notizen', label: 'Notizen', type: 'textarea', value: kontext.notizen }] });
 
   const { form, werte, inputs } = formular(gruppen);
-  const codeOptionen = () => {
-    const passend = codes.filter((c) => c.rolle === inputs.rolle.value);
-    const alt = inputs.pfkt_code.value || kontext.pfkt_code || '';
-    inputs.pfkt_code.replaceChildren(el('option', { value: '', text: passend.length ? '– bitte wählen –' : '– keine Codes für diese Funktion –' }),
-      ...passend.map((c) => el('option', { value: c.code, text: `${c.code} ${c.bezeichnung}` })));
-    inputs.pfkt_code.value = passend.some((c) => c.code === alt) ? alt : (passend.length === 1 ? passend[0].code : '');
-    inputs.pfkt_code.closest('.field').hidden = !passend.length;
-  };
-  inputs.rolle.addEventListener('change', codeOptionen);
-  codeOptionen();
+  const codeFeld=pfktCodeEingabe(inputs.pfkt_code,codes,{rolle:inputs.rolle,rollenErlaubt:rollen.map(r=>r.value)});
+  inputs.rolle.addEventListener('change',()=>{
+    const code=codes.find(c=>c.code===inputs.pfkt_code.value.trim().toUpperCase());
+    if(code&&code.rolle!==inputs.rolle.value)inputs.pfkt_code.value='';
+    codeFeld.pruefen();
+  });
 
   // Dynamik: Einheiten laden, wenn Objekt gewählt
   let einheitenVersion=0;
@@ -299,6 +318,7 @@ async function zuordnungFormular(kontext, reload) {
       el('button', { text: 'Abbrechen', onclick: close }),
       el('button', { class: 'btn-primary', text: 'Speichern', onclick: async () => {
         try {
+          codeFeld.pruefen(true);
           if(!form.reportValidity())return;
           const v = werte();
           const payload = {
