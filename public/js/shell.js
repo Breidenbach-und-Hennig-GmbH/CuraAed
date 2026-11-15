@@ -592,6 +592,7 @@ function MENUE() {
     ] },
     { titel: 'FIBU', eintraege: fibuMenue() },
     { titel: 'System', eintraege: [
+      ...(darfSchreiben()?[{text:'Mein Profil',aktion:()=>meinProfil().catch(fehler)}]:[]),
       { text: 'Benutzerverwaltung', nurAdmin: true, aktion: () => geheZu('#/benutzer') },
       {text:'HP-Verbindungen',nurAdmin:true,aktion:()=>geheZu('#/hausperfekt')},
       {text:'Firma auswählen',aktion:()=>cockpitFirmaDialog().catch(fehler)},
@@ -990,6 +991,7 @@ function initialen(name) {
 function benutzerMenue(b) {
   if (offenesMenue && offenesMenue.knopf === b) { schliesseMenue(); return; }
   oeffneListe(b, 'Benutzer', [
+    ...(darfSchreiben()?[{text:'Mein Profil',aktion:()=>meinProfil().catch(fehler)}]:[]),
     { text: 'Passwort ändern …', aktion: passwortDialog },
     { text: 'Klassische Menüleiste', haken: () => S.klassik, titel: 'Menüband Datei, Edit, Optionen, Sprünge … und Symbolleiste einblenden', aktion: klassikUmschalten },
     { text: 'Sprung-Übersicht', taste: 'F1', aktion: sprungUebersicht },
@@ -1009,7 +1011,7 @@ function baueShell() {
   const glocke = el('button', { type: 'button', id: 'cu-glocke', class: 'cu-rund', 'aria-label': 'Benachrichtigungen', title: 'Benachrichtigungen' }, [icon('bell')]);
   glocke.addEventListener('click', () => glockeOeffnen(glocke));
   const benutzer = el('button', { type: 'button', class: 'cu-benutzer', 'aria-haspopup': 'true', title: `${b.name} (${L.benutzerRolle[b.rolle] || b.rolle})` }, [
-    el('span', { class: 'cu-avatar', 'aria-hidden': 'true', text: initialen(b.name) }),
+    el('span', { id:'cu-eigenes-bild', class: 'cu-avatar', 'aria-hidden': 'true' },[el('img',{class:'cu-profilbild',src:'/images/mitarbeiter-platzhalter.svg',alt:''})]),
     el('span', { class: 'cu-benutzer-name', text: b.name }),
     icon('chevron'),
   ]);
@@ -1020,6 +1022,7 @@ function baueShell() {
       el('a', { class: 'cu-marke', href: '#/', text: APP_NAME }),
       baueKopfSuche(),
       el('div', { class: 'cu-kopf-rechts' }, [
+        darfSchreiben()?el('div',{id:'cu-team',class:'cu-team','aria-label':'Mitarbeiter'}):null,
         glocke,
         el('button', { type: 'button', class: 'cu-rund', 'aria-label': 'Hilfe: Sprung-Übersicht (F1)', title: 'Hilfe: Sprung-Übersicht (F1)', onclick: sprungUebersicht }, [icon('help')]),
         benutzer,
@@ -1045,6 +1048,7 @@ function baueShell() {
   ansichtAnwenden();
   navAktualisieren();
   glockeAktualisieren();
+  if(typeof mitarbeiterSymbole==='function')mitarbeiterSymbole();
 }
 
 function status(text) {

@@ -755,3 +755,11 @@ CREATE TABLE IF NOT EXISTS ticket_verlauf (id INTEGER PRIMARY KEY AUTOINCREMENT,
 CREATE TABLE IF NOT EXISTS ticket_handwerkerauftraege (ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,vorgang_id INTEGER NOT NULL UNIQUE REFERENCES fach_vorgaenge(id) ON DELETE CASCADE,entwurf_id TEXT NOT NULL,payload_hash TEXT NOT NULL,erstellt_am TEXT NOT NULL DEFAULT (datetime('now')),PRIMARY KEY(ticket_id,entwurf_id));
 
 CREATE TABLE IF NOT EXISTS ticket_status_migrationen (version INTEGER PRIMARY KEY,angewendet_am TEXT NOT NULL DEFAULT (datetime('now')));
+
+-- Persönliche Telefonzuordnung und Profilbilder; keine STARFACE-Passwörter.
+CREATE TABLE IF NOT EXISTS mitarbeiterprofile (
+ benutzer_id INTEGER PRIMARY KEY REFERENCES benutzer(id) ON DELETE CASCADE,
+ starface_login_id TEXT,
+ bild BLOB,
+ revision INTEGER NOT NULL DEFAULT 0
+);
