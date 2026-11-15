@@ -121,6 +121,7 @@ function baueApi(db, uploadDir, options = {}) {
 
   // Alle folgenden Routen erfordern eine Anmeldung.
   router.use(auth.erfordereLogin);
+  router.use('/mitarbeiterprofile',require('./mitarbeiterprofile')(db,options.hausperfekt?.publicUrl));
   router.get('/cockpit',auth.erfordereSchreibrecht,h(async(req,res)=>res.set('Cache-Control','no-store').json(await require('../services/cockpit').stand(db,req.benutzer))));
   router.get('/cockpit/einstellungen',h(async(req,res)=>res.set('Cache-Control','no-store').json(await require('../services/cockpit').einstellungen(db,req.benutzer))));
   router.put('/cockpit/einstellungen',h(async(req,res)=>{let origin;try{origin=new URL(options.hausperfekt?.publicUrl||process.env.APP_PUBLIC_URL||process.env.RENDER_EXTERNAL_URL).origin;}catch{}if(!origin||req.get('origin')!==origin||!req.is('application/json'))throw new ValidationError('Bitte die Firmenauswahl aus den Einstellungen öffnen.',403);res.set('Cache-Control','no-store').json(await require('../services/cockpit').speichern(db,req.benutzer,req.body||{}));}));
