@@ -10,12 +10,12 @@ function fixture(t, { configured = true, failLogin = false } = {}) {
   const dom = new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>', { runScripts: 'outside-only', url: 'https://curaaed.example/' });
   t.after(() => dom.window.close());
   const w = dom.window, calls = [];
-  w.zeigeAufDesktop = () => true;
+
   w.API = {
     get: async url => { calls.push({ method: 'GET', url }); if (url.endsWith('/status')) return { eingerichtet: configured }; if (url.endsWith('/verbindungen')) return { verbindungen: [{ id: 'own-connection', subdomain: 'kunde-a' }] }; return { data: [{ id: 17, hp_id: 100, name: '<img src=x onerror=alert(1)>' }] }; },
     post: async (url, body) => { calls.push({ method: 'POST', url, body: { ...body } }); if (failLogin) throw new Error('Anmeldung abgelehnt'); return { id: 'own-connection' }; },
   };
-  for (const file of ['ui', 'kern', 'hp-direkt', 'hp-adressen', 'hp-objekte', 'hausperfekt']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js', file + '.js'), 'utf8'), dom.getInternalVMContext());
+  for (const file of ['ui', 'kern', 'shell', 'hp-direkt', 'hp-adressen', 'hp-objekte', 'hausperfekt']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js', file + '.js'), 'utf8'), dom.getInternalVMContext());
   vm.runInContext('S.lauf=1;S.benutzer={id:1,rolle:"admin"};', dom.getInternalVMContext());
   return { w, calls, async open() { await w.hausperfektMaske(); await tick(); }, button: text => [...w.document.querySelectorAll('button')].find(b => b.textContent === text) };
 }

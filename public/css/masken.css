@@ -1,0 +1,49 @@
+/* Einheitlicher Rahmen und kompakte Eingabe für alle Verwaltungsbereiche. */
+@media screen{
+ .hp-maske-inhalt,.hp-unten,.cu-frame-inhalt,.cu-etv-inhalt{min-width:0}
+ .cu-frame-inhalt{background:var(--cu-weiss,#fff);border:1px solid var(--cu-rand,#e5e0ec);border-radius:7px;padding:12px;box-shadow:0 1px 4px #24113908}
+ .cu-frame-inhalt>p:first-child{margin-top:0;color:var(--cu-grau)}
+ .cu-frame-inhalt>h2{font-size:15px;margin:18px 0 8px;padding-bottom:7px;border-bottom:1px solid var(--cu-rand,#e5e0ec)}
+ .cu-frame-inhalt>h3{font-size:14px}
+ .cu-frame-inhalt>.hp-panel{margin:10px 0;box-shadow:none}
+ .cu-frame-inhalt>.hp-filter{padding:8px 0}
+ .cu-frame-inhalt>.tel-plaud-knoepfe{margin:10px 0;gap:6px;flex-wrap:wrap}
+ .cu-frame-inhalt>nav.tel-plaud-knoepfe a{padding:5px 9px;border:1px solid var(--cu-rand,#e5e0ec);border-radius:5px;text-decoration:none}
+ .cu-frame-inhalt>details{margin:12px 0}
+ .cu-frame-inhalt summary{cursor:pointer}
+ .cu-verbindungen>.cu-karte{max-width:none!important;margin:0 0 12px!important;padding:12px!important}
+ .cu-verbindungen>.cu-karte>h2{font-size:16px;margin:0 0 10px}
+ .cu-verwaltungen>.btn-primary{margin-bottom:10px}
+ .cu-verwaltungen .cu-karte>h3{font-size:15px;margin:6px 0}
+ .cu-formular .field{min-width:0}
+ .cu-formular .field>input:not([type=checkbox]):not([type=radio]),.cu-formular .field>select,.cu-formular .field>textarea,.cu-formular .field>.cu-tippfeld{width:100%;min-width:0}
+ .cu-formular .field>label{overflow-wrap:anywhere}
+ .cu-formular .field>.small{overflow-wrap:anywhere}
+ .cu-formular .cu-suchfeld>.cu-such-treffer{top:100%}
+ .modal .modal-body>.cu-karte,.cu-etv-inline>.cu-karte{padding:12px!important}
+ .modal header h2,.cu-etv-inline>h2{font-size:17px}
+ .modal .modal-body h3,.cu-etv-inline h3{font-size:15px}
+ .modal footer,.cu-etv-inline-fuss{gap:6px;flex-wrap:wrap}
+ .hp-maske button,.modal button,.cu-etv-inline button{border-radius:5px}
+}
+@media screen and (min-width:900px){
+ .cu-formular .grid-2,.cu-formular .grid-3{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:8px 16px}
+ .cu-formular .field{display:grid;grid-template-columns:minmax(100px,135px) minmax(0,1fr);gap:4px 10px;align-items:center;margin-bottom:8px}
+ .cu-formular .field>label{margin:0;font-size:12px;color:var(--cu-grau)}
+ .cu-formular .field>textarea{align-self:start}
+ .cu-formular .field>.small,.cu-formular .field>.cu-pfkt-bezeichnung{grid-column:2}
+ .cu-formular .cu-suchfeld>.cu-such-treffer{left:145px;right:0;min-width:0}
+ .cu-formular .field input:not([type=checkbox]):not([type=radio]),.cu-formular .field select{min-height:32px;padding:5px 8px;font-size:13px}
+ .cu-formular .field textarea{min-height:68px;padding:6px 8px;font-size:13px}
+}
+@media screen and (max-width:600px){
+ .cu-frame-inhalt{padding:10px}
+ .cu-formular .grid-2,.cu-formular .grid-3{grid-template-columns:minmax(0,1fr)}
+ .cu-formular .span-2{grid-column:auto}
+ .cu-formular .cu-suchfeld>.cu-such-treffer{left:0;right:0}
+ .cu-frame-inhalt>.tel-plaud-knoepfe>*{max-width:100%}
+ .modal .modal-body{padding:12px}
+}
+@media screen and (pointer:coarse){
+ .cu-formular input:not([type=checkbox]):not([type=radio]),.cu-formular select,.modal footer button{min-height:44px}
+}

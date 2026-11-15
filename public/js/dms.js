@@ -84,11 +84,11 @@ function dmsDetails(verbindung, datei) {
 }
 
 async function dmsUebernahmeMaske(params = new URLSearchParams()) {
-  const lauf = S.lauf, root = el('div', { class: 'cu-karte', style: 'padding:20px;margin:16px auto;max-width:1250px' });
-  if (!zeigeAufDesktop(lauf, root)) return;
+  const lauf = S.lauf, root = el('div');
+  if (!arbeitsMaske(lauf,root,{titel:'Dokumentübernahme',brot:[{text:'Dokumente'},{text:'Übernahme aus HausPerfekt'}],aktionen:[{text:'Dokumente',onclick:()=>geheZu('#/dms')},{text:'Archiv',onclick:()=>geheZu('#/archiv')}]})) return;
   S.kontext = { typ: 'dms' };
   const status = el('p', { role: 'status', 'aria-live': 'polite' }), uebernahme = el('div', { class: 'hp-hinweis' });
-  root.append(el('h1', { text: 'Dokumente – Übernahme aus HausPerfekt' }),
+  root.append(
     el('p', { text: 'Dokumente samt Zuordnungen dauerhaft in CuraAed übernehmen. Gesicherte Dateien bleiben auch ohne HP-Mobile erreichbar.' }),
     el('p', {}, [el('a', { href: '#/archiv', text: 'CuraAed-Archiv öffnen' })]), status);
   if (!darfSchreiben()) { status.textContent = 'Die persönliche HP-Verbindung ist für Administratoren und Mitarbeiter verfügbar.'; return; }
