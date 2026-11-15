@@ -69,3 +69,7 @@
 .cu-tipp-status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .hwa-feld>.cu-tippfeld{width:105px;flex:0 0 105px}.hwa-feld>.cu-tippfeld>input{width:100%!important}
 .cu-tippfeld [hidden]{display:none}
+
+input.cu-pfkt-code{width:90px;text-transform:uppercase}
+.cu-pfkt-bezeichnung{display:block;margin-top:3px;min-height:17px}
+.cu-code-fehler{color:var(--cu-rot,#c93b3b)}
