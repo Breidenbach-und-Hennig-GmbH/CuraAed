@@ -21,6 +21,7 @@ async function einlassMaske(id,{container,buehne=false}={}){
     if(qrBusy)return;qrBusy=true;zeichnenQr();message.textContent='';try{await API.put('/versammlungen/'+id+'/live/raum',{revision:room?.revision||0,teams_url:room?.teams_url||'',aktiv:true});await laden();}catch(e){message.textContent=e.message;}finally{qrBusy=false;zeichnenQr();}
    }}));
   }
+  if(room?.teams_url)qrPanel.append(el('p',{},[el('a',{href:room.teams_url,target:'_blank',rel:'noopener noreferrer',class:'btn cu-knopf',text:'Teams-Besprechung öffnen'})]));
   qrPanel.append(el('p',{},[el('a',{href:'#/etv/'+id+'?schritt=durchfuehrung&ansicht=live',text:'Beitrittsanfragen freigeben'})]));
  }
  function zeichnenChart(){

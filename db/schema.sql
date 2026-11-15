@@ -826,3 +826,10 @@ CREATE TABLE IF NOT EXISTS m365_app_config(
  id INTEGER PRIMARY KEY CHECK(id=1), daten TEXT NOT NULL, revision INTEGER NOT NULL,
  quelle TEXT NOT NULL, geaendert_von INTEGER REFERENCES benutzer(id), geaendert_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS m365_oauth_teams(state_hash TEXT PRIMARY KEY REFERENCES m365_oauth(state_hash) ON DELETE CASCADE);
+CREATE TABLE IF NOT EXISTS etv_teams(
+ versammlung_id INTEGER PRIMARY KEY REFERENCES versammlungen(id) ON DELETE CASCADE,
+ firma_id INTEGER REFERENCES firmenbriefkoepfe(id),dauer INTEGER NOT NULL DEFAULT 180,external_id TEXT NOT NULL,meeting_id TEXT,join_url TEXT,organizer TEXT,basis_hash TEXT,
+ status TEXT NOT NULL DEFAULT 'ausstehend',meldung TEXT NOT NULL DEFAULT '',geaendert_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

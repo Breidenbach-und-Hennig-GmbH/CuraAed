@@ -1696,6 +1696,7 @@ async function versammlungForm(v, { kopie = false, container = null } = {}) {
   try { [objekte,mitarbeiter]=await Promise.all([API.get('/objekte'),API.get('/mitarbeiter')]); } catch (e) { fehler(e); return; }
   const bearb = !!(v && v.id) && !kopie;
   const x = v || {};let gespeichertId=x.id;
+  let teamsFirmen=[];try{const f=await API.get('/m365/firmen');teamsFirmen=Array.isArray(f)?f.filter(r=>r.firma_id):[];}catch{}
   const personen=mitarbeiter.map(p=>({value:p.id,label:p.name+(p.kuerzel?' · '+p.kuerzel:'')}));
   if(bearb&&x.leitung_id&&!mitarbeiter.some(p=>p.id===x.leitung_id))personen.push({value:x.leitung_id,label:(x.leitung_name||'Bisherige Versammlungsleitung')+' · bisher zugeordnet (nicht mehr aktiv)'});
   const leitung=kopie&&!mitarbeiter.some(p=>p.id===x.leitung_id)?'':x.leitung_id||'';
@@ -1752,9 +1753,15 @@ async function versammlungForm(v, { kopie = false, container = null } = {}) {
         {name:'beirat_id',label:'Beirat (optional)',type:'select',value:kopierPerson('beirat_id','beirat'),options:externOptionen('beirat_id','beirat')},
         {name:'unterzeichner_id',label:'Eigentümer zur Protokollunterzeichnung (optional)',type:'select',value:kopierPerson('unterzeichner_id','eigentuemer'),options:externOptionen('unterzeichner_id','eigentuemer')},
       ]},
+      {grid:2,felder:[{name:'m365_firma_id',label:'Verwaltung / Microsoft-Konto',type:'select',value:x.m365_firma_id||(teamsFirmen.length===1?teamsFirmen[0].firma_id:''),options:[{value:'',label:'– Verwaltung wählen –'},...teamsFirmen.map(f=>({value:f.firma_id,label:f.name+(f.teams_bereit?' · Teams freigegeben':' · Teams-Freigabe fehlt')}))]},{name:'teams_dauer',label:'Geplante Dauer (Minuten)',type:'number',value:x.teams_dauer||180}]},
       { felder: [{ name: 'notizen', label: 'Notizen', type: 'textarea', value: kopie ? '' : x.notizen }] },
     ],
     nachAufbau:(inputs,form)=>{
+      const teamFields=inputs.m365_firma_id.closest('.field').parentElement,teamInfo=el('p',{class:'small muted',role:'status'}),teamBox=el('section',{class:'cu-karte','aria-label':'Microsoft Teams'},[el('h3',{text:'Microsoft Teams'})]);form.insertBefore(teamBox,teamFields);teamBox.append(teamFields,teamInfo,el('div',{class:'cu-aktionen'},[el('a',{class:'btn cu-knopf',href:'#/m365',text:'Microsoft-Verbindung verwalten'})]));
+      inputs.teams_dauer.min='15';inputs.teams_dauer.max='1440';
+      const teamStatus=r=>{teamInfo.replaceChildren(document.createTextNode(r.teams_status==='bereit'?'Teams-Besprechung erstellt. ':r.teams_meldung||'Der Teams-Link wird beim Speichern automatisch erstellt. Geplante Dauer: standardmäßig 180 Minuten.'));if(r.teams_url&&r.teams_status==='bereit')teamInfo.append(el('a',{href:r.teams_url,target:'_blank',rel:'noopener noreferrer',text:'Teams-Besprechung öffnen'}));};teamStatus(kopie?{}:x);
+      if(bearb){const retry=el('button',{type:'button',class:'cu-knopf',text:'Teams-Link aus gespeicherten Basisdaten erstellen / aktualisieren',onclick:async()=>{retry.disabled=true;try{const r=await API.post('/versammlungen/'+x.id+'/teams',{m365_firma_id:inputs.m365_firma_id.value,teams_dauer:inputs.teams_dauer.value});teamStatus(r);}catch(e){teamInfo.textContent=e.message;}finally{retry.disabled=false;}}});teamBox.lastElementChild.append(retry);}
+      const showTeams=()=>{teamBox.hidden=inputs.art.value==='praesenz';};inputs.art.addEventListener('change',showTeams);showTeams();
       const teilnahme=inputs.leitung_id.closest('.field').parentElement;
       const intern=el('section',{'aria-label':'Versammlungsteilnahme (intern)',class:'cu-karte',style:'padding:16px;margin:12px 0'},[el('h3',{text:'Versammlungsteilnahme (intern)'})]);form.insertBefore(intern,teilnahme);intern.append(teilnahme,inputs.beisitzer_id.closest('.field').parentElement,inputs.beirat_id.closest('.field').parentElement);
       let personenVersion=0;
@@ -1825,7 +1832,7 @@ async function versammlungForm(v, { kopie = false, container = null } = {}) {
       });
 
     },
-    speichern: async(w)=>{if(!w.leitung_id)throw new Error('Bitte eine Versammlungsleitung auswählen.');const r=await (bearb?API.put('/versammlungen/'+x.id,w):API.post('/versammlungen',w));gespeichertId=r?.id||gespeichertId;return r;},
+    speichern: async(w)=>{if(!w.leitung_id)throw new Error('Bitte eine Versammlungsleitung auswählen.');const r=await (bearb?API.put('/versammlungen/'+x.id,w):API.post('/versammlungen',w));gespeichertId=r?.id||gespeichertId;if(r?.teams_status==='fehler')toast('Versammlung gespeichert. '+r.teams_meldung,'error');return r;},
     loeschen: bearb&&!container ? async()=>{await API.del('/versammlungen/'+x.id);gespeichertId=null;} : null,
     loeschFrage: `Versammlung „${x.name}" endgültig löschen?`,
     danach: ()=>gespeichertId?geheZu('#/etv/'+gespeichertId):neuLaden(),

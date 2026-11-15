@@ -29,3 +29,16 @@ https://learn.microsoft.com/en-us/graph/auth-v2-user
 https://learn.microsoft.com/en-us/graph/outlook-send-mail-from-other-user
 https://learn.microsoft.com/en-us/graph/api/user-sendmail
 https://www.epostbox.de/faq
+
+## Teams für Hybrid- und Online-ETV
+Unter Firmenpostfach / Postversand kann die Administration die vorhandene Verbindung zusätzlich für ETV / Teams freigeben. Dafür wird ausschließlich die delegierte Berechtigung OnlineMeetings.ReadWrite angefordert. Eine bestehende reine Mail-Freigabe bleibt bis zum erfolgreichen Abschluss erhalten. Organisator ist das verbundene geschäftliche Microsoft-Konto; das gemeinsame Absenderpostfach bleibt für Einladungen unverändert.
+
+In den ETV-Basisdaten erscheinen bei Hybrid und Online die Verwaltung und die geplante Dauer (standardmäßig 180 Minuten). Speichern erstellt die Besprechung automatisch über /me/onlineMeetings/createOrGet. Eine persistente externe UUID verhindert Dubletten nach Netzwerkfehlern. Gespeicherte Besprechungen werden bei geänderten Basisdaten über PATCH aktualisiert; ein anderes Organisatorkonto wird nicht stillschweigend übernommen. Die Zeiten werden aus Europe/Berlin nach UTC umgerechnet, mehrdeutige Zeitumstellungen werden abgewiesen.
+
+Fehlt die Freigabe oder die Teams-Berechtigung des Kontos, bleibt die ETV mit sichtbarem Fehlerstatus gespeichert. Nach Freigabe kann die Erstellung mit den gespeicherten Basisdaten wiederholt werden. Es werden dabei keine Eigentümer-Empfänger an Microsoft übergeben oder Einladungsmails automatisch verschickt. Der erzeugte Link steht in den Basisdaten, im Einlass / in der Durchführung und in den einzelnen Einladungspdfs. Online- und Hybrid-Einladungen ohne fertigen Link werden gesperrt.
+
+Dies erstellt eine Teams-Besprechung; ein Outlook-Kalendertermin wird durch diese API nicht angelegt. Bei Wechsel zu Präsenz wird der Link nicht mehr in der Einladung angezeigt. Eine vorhandene Microsoft-Besprechung wird dabei nicht automatisch gelöscht.
+
+Technische Referenzen:
+https://learn.microsoft.com/en-us/graph/api/onlinemeeting-createorget?view=graph-rest-1.0
+https://learn.microsoft.com/en-us/graph/api/onlinemeeting-update?view=graph-rest-1.0

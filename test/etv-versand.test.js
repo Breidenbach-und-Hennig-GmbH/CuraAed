@@ -63,3 +63,16 @@ test('Versand-API trennt Rollen, Herkunft und Zustimmung; PDF-Erstellung versend
  const configs=await fetch(root+'/m365/firmen',{headers:head(1)});assert.equal(configs.status,200);assert.equal(configs.headers.get('cache-control'),'no-store');assert.equal((await configs.json())[0].m365_verbunden,false);
  await assert.rejects(require('../services/versammlungen').loeschen(f.db,1),e=>e.status===409);
 });
+
+test('Einzeleinladung enthält den erzeugten Teams-Link; fehlende Freigabe verhindert eine unvollständige Online-Einladung',async t=>{
+ const f=await fixture(t);
+ await f.db.run("UPDATE versammlungen SET art='hybrid' WHERE id=1");
+ await assert.rejects(E.vorbereiten(f.db,1,await f.body()),/Teams-Link/);
+ const url='https://teams.microsoft.com/l/meetup-join/test-etv';
+ await f.db.run("INSERT INTO etv_teams(versammlung_id,firma_id,external_id,meeting_id,join_url,organizer,status) VALUES(1,1,'test-external','meeting',?,'organizer','bereit')",[url]);
+ const result=await V.baue(f.db,f.dir).erstellen(1,await f.body(),f.user);
+ const doc=await f.db.get('SELECT * FROM dokumente WHERE id=?',[result.einladungen[0].dokument_id]);
+ const contents=await text(await fs.readFile(path.join(f.dir,doc.speicher_name)));
+ assert.match(contents,/Online-Teilnahme über Microsoft Teams/);assert.ok(contents.includes(url));
+ const pdfjs=await import('pdfjs-dist/legacy/build/pdf.mjs'),task=pdfjs.getDocument({data:new Uint8Array(await fs.readFile(path.join(f.dir,doc.speicher_name)))}),pdf=await task.promise;assert.ok((await (await pdf.getPage(1)).getAnnotations()).some(a=>a.url===url));await task.destroy();
+});
