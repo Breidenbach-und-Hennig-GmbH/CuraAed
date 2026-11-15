@@ -308,20 +308,24 @@ function baueApi(db, uploadDir, options = {}) {
   router.get('/versammlungen/:vid/tops',h(async(req,res)=>res.json(await require('../services/tagesordnung').liste(db,req.params.vid))));
   router.post('/versammlungen/:vid/tops/:aktion',auth.erfordereSchreibrecht,h(async(req,res)=>res.json(await require('../services/tagesordnung').aendern(db,req.params.vid,req.params.aktion,req.body||{}))));
   router.get('/versammlungen/:vid/tagesordnung.txt',h(async(req,res)=>{const txt=await require('../services/tagesordnung').text(db,req.params.vid);res.type('text/plain; charset=utf-8').attachment('Tagesordnung-'+Number(req.params.vid)+'.txt').send(txt);}));
+  const etvTeams=require('../services/etv-teams').baue(db,m365);
+  const etvTeamsOrigin=(req,res,next)=>{if(req.get('origin')!==m365.origin||!req.is('application/json'))return next(new (require('../lib/validation').ValidationError)('Teams bitte aus CuraAed erstellen.',403));next();};
+  const etvAutoOrigin=async(req,res,next)=>{try{const art=req.body?.art||(req.params.vid?(await versammlungenSvc.holen(db,req.params.vid))?.art:null);if(['hybrid','online'].includes(art))return etvTeamsOrigin(req,res,next);next();}catch(e){next(e);}};
+  router.post('/versammlungen/:vid/teams',auth.erfordereSchreibrecht,etvTeamsOrigin,h(async(req,res)=>res.json(await etvTeams.synchronisieren(req.params.vid,req.body||{}))));
   // ETV – Eigentümerversammlungen
   router.get('/versammlungen', h(async (req, res) => {
     const t = (v) => (typeof v === 'string' ? v : '');
     res.json(await versammlungenSvc.liste(db, { archiv: req.query.archiv === '1', suche: t(req.query.suche), sort: t(req.query.sort), objekt_id: t(req.query.objekt) }));
   }));
-  router.post('/versammlungen', auth.erfordereSchreibrecht,
-    h(async (req, res) => res.status(201).json(await versammlungenSvc.anlegen(db, req.body || {}, req.benutzer.id))));
+  router.post('/versammlungen', auth.erfordereSchreibrecht,etvAutoOrigin,
+    h(async (req, res) => {const v=await versammlungenSvc.anlegen(db, req.body || {}, req.benutzer.id);res.status(201).json(await etvTeams.synchronisieren(v.id,req.body||{}));}));
   router.get('/versammlungen/:vid', h(async (req, res) => {
     const v = await versammlungenSvc.holen(db, req.params.vid);
     if (!v) return res.status(404).json({ fehler: 'Versammlung nicht gefunden.' });
     res.json(v);
   }));
-  router.put('/versammlungen/:vid', auth.erfordereSchreibrecht,
-    h(async (req, res) => res.json(await versammlungenSvc.aktualisieren(db, req.params.vid, req.body || {}))));
+  router.put('/versammlungen/:vid', auth.erfordereSchreibrecht,etvAutoOrigin,
+    h(async (req, res) => {const v=await versammlungenSvc.aktualisieren(db, req.params.vid, req.body || {});res.json(await etvTeams.synchronisieren(v.id,req.body||{}));}));
   router.post('/versammlungen/:vid/archiv', auth.erfordereSchreibrecht,
     h(async (req, res) => res.json(await versammlungenSvc.archivieren(db, req.params.vid, (req.body || {}).archiviert))));
   router.delete('/versammlungen/:vid', auth.erfordereSchreibrecht,

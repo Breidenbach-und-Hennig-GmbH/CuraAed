@@ -42,7 +42,7 @@ function baue(db,options={}){
   return safe(await load());
  }
  const service={origin:base.origin,get ready(){return active.ready;}};
- for(const method of ['settings','saveSettings','verbinden','callbackFinish','vorbereiten','senden','trennen'])service[method]=(...args)=>exclusive(db,async()=>{const core=await current();return core[method](...args);});
+ for(const method of ['settings','saveSettings','verbinden','callbackFinish','vorbereiten','senden','trennen','teamsBesprechung'])service[method]=(...args)=>exclusive(db,async()=>{const core=await current();return core[method](...args);});
  service.konfiguration=()=>exclusive(db,konfiguration);
  service.konfigurationSpeichern=(b,user)=>exclusive(db,()=>konfigurationSpeichern(b,user));
  return service;
