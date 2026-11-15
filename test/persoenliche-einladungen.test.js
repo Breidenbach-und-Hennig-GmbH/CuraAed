@@ -12,10 +12,10 @@ test('Eigentümer werden je Adresse einmal angeschrieben; gemeinsame Anschrift u
 test('Einzelbrief enthält nur den gewählten Eigentümer samt allen Einheiten und eigener Vollmacht',async t=>{
  const db=await setup(t),s=await E.stand(db,1),r=await pdf(await E.erstellen(db,1,body(s)));const all=r.pages.join(' ');assert.match(all,/Sehr geehrte Frau Ada Alpha/);assert.match(all,/0001, 0002/);assert.doesNotMatch(all,/Beate Beta|Gamma GmbH/);assert.equal(r.fields.size,9);assert.ok([...r.fields.keys()].every(k=>k.startsWith('eigentuemer_1_')));await assert.rejects(E.erstellen(db,1,body(await E.stand(db,1),5)),e=>e.status===404);
 });
-test('Sammel-PDF trennt persönliche Briefe, Seitenzählung und ausfüllbare Felder',async t=>{
- const db=await setup(t),s=await E.stand(db,1),r=await pdf(await E.erstellen(db,1,body(s,null)));assert.equal(r.fields.size,27);for(const id of [1,2,3])assert.equal([...r.fields.keys()].filter(k=>k.startsWith('eigentuemer_'+id+'_')).length,9);
- const first=r.pages.findIndex(p=>p.includes('An Beate Beta |')),third=r.pages.findIndex(p=>p.includes('An Gamma GmbH |'));assert.ok(first>0&&third>first);assert.match(r.pages[first],/Seite 1 von/);assert.ok(r.pages.slice(0,first).every(p=>!p.includes('Beate Beta')&&!p.includes('Gamma GmbH')));assert.ok(r.pages.slice(first,third).every(p=>!p.includes('Ada Alpha')&&!p.includes('Gamma GmbH')));
+test('Mehrere Eigentümer werden nicht mehr als gemeinsame PDF ausgegeben',async t=>{
+ const db=await setup(t),s=await E.stand(db,1);await assert.rejects(E.erstellen(db,1,body(s,null)),/einzelne PDFs/);
 });
+
 test('Firmenlogos sind getrennt gespeichert, nach Neuladen verfügbar und bleiben beim Bearbeiten erhalten',async t=>{
  const db=await setup(t),a=await F.speichern(db,null,{revision:0,daten:firma('Firma A'),logo:logo('A')}),b=await F.speichern(db,null,{revision:0,daten:firma('Firma B'),logo:logo('B')});const aa=await F.holen(db,a.id,true),bb=await F.holen(db,b.id,true);assert.notDeepEqual(aa.logo,bb.logo);assert.equal(aa.logo.subarray(1,4).toString(),'PNG');await F.speichern(db,a.id,{revision:a.revision,daten:{...a.daten,telefon:'999'}});assert.deepEqual((await F.holen(db,a.id,true)).logo,aa.logo);assert.equal((await F.holen(db,b.id)).daten.telefon,'0123 456');await assert.rejects(F.speichern(db,a.id,{revision:a.revision,daten:a.daten}),e=>e.status===409);
 });
