@@ -27,7 +27,7 @@ async function handwerkerErfassung(r={},options={}){
  const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  let changed=false,busy=false,closed=false;const form=el('form',{id:'hwa-form',class:'cu-hwa-form cu-hwa-erfassung',autocomplete:'off','aria-label':r.id?'Handwerkerauftrag bearbeiten':'Neuanlage Handwerkerauftrag'}),error=el('p',{role:'alert',class:'cu-hwa-fehler'});
  function input(k,value='',attrs={}){const i=el('input',{id:'f_'+k,name:k,type:'text',value:value??'',...attrs});f[k]=i;return i;}
- function field(label,i,cls=''){return el('div',{class:'hwa-feld '+cls},[el('label',{for:i.id,text:label}),i]);}
+ function field(label,i,cls=''){return el('div',{class:'hwa-feld '+cls},[el('label',{for:i.id,text:label}),i.tippWrap||i]);}
  function date(k,v){const i=input(k,hwaDatumKurz(v),{maxlength:10,placeholder:'TT.MM.JJ'});i.addEventListener('blur',()=>{try{i.setCustomValidity('');if(i.value)i.value=hwaDatumKurz(hwaDatumEingabe(i.value));}catch(e){i.setCustomValidity(e.message);}});i.addEventListener('input',()=>i.setCustomValidity(''));return i;}
  function coded(k,value,codes,labels){const i=input(k,Object.keys(codes).find(c=>codes[c]===value)||Object.keys(codes)[0],{maxlength:3,class:'hwa-code'}),hint=el('span',{class:'hwa-aufgeloest'});
   function refresh(){const key=i.value.trim().padStart(k==='status'?3:2,'0');hint.textContent=labels[codes[key]]||'Unbekannter Schlüssel';i.setCustomValidity(codes[key]?'':'Unbekannter Schlüssel.');}i.addEventListener('input',refresh);i.addEventListener('blur',()=>{i.value=i.value.trim().padStart(k==='status'?3:2,'0');refresh();});refresh();return el('div',{class:'hwa-schluessel'},[field(k==='status'?'Status:':'Auftragsart:',i),hint]);}
@@ -48,7 +48,17 @@ async function handwerkerErfassung(r={},options={}){
     state.row=found;state.key=key;hint.textContent=[found.anzeigename,[found.strasse,found.plz,found.ort].filter(Boolean).join(' ')].filter(Boolean).join(' · ');return found;
    }catch(e){if(n===state.seq&&fingerprint()===key&&!closed){hint.textContent=e.message;i.setCustomValidity(e.message);i.setAttribute('aria-invalid','true');}throw e;}
   };
-  i.addEventListener('input',()=>{state.seq++;state.row=null;state.key=null;hint.textContent='';i.setCustomValidity('');i.removeAttribute('aria-invalid');if(k==='objekt_nr'&&refs.wohnung_nr){refs.wohnung_nr.seq++;refs.wohnung_nr.row=null;refs.wohnung_nr.key=null;refs.wohnung_nr.hint.textContent='';}});
+  i.addEventListener('input',()=>{state.seq++;state.row=null;state.key=null;hint.textContent='';i.setCustomValidity('');i.removeAttribute('aria-invalid');if(k==='objekt_nr'&&refs.wohnung_nr){refs.wohnung_nr.seq++;refs.wohnung_nr.row=null;refs.wohnung_nr.key=null;refs.wohnung_nr.hint.textContent='';refs.wohnung_nr.i.value='';refs.wohnung_nr.control?.reset();}});
+  if(['objekt','einheit','handwerker','adresse'].includes(typ)&&typeof tippAuswahl==='function'){
+   state.control=tippAuswahl(i,{label:typ==='einheit'?'Wohnung':typ==='objekt'?'Objekt':'Name / Firma',scope:()=>typ==='einheit'?refs.objekt_nr?.i.value:'',format:found=>String(found.nummer),suchen:async suche=>{
+    const objekt=typ==='einheit'?await refs.objekt_nr.resolve():null;
+    if(typ==='einheit'&&!objekt)throw new Error('Bitte zuerst ein Objekt wählen.');
+    return tippSuche(typ,suche,{objektId:objekt?.id});
+   },auswaehlen:found=>{
+    changed=true;state.seq++;state.row=found;state.key=fingerprint();hint.textContent=found.anzeigename||found.bezeichnung||found.label;
+    if(k==='objekt_nr'&&refs.wohnung_nr){const unit=refs.wohnung_nr;unit.seq++;unit.row=null;unit.key=null;unit.i.value='';unit.hint.textContent='';unit.control?.reset();}
+   }});i.tippWrap=state.control.wrap;
+  }
   i.addEventListener('blur',()=>state.resolve().catch(()=>{}));return {i,hint};
  }
  const header=el('fieldset',{class:'hwa-block hwa-stamm'},[el('legend',{text:r.id?'Handwerkerauftrag bearbeiten':'Neuanlage Handwerkerauftrag'})]);

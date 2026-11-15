@@ -63,3 +63,9 @@
 @media(pointer:coarse){
  .cu-such-treffer button{min-height:44px}
 }
+
+.cu-tippfeld{display:block;position:relative;min-width:0}
+.cu-tippfeld>.cu-such-treffer{top:100%;min-width:280px;max-width:min(520px,calc(100vw - 40px))}
+.cu-tipp-status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.hwa-feld>.cu-tippfeld{width:105px;flex:0 0 105px}.hwa-feld>.cu-tippfeld>input{width:100%!important}
+.cu-tippfeld [hidden]{display:none}

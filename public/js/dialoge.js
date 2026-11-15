@@ -269,13 +269,18 @@ async function zuordnungFormular(kontext, reload) {
   codeOptionen();
 
   // Dynamik: Einheiten laden, wenn Objekt gewählt
+  let einheitenVersion=0;
   if (inputs.objekt_id) {
     inputs.objekt_id.addEventListener('change', async () => {
+      const version=++einheitenVersion;
       const oid = inputs.objekt_id.value;
       const sel = inputs.einheit_id;
       sel.innerHTML = '<option value="">– ganzes Objekt –</option>';
+      sel.disabled=true;
       if (oid) {
-        const einh = await API.get('/objekte/' + oid + '/einheiten');
+        let einh;try{einh=await API.get('/objekte/' + oid + '/einheiten');}catch(e){if(version===einheitenVersion)fehler(e);return;}
+        if(version!==einheitenVersion||inputs.objekt_id.value!==oid)return;
+        sel.disabled=false;
         einh.forEach((e) => sel.appendChild(el('option', { value: e.id, text: `${e.nummer} · ${e.bezeichnung} (${L.einheitstyp[e.einheitstyp] || e.einheitstyp})` })));
       }
     });
@@ -1639,6 +1644,15 @@ async function telefonEingang(vorgabe = {}, k = null, danach = null) {
     ]),
     haken(f.ticket, 'Ticket automatisch zum Objekt', 'Das Ticket wird zusammen mit dem Telefoneingang gespeichert.'),ticketInfo,
   ]);
+  if(typeof tippAuswahl==='function'){
+    let objektWahl=null;
+    const units=tippAuswahl(f.wohnung,{label:'Wohnung',scope:()=>f.objekt.value,format:r=>r.nummer,suchen:async query=>{
+      let oid=objektWahl?.nummer===f.objekt.value?objektWahl.id:null;
+      if(f.objekt.value&&!oid){const found=await tippSuche('objekt',f.objekt.value);oid=found.find(r=>r.nummer===f.objekt.value)?.id;if(!oid)throw new Error('Objekt bitte zuerst eindeutig auswählen.');}
+      return tippSuche('einheit',query,{objektId:oid});
+    },auswaehlen:r=>{f.wohnung.setCustomValidity('');if(r.objekt_nummer)f.objekt.value=r.objekt_nummer;wohnungText.textContent='/ '+(r.bezeichnung||'');ticketPruefen();}});
+    tippAuswahl(f.objekt,{label:'Objekt',format:r=>r.nummer,suchen:q=>tippSuche('objekt',q),bearbeitet:()=>{objektWahl=null;f.wohnung.value='';wohnungText.textContent='';units.reset();},auswaehlen:r=>{objektWahl=r;f.wohnung.value='';wohnungText.textContent='';units.reset();ticketPruefen();}});
+  }
   const rechts = el('div', { class: 'tel-rechts' }, [
     info,
     el('div', { class: 'tel-optionen' }, [

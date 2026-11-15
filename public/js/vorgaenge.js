@@ -30,8 +30,9 @@ async function vorgangForm(record={},context=null){
  m=modal({titel:record.id?'Vorgang bearbeiten':'Neuen Vorgang anlegen',inhalt:form,wide:true,footer:close=>[el('button',{text:'Abbrechen',onclick:close}),save]});
 }
 async function vorgangZuordnung(record){
- const {form,werte}=formular([[{name:'typ',label:'Zuordnen zu',type:'select',options:opt({adresse:'Adresse',objekt:'Objekt',einheit:'Einheit',...VORGANG_ART})},{name:'nummer',label:'Nummer oder CA-Vorgangsnummer',required:true}]]);
- const info=el('p',{class:'small',text:'Die genaue Nummer aus der jeweiligen CuraAed-Maske verwenden.'});form.append(info);let m;
+ const {form,werte,inputs}=formular([[{name:'typ',label:'Zuordnen zu',type:'select',options:opt({adresse:'Adresse',objekt:'Objekt',einheit:'Einheit',...VORGANG_ART})},{name:'nummer',label:'Nummer oder CA-Vorgangsnummer',required:true}]]);
+ if(typeof tippAuswahl==='function'){const control=tippAuswahl(inputs.nummer,{label:'Zuordnung',scope:()=>inputs.typ.value,format:r=>r.nummer,suchen:q=>['adresse','objekt','einheit'].includes(inputs.typ.value)?tippSuche(inputs.typ.value,q):Promise.resolve([]),auswaehlen:()=>{}});inputs.typ.addEventListener('change',()=>{inputs.nummer.value='';control.reset();});}
+ const info=el('p',{class:'small',text:'Nummer, Name oder Anschrift tippen. Bei Akten und Vorgängen die genaue CA-Nummer verwenden.'});form.append(info);let m;
  const save=el('button',{type:'submit',text:'Zuordnen',form:'vorgang-zuordnung'});form.id='vorgang-zuordnung';
  form.addEventListener('submit',async e=>{e.preventDefault();save.disabled=true;try{
   const v=werte(),r=await API.post('/vorgaenge/aufloesen',{typ:v.typ,nummern:[v.nummer]});
