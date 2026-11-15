@@ -203,6 +203,7 @@ const UI = (() => {
       el('label', { for: id, text: spec.label + (spec.required ? ' *' : '') }),
       input,
     ]);
+    if(spec.type==='select'&&/^(objekt_id|von_objekt_id|einheit_id|handwerker_id)$/.test(spec.name)&&typeof tippSelect==='function')tippSelect(input,{label:spec.label,typ:/objekt/.test(spec.name)?'objekt':undefined});
     if (spec.vorschlaege) wrap.appendChild(el('datalist', { id: id + '_liste' }, spec.vorschlaege.map((v) => el('option', { value: v }))));
     if (spec.hint) wrap.appendChild(el('div', { class: 'small muted', text: spec.hint, style: 'margin-top:4px' }));
     return { wrap, input };
@@ -222,6 +223,8 @@ const UI = (() => {
       form.appendChild(container);
     });
     const werte = () => {
+      const ungueltig=form.querySelector('.cu-tippfeld input:invalid');
+      if(ungueltig){ungueltig.reportValidity();throw new Error('Bitte einen passenden Treffer auswählen oder das optionale Suchfeld leeren.');}
       const o = {};
       Object.entries(inputs).forEach(([k, i]) => { o[k] = i.value; });
       return o;
