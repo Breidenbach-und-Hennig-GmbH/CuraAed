@@ -73,6 +73,6 @@ test('Einzeleinladung enthält den erzeugten Teams-Link; fehlende Freigabe verhi
  const result=await V.baue(f.db,f.dir).erstellen(1,await f.body(),f.user);
  const doc=await f.db.get('SELECT * FROM dokumente WHERE id=?',[result.einladungen[0].dokument_id]);
  const contents=await text(await fs.readFile(path.join(f.dir,doc.speicher_name)));
- assert.match(contents,/Online-Teilnahme über Microsoft Teams/);assert.ok(contents.includes(url));
+ assert.match(contents,/Online-Teilnahme über Microsoft Teams/);assert.match(contents,/Hier klicken: An der Versammlung teilnehmen/);assert.ok(!contents.includes(url));
  const pdfjs=await import('pdfjs-dist/legacy/build/pdf.mjs'),task=pdfjs.getDocument({data:new Uint8Array(await fs.readFile(path.join(f.dir,doc.speicher_name)))}),pdf=await task.promise;assert.ok((await (await pdf.getPage(1)).getAnnotations()).some(a=>a.url===url));await task.destroy();
 });
