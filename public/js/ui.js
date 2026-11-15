@@ -211,7 +211,7 @@ const UI = (() => {
 
   // Baut ein Formular aus Feld-Specs, in Gruppen (grid). Gibt {form, werte()} zurück.
   function formular(gruppen) {
-    const form = el('form', { autocomplete: 'off' });
+    const form = el('form', { autocomplete: 'off', class: 'cu-formular' });
     const inputs = {};
     gruppen.forEach((g) => {
       const container = g.grid ? el('div', { class: 'grid-' + g.grid }) : el('div');

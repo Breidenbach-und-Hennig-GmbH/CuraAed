@@ -43,11 +43,12 @@ async function vorgangZuordnung(record){
  m=modal({titel:'Zuordnung ergänzen',inhalt:form,footer:close=>[el('button',{text:'Abbrechen',onclick:close}),save]});
 }
 async function vorgangDetail(id,params=new URLSearchParams()){
- const lauf=S.lauf,root=el('section',{class:'cu-karte',style:'padding:20px;margin:16px auto;max-width:1250px'});if(!zeigeAufDesktop(lauf,root))return;
+ const lauf=S.lauf,root=el('section');if(!arbeitsMaske(lauf,root,{titel:'Vorgang',aktionen:[{text:'Arbeitsbereiche',onclick:()=>geheZu('#/vorgaenge')},{text:'Kalender',onclick:()=>geheZu('#/kalender')}]}))return;
  try{
   const r=await API.get('/vorgaenge/'+encodeURIComponent(id));if(lauf!==S.lauf)return;
   if(r.art==='handwerker')return handwerkerMaske(r,params);
-  root.append(el('p',{},[el('a',{href:'#/vorgaenge?art='+r.art,text:'← '+VORGANG_ART[r.art]})]),el('h1',{text:r.titel}),
+  root.cuTitelSetzen(r.titel);
+  root.append(el('p',{},[el('a',{href:'#/vorgaenge?art='+r.art,text:'← '+VORGANG_ART[r.art]})]),
    panel([['Vorgangsnummer','CA-'+r.id],['Bereich',VORGANG_ART[r.art]],['Status',VORGANG_STATUS[r.status]],['Fällig',datum(r.faellig_am)+(r.uhrzeit?' '+r.uhrzeit:'')],['HP-Nummer',r.hp_nummer||'–'],['Datenhaltung','In CuraAed gespeichert'],['Herkunft',r.subdomain||'In CuraAed angelegt'],['HP-Status',r.remote_snapshot?.status?.name||r.remote_snapshot?.status?.description||'–']]),
    el('div',{class:'tel-plaud-knoepfe'},[el('button',{text:'Bearbeiten',onclick:()=>vorgangForm(r)}),el('button',{text:'Zuordnung ergänzen',onclick:()=>vorgangZuordnung(r)})]));
   if(r.incoming){
@@ -84,10 +85,11 @@ function vorgaengeListe(root,{art='',kontext=null,lauf=S.lauf}={}){
  search.addEventListener('input',debounce(()=>load(1)));statusSelect.addEventListener('change',()=>load(1));load(1);return()=>load(page);
 }
 async function vorgaengeMaske(params=new URLSearchParams()){
- const lauf=S.lauf,root=el('section',{class:'cu-karte',style:'padding:20px;margin:16px auto;max-width:1250px'});if(!zeigeAufDesktop(lauf,root))return;
+ const lauf=S.lauf,root=el('section');if(!arbeitsMaske(lauf,root,{titel:'Arbeitsbereiche',info:[['Bereich','Akten, Aufträge, Wiedervorlagen, ZIS und Notizen']],aktionen:Object.entries(VORGANG_ART).map(([art,text])=>({text,onclick:()=>geheZu('#/vorgaenge?art='+art)}))}))return;
  if(!darfSchreiben()){root.append(el('p',{text:'Die persönlichen Arbeitsbereiche sind für Mitarbeiter und Administratoren verfügbar.'}));return;}
  const art=Object.hasOwn(VORGANG_ART,params.get('art'))?params.get('art'):'';
- root.append(el('h1',{text:art?VORGANG_ART[art]:'Arbeitsbereiche'}),el('p',{text:'Akten, Aufträge, Wiedervorlagen, ZIS und Notizen werden in CuraAed geführt.'}),
+ root.cuTitelSetzen(art?VORGANG_ART[art]:'Arbeitsbereiche');
+ root.append(el('p',{text:'Akten, Aufträge, Wiedervorlagen, ZIS und Notizen werden in CuraAed geführt.'}),
   el('nav',{class:'tel-plaud-knoepfe'},[el('a',{href:'#/vorgaenge',text:'Alle Bereiche'}),...Object.entries(VORGANG_ART).map(([key,text])=>el('a',{href:'#/vorgaenge?art='+key,text}))]));
  const imports=el('details',{},[el('summary',{text:'Vorhandene HP-Daten übernehmen'})]),body=el('div'),list=el('div');imports.append(body);root.append(imports,list);const context=['adresse','objekt','einheit'].includes(params.get('typ'))&&Number(params.get('ziel'))>0?{typ:params.get('typ'),id:Number(params.get('ziel'))}:null;const refreshList=vorgaengeListe(list,{art,kontext:context,lauf});
  async function refresh(){try{
@@ -106,11 +108,11 @@ async function vorgaengeMaske(params=new URLSearchParams()){
 }
 
 async function vorgangKalender(params=new URLSearchParams()) {
- const lauf=S.lauf,now=new Date(),month=params.get('monat')||now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'),root=el('section',{class:'cu-karte',style:'padding:20px;margin:16px auto;max-width:1250px'});
- if(!zeigeAufDesktop(lauf,root))return;
+ const lauf=S.lauf,now=new Date(),month=params.get('monat')||now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'),root=el('section');
+ if(!arbeitsMaske(lauf,root,{titel:'Kalender',info:[['Termine','Wiedervorlagen und Vorgänge mit Fälligkeitsdatum']],aktionen:[{text:'Wiedervorlagen',onclick:()=>geheZu('#/vorgaenge?art=wiedervorlage')},{text:'Arbeitsbereiche',onclick:()=>geheZu('#/vorgaenge')}]}))return;
  const input=el('input',{type:'month',value:month,'aria-label':'Kalendermonat'}),body=el('div'),message=el('p',{role:'status'});let version=0;
  const move=step=>()=>{const [y,m]=input.value.split('-').map(Number),d=new Date(Date.UTC(y,m-1+step,1));input.value=d.toISOString().slice(0,7);load();};
- root.append(el('h1',{text:'Kalender'}),el('p',{text:'Offene Wiedervorlagen und Vorgänge mit Fälligkeitsdatum. Microsoft 365 ist noch nicht verbunden.'}),el('div',{class:'tel-plaud-knoepfe'},[el('button',{text:'Vorheriger Monat',onclick:move(-1)}),input,el('button',{text:'Nächster Monat',onclick:move(1)}),el('button',{text:'Neue Wiedervorlage',onclick:()=>vorgangForm({art:'wiedervorlage',faellig_am:input.value+'-01'})})]),message,body);
+ root.append(el('p',{text:'Offene Wiedervorlagen und Vorgänge mit Fälligkeitsdatum. Die Microsoft-365-Kalenderanbindung wird später eingerichtet.'}),el('div',{class:'tel-plaud-knoepfe'},[el('button',{text:'Vorheriger Monat',onclick:move(-1)}),input,el('button',{text:'Nächster Monat',onclick:move(1)}),el('button',{text:'Neue Wiedervorlage',onclick:()=>vorgangForm({art:'wiedervorlage',faellig_am:input.value+'-01'})})]),message,body);
  input.addEventListener('change',load);
  async function load(){const current=++version;try{const r=await API.get('/vorgaenge/kalender'+API.qs({monat:input.value}));if(lauf!==S.lauf||current!==version)return;
   const [year,month]=r.monat.split('-').map(Number),first=new Date(Date.UTC(year,month-1,1)),days=new Date(Date.UTC(year,month,0)).getUTCDate(),offset=(first.getUTCDay()+6)%7,grid=el('div',{style:'display:grid;grid-template-columns:repeat(7,minmax(100px,1fr));gap:4px;min-width:728px'});

@@ -1502,3 +1502,12 @@ document.addEventListener('keydown', (ev) => {
     geheZu((S.kontext && S.kontext.zurueck) || '#/');
   }
 });
+
+/** Gemeinsamer Seitenrahmen für die Arbeits- und Einstellungsbereiche. */
+function arbeitsMaske(lauf,root,{titel,brot,info=[],aktionen=[]}){
+ root.classList.add('cu-frame-inhalt');
+ const frame=maskenFenster({titel,kopf:{ueberschrift:titel,brot:brot||[{text:'Übersicht',href:'#/'},{text:titel}],drucken:false},
+  inhalt:maskenRaster({oben:info.length?[panel(info,'hp-such-panel')]:[],seite:seitenleiste(aktionen),unten:[root]})});
+ root.cuTitelSetzen=text=>{frame.querySelector('.cu-h1-zeile h1').textContent=text;frame.setAttribute('aria-label',text);const current=frame.querySelector('[aria-current="page"]');if(current)current.textContent=text;};
+ return zeigeAufDesktop(lauf,frame);
+}

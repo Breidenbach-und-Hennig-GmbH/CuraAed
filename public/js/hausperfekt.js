@@ -3,8 +3,8 @@
 async function hausperfektMaske() {
   if(!istAdmin()){toast('HP-Verbindungen sind nur für Administratoren verfügbar.','error');geheZu('#/');return;}
   const lauf = S.lauf;
-  if (!zeigeAufDesktop(lauf, null)) return;
-  const desktop = document.getElementById('hp-desktop');
+  const desktop=el('div',{class:'cu-verbindungen'});
+  if(!arbeitsMaske(lauf,desktop,{titel:'HP-Verbindungen',brot:[{text:'Einstellungen'},{text:'HP-Verbindungen'}],info:[['Zugriff','Administrator'],['Bereiche','Mobile-Verbindung, Adressabgleich und Objektimport']],aktionen:[{text:'Benutzerverwaltung',onclick:()=>geheZu('#/benutzer')},{text:'Verwaltungen',onclick:()=>geheZu('#/verwaltungen')}]}))return;
   const meldung = el('p', { role: 'status', 'aria-live': 'polite' });
   const verbindungen = el('div');
   const ergebnis = el('div');
@@ -80,7 +80,7 @@ async function hausperfektMaske() {
     });
   } });
   desktop.append(el('section', { class: 'cu-karte', style: 'padding:20px;max-width:1100px;margin:16px auto' }, [
-    el('h1', { text: 'HP-Verbindung einrichten' }),
+    el('h2', { text: 'HP-Mobile-Verbindung' }),
     el('p', { text: 'Verbinde dein HP-Mobile-Kundenkonto und prüfe den direkten Zugriff auf dessen Daten.' }),
     el('p', { class: 'hint', text: 'Diese Mobile-Ansicht liest HP-Mobile-Daten. Den automatischen Abgleich der normalen Adressmasken richtest du unten separat über den HP-Adressconnector ein.' }),
     neu, verbindungen, el('label', {}, ['Datenbereich ', datenbereich]), meldung, ergebnis,

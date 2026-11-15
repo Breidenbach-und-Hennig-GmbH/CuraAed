@@ -117,13 +117,13 @@ async function plaudDirektAuswaehlen(uebernehmen) {
 }
 
 async function plaudRueckkehr(params) {
-  startMaske();
+  const lauf=S.lauf;
   let ok = false;
   try { ok = params.get('status') === 'verbunden' && (await API.get('/plaud/status')).verbunden; }
   catch (e) { fehler(e); }
-  document.getElementById('hp-desktop').replaceChildren(el('section', { class: 'cu-karte plaud-rueckkehr' }, [
-    el('h1', { text: ok ? 'Plaud ist verbunden' : 'Plaud-Anmeldung abgebrochen' }),
+  const root=el('section', { class: 'plaud-rueckkehr' }, [
     el('p', { text: 'Wechsle zurück zum ursprünglichen App-Tab. Dein Telefoneingang ist dort weiterhin geöffnet. Tippe dort auf „Verbindung prüfen“.' }),
     el('a', { href: '#/', text: 'Zur App-Übersicht' }),
-  ]));
+  ]);
+  arbeitsMaske(lauf,root,{titel:ok?'Plaud ist verbunden':'Plaud-Anmeldung abgebrochen',aktionen:[{text:'Übersicht',onclick:()=>geheZu('#/')}]});
 }
