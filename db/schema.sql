@@ -763,3 +763,61 @@ CREATE TABLE IF NOT EXISTS mitarbeiterprofile (
  bild BLOB,
  revision INTEGER NOT NULL DEFAULT 0
 );
+
+-- Persönliche ETV-Einladungen: unveränderliche PDF und getrennte Versandnachweise.
+CREATE TABLE IF NOT EXISTS etv_einladung_akten(
+ versammlung_id INTEGER PRIMARY KEY REFERENCES versammlungen(id),
+ vorgang_id INTEGER NOT NULL UNIQUE REFERENCES fach_vorgaenge(id)
+);
+CREATE TABLE IF NOT EXISTS akte_dokumente(
+ vorgang_id INTEGER NOT NULL REFERENCES fach_vorgaenge(id),
+ dokument_id INTEGER NOT NULL REFERENCES dokumente(id),
+ PRIMARY KEY(vorgang_id,dokument_id)
+);
+CREATE TABLE IF NOT EXISTS etv_versandlaeufe(
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ versammlung_id INTEGER NOT NULL REFERENCES versammlungen(id),
+ auftrag_id TEXT NOT NULL,
+ anfrage_hash TEXT NOT NULL,
+ basis_hash TEXT NOT NULL,
+ vorlage_hash TEXT NOT NULL,
+ firma_id INTEGER REFERENCES firmenbriefkoepfe(id),
+ benutzer_id INTEGER REFERENCES benutzer(id),
+ erstellt_am TEXT NOT NULL DEFAULT(datetime('now')),
+ UNIQUE(versammlung_id,auftrag_id)
+);
+CREATE TABLE IF NOT EXISTS etv_einzelbriefe(
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ lauf_id INTEGER NOT NULL REFERENCES etv_versandlaeufe(id),
+ adresse_id INTEGER NOT NULL REFERENCES adressen(id),
+ dokument_id INTEGER NOT NULL UNIQUE REFERENCES dokumente(id),
+ empfaenger TEXT NOT NULL, email TEXT, post INTEGER NOT NULL,
+ versand_hinweis TEXT, datei_hash TEXT NOT NULL,
+ email_status TEXT NOT NULL DEFAULT 'offen',
+ post_status TEXT NOT NULL DEFAULT 'offen',
+ UNIQUE(lauf_id,adresse_id)
+);
+CREATE TABLE IF NOT EXISTS etv_versandverlauf(
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ brief_id INTEGER NOT NULL REFERENCES etv_einzelbriefe(id),
+ kanal TEXT NOT NULL, status TEXT NOT NULL,
+ meldung TEXT NOT NULL, benutzer_id INTEGER REFERENCES benutzer(id),
+ erstellt_am TEXT NOT NULL DEFAULT(datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS firmen_versand(
+ firma_id INTEGER PRIMARY KEY REFERENCES firmenbriefkoepfe(id),
+ absender TEXT NOT NULL DEFAULT '',
+ postweg TEXT NOT NULL DEFAULT 'drucker' CHECK(postweg IN ('drucker','epostbox')),
+ drucker TEXT NOT NULL DEFAULT '',
+ revision INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS m365_verbindungen(
+ firma_id INTEGER PRIMARY KEY REFERENCES firmenbriefkoepfe(id),
+ token TEXT NOT NULL, benutzer_id INTEGER NOT NULL REFERENCES benutzer(id),
+ konto TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS m365_oauth(
+ state_hash TEXT PRIMARY KEY, firma_id INTEGER NOT NULL REFERENCES firmenbriefkoepfe(id),
+ benutzer_id INTEGER NOT NULL REFERENCES benutzer(id), sitzung_hash TEXT NOT NULL,
+ verifier TEXT NOT NULL, absender TEXT NOT NULL, ablauf_am INTEGER NOT NULL
+);

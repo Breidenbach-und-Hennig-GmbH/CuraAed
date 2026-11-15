@@ -8,6 +8,7 @@ const V = require('../lib/validation');
 
 const KANAELE = ['post', 'email', 'beides'];
 const DOKUMENTARTEN = [
+  ['etv_einladung', 'Einladung zur Eigentümerversammlung'],
   ['serienbrief', 'Serienbrief'],
   ['abrechnung', 'Abrechnung'],
   ['externe_heizkosten', 'Externe Heizkosten'],
@@ -29,7 +30,9 @@ async function standardEmail(db, adresseId) {
     'SELECT adresse FROM adress_emails WHERE adresse_id = ? AND ist_email = 1 ORDER BY standard DESC, id LIMIT 1',
     [adresseId]
   );
-  return m ? m.adresse : null;
+  if(m?.adresse)return m.adresse.trim();
+  const a=await db.get('SELECT email FROM adressen WHERE id=?',[adresseId]);
+  return a?.email?.trim()||null;
 }
 
 async function holen(db, adresseId) {

@@ -12,7 +12,7 @@ test('Portooptimierung: Standard, Abweichungen je Dokumentart, Ausweichen auf Po
   const a = await adressen.anlegen(db, { vorname: 'Luka', nachname: 'Vujica' });
   let v = await versand.holen(db, a.id);
   assert.equal(v.standard, 'post', 'neue Adressen bekommen Post');
-  assert.equal(v.arten.length, 13);
+  assert.equal(v.arten.length, 14);
   assert.ok(v.arten.every((x) => x.effektiv === 'post' && x.kanal === null));
 
   v = await versand.speichern(db, a.id, { standard: 'email', abweichungen: { mahnung: 'post', abrechnung: 'beides', umlage: 'email' } });

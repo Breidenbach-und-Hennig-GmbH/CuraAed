@@ -133,6 +133,7 @@ async function archivieren(db, id, archiviert) {
 }
 
 async function loeschen(db, id) {
+  if(await db.get('SELECT id FROM etv_versandlaeufe WHERE versammlung_id=? LIMIT 1',[id]))throw new V.ValidationError('Diese Versammlung hat archivierte Einladungen. Bitte archivieren statt löschen.',409);
   const r = await db.run('DELETE FROM versammlungen WHERE id = ?', [id]);
   if (!r.changes) throw new V.ValidationError('Versammlung nicht gefunden.', 404);
 }

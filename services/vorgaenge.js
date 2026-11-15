@@ -23,7 +23,7 @@ function input(b){
 }
 function baueVorgaenge(db,{hp,archiv}={}){
  const active=new Map(),hwa=require('./handwerkerauftraege');
- async function own(tx,owner,id){const r=await tx.get('SELECT * FROM fach_vorgaenge WHERE id=? AND (benutzer_id=? OR zustaendig_id=?)',[id,owner,owner]);if(!r)fail('Vorgang nicht gefunden.',404);return r;}
+ async function own(tx,owner,id){const r=await tx.get("SELECT * FROM fach_vorgaenge WHERE id=? AND (benutzer_id=? OR zustaendig_id=? OR EXISTS(SELECT 1 FROM etv_einladung_akten ea JOIN benutzer u ON u.id=? WHERE ea.vorgang_id=fach_vorgaenge.id AND u.aktiv=1 AND u.rolle IN ('admin','mitarbeiter')))",[id,owner,owner,owner]);if(!r)fail('Vorgang nicht gefunden.',404);return r;}
  async function user(tx,id){if(id&&!await tx.get("SELECT id FROM benutzer WHERE id=? AND aktiv=1 AND rolle IN ('admin','mitarbeiter')",[id]))fail('Zuständiger Mitarbeiter nicht verfügbar.');}
  async function log(tx,id,owner,aktion,vorher,nachher){await tx.run('INSERT INTO fach_verlauf(vorgang_id,benutzer_id,aktion,vorher,nachher) VALUES(?,?,?,?,?)',[id,owner,aktion,vorher?json(vorher):null,json(nachher)]);}
  async function references(tx,id,refs){
@@ -88,7 +88,7 @@ function baueVorgaenge(db,{hp,archiv}={}){
  LEFT JOIN hp_einheit_zuordnung em ON em.verbindung_id=s.direkt_id AND b.typ='einheit' AND em.hp_objnr=b.objekt_nummer AND em.hp_whgnr=b.hp_nummer`;
  async function list(owner,q={}){
   const page=q.seite===undefined?1:Number(q.seite);if(!Number.isSafeInteger(page)||page<1||page>1000000)fail('Ungültige Seitenauswahl.');
-  const args=[owner,owner];let where='(v.benutzer_id=? OR v.zustaendig_id=?)';
+  const args=[owner,owner,owner];let where="(v.benutzer_id=? OR v.zustaendig_id=? OR EXISTS(SELECT 1 FROM etv_einladung_akten ea JOIN benutzer u ON u.id=? WHERE ea.vorgang_id=v.id AND u.aktiv=1 AND u.rolle IN ('admin','mitarbeiter')))";
   if(q.art){if(!ARTEN.includes(q.art))fail('Unbekannte Vorgangsart.');where+=' AND v.art=?';args.push(q.art);}
   if(q.status){if(q.status==='aktiv')where+=" AND v.status NOT IN ('erledigt','storniert')";else if(STATUS.includes(q.status)){where+=' AND v.status=?';args.push(q.status);}else fail('Unbekannter Status.');}
   if(q.suche){if(typeof q.suche!=='string'||q.suche.length>200)fail('Ungültige Suche.');where+=' AND (v.titel LIKE ? OR v.text LIKE ? OR v.hp_nummer LIKE ?)';args.push(...Array(3).fill('%'+q.suche+'%'));}
@@ -123,7 +123,8 @@ function baueVorgaenge(db,{hp,archiv}={}){
   const rechnungen=r.art==='handwerker'?await hwa.invoices(db,owner,id):undefined;
   const sb=r.zustaendig_id?await db.get('SELECT name,kuerzel FROM benutzer WHERE id=?',[r.zustaendig_id]):null;
   const ticket_quellen=r.art==='handwerker'?await db.all("SELECT t.id FROM ticket_handwerkerauftraege l JOIN tickets t ON t.id=l.ticket_id WHERE l.vorgang_id=? AND (t.erstellt_von=? OR t.zustaendig_id=? OR EXISTS(SELECT 1 FROM benutzer WHERE id=? AND rolle='admin'))",[r.id,owner,owner,owner]):[];
-  return {...r,auftrag,rechnungen,ticket_quellen:ticket_quellen.map(t=>({...t,nummer:require('./tickets').nummer(t.id)})),auftrag_sb_name:sb?[sb.kuerzel,sb.name].filter(Boolean).join(' · '):null,basis:undefined,remote_hash:undefined,remote_snapshot:r.remote_snapshot?JSON.parse(r.remote_snapshot):null,incoming:r.incoming?JSON.parse(r.incoming):null,bezuege:refs,verlauf:history,subdomain:s?.subdomain||null};
+  const archiv_dokumente=await db.all('SELECT d.id,d.titel,d.original_name FROM akte_dokumente a JOIN dokumente d ON d.id=a.dokument_id WHERE a.vorgang_id=? ORDER BY d.id DESC',[id]);
+  return {...r,archiv_dokumente,auftrag,rechnungen,ticket_quellen:ticket_quellen.map(t=>({...t,nummer:require('./tickets').nummer(t.id)})),auftrag_sb_name:sb?[sb.kuerzel,sb.name].filter(Boolean).join(' · '):null,basis:undefined,remote_hash:undefined,remote_snapshot:r.remote_snapshot?JSON.parse(r.remote_snapshot):null,incoming:r.incoming?JSON.parse(r.incoming):null,bezuege:refs,verlauf:history,subdomain:s?.subdomain||null};
  }
  async function resolve(owner,id,b){
   if(!['lokal','hp'].includes(b.fassung))fail('Bitte eine Fassung auswählen.');

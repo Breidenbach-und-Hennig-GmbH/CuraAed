@@ -122,6 +122,10 @@ function baueApi(db, uploadDir, options = {}) {
   // Alle folgenden Routen erfordern eine Anmeldung.
   router.use(auth.erfordereLogin);
   router.use('/mitarbeiterprofile',require('./mitarbeiterprofile')(db,options.hausperfekt?.publicUrl));
+  const m365=require('../services/m365').baue(db,{...options.m365,publicUrl:options.m365?.publicUrl||options.hausperfekt?.publicUrl});
+  router.use('/m365',require('./m365')(db,m365));
+  const einladungVersand=require('../services/etv-versand').baue(db,uploadDir,{m365});
+  router.use('/versammlungen/:vid/einladungen',require('./etv-versand')(einladungVersand,m365.origin));
   router.get('/cockpit',auth.erfordereSchreibrecht,h(async(req,res)=>res.set('Cache-Control','no-store').json(await require('../services/cockpit').stand(db,req.benutzer))));
   router.get('/cockpit/einstellungen',h(async(req,res)=>res.set('Cache-Control','no-store').json(await require('../services/cockpit').einstellungen(db,req.benutzer))));
   router.put('/cockpit/einstellungen',h(async(req,res)=>{let origin;try{origin=new URL(options.hausperfekt?.publicUrl||process.env.APP_PUBLIC_URL||process.env.RENDER_EXTERNAL_URL).origin;}catch{}if(!origin||req.get('origin')!==origin||!req.is('application/json'))throw new ValidationError('Bitte die Firmenauswahl aus den Einstellungen öffnen.',403);res.set('Cache-Control','no-store').json(await require('../services/cockpit').speichern(db,req.benutzer,req.body||{}));}));
