@@ -1048,7 +1048,7 @@ function baueShell() {
   ansichtAnwenden();
   navAktualisieren();
   glockeAktualisieren();
-  if(typeof mitarbeiterSymbole==='function')mitarbeiterSymbole();
+  if(typeof mitarbeiterStarten==='function')mitarbeiterStarten();
 }
 
 function status(text) {

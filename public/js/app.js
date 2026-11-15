@@ -92,6 +92,7 @@ function renderLogin() {
 }
 
 async function logout() {
+  if(typeof mitarbeiterStoppen==='function')mitarbeiterStoppen();
   try { await API.post('/auth/logout', {}); } catch (e) { /* trotzdem abmelden */ }
   S.benutzer = null;
   S.kontext = {};
