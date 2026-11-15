@@ -21,3 +21,8 @@ test('Unvollständige Versammlung und ungültige Text- oder Datumsangaben werden
  const db=await fixture(t);for(const [column,value] of [['uhrzeit',null],['ort',null]]){await db.run('UPDATE versammlungen SET '+column+'=? WHERE id=1',[value]);const s=await E.stand(db,1);await assert.rejects(E.erstellen(db,1,body(s)),/vollständig/);await db.run('UPDATE versammlungen SET '+column+'=? WHERE id=1',[column==='ort'?'Saal':'17:30']);}
  const s=await E.stand(db,1);for(const date of ['2026-02-31','2026-13-01','<script>'])assert.throws(()=>E.daten({...s.daten,datum:date}),/Datum|datum/);assert.throws(()=>E.daten({...s.daten,absender:''}),/Absender/);await db.run('DELETE FROM versammlung_tops');await assert.rejects(E.erstellen(db,1,body(await E.stand(db,1))),/vollständig/);await assert.rejects(E.stand(db,999),e=>e.status===404);
 });
+
+test('Hybride Testeinladung kennzeichnet alle Seiten und bietet einen anklickbaren Teams-Beitritt ohne lange URL im Brieftext',async t=>{
+ const db=await fixture(t),s=await E.stand(db,1);s.versammlung.name='TEST · Teststraße';s.versammlung.art='hybrid';s.versammlung.teams_status='bereit';s.versammlung.teams_url='https://teams.microsoft.com/l/meetup-join/test';s.briefempfaenger=s.empfaenger;s.daten.top_weisungen=false;
+ const pdf=await read(await require('../lib/einladung-pdf').erstellen(s));t.after(()=>pdf.cleanup());for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i),text=(await p.getTextContent()).items.map(x=>x.str).join(' ');assert.match(text,/TESTVERSAMMLUNG/);assert.ok(!text.includes(s.versammlung.teams_url));}const links=await(await pdf.getPage(1)).getAnnotations();assert.ok(links.some(a=>a.url===s.versammlung.teams_url));
+});
