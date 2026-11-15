@@ -137,8 +137,50 @@ const UI = (() => {
     });
   }
 
+  // Suchbare Auswahl: der sichtbare Name und die gespeicherte ID bleiben getrennt.
+  function suchFeld(spec) {
+    const id='f_'+spec.name,field=el('input',{type:'hidden',name:spec.name,id,value:spec.value||''});
+    const text=el('input',{id:id+'_suche',type:'text',role:'combobox','aria-autocomplete':'list','aria-expanded':'false','aria-controls':id+'_treffer',autocomplete:'off',placeholder:spec.placeholder||'Name oder Nummer tippen …',value:spec.auswahlText||''});
+    const list=el('div',{id:id+'_treffer',role:'listbox',class:'cu-such-treffer',hidden:true});
+    const feedback=el('div',{class:'small muted cu-such-status',role:'status','aria-live':'polite'});
+    const wrap=el('div',{class:'field cu-suchfeld'},[el('label',{for:text.id,text:spec.label+(spec.required?' *':'')}),text,field,list,feedback]);
+    let rows=[],active=-1,version=0,timer,chosen=spec.auswahlText||'';
+    if(spec.required)text.required=true;
+    const valid=()=>text.setCustomValidity(spec.required&&!field.value?'Bitte einen Treffer aus der Liste auswählen.':'');
+    const close=()=>{list.hidden=true;text.setAttribute('aria-expanded','false');text.removeAttribute('aria-activedescendant');active=-1;};
+    const select=row=>{field.value=String(row.value);chosen=row.label;text.value=chosen;version++;clearTimeout(timer);close();feedback.textContent='Ausgewählt: '+chosen;valid();field.dispatchEvent(new Event('change',{bubbles:true}));};
+    const highlight=i=>{active=i;[...list.children].forEach((item,n)=>item.setAttribute('aria-selected',String(n===i)));if(i>=0){text.setAttribute('aria-activedescendant',list.children[i].id);list.children[i].scrollIntoView?.({block:'nearest'});}};
+    const search=async()=>{
+      const query=text.value.trim(),v=++version;field.value='';valid();close();rows=[];
+      if(!query){feedback.textContent='Name oder Adressnummer eingeben.';return;}
+      feedback.textContent='Suche läuft …';
+      try{
+        const found=await spec.suchen(query);
+        if(v!==version||!wrap.isConnected)return;
+        rows=found.slice(0,25);active=-1;
+        list.replaceChildren(...rows.map((r,i)=>el('button',{type:'button',role:'option',tabindex:'-1',id:id+'_treffer_'+i,'aria-selected':'false',text:r.label,onclick:()=>select(r)})));
+        list.hidden=!rows.length;text.setAttribute('aria-expanded',String(!!rows.length));
+        feedback.textContent=found.length>25?'Mehr als 25 Treffer – bitte den Namen genauer eingeben.':rows.length?rows.length+' Treffer. Mit Pfeiltasten und Enter auswählen.':'Keine passenden Personen oder Firmen gefunden.';
+      }catch(e){if(v!==version||!wrap.isConnected)return;close();feedback.textContent='Suche fehlgeschlagen. Bitte erneut tippen.';}
+    };
+    text.addEventListener('input',ev=>{if(ev.isComposing)return;field.value='';chosen='';valid();version++;clearTimeout(timer);close();rows=[];timer=setTimeout(search,180);});
+    text.addEventListener('keydown',ev=>{
+      if(ev.key==='Escape'&&!list.hidden){ev.preventDefault();ev.stopPropagation();version++;close();return;}
+      if(ev.key==='ArrowDown'||ev.key==='ArrowUp'){
+        if(!rows.length)return;ev.preventDefault();list.hidden=false;text.setAttribute('aria-expanded','true');highlight(ev.key==='ArrowDown'?Math.min(rows.length-1,active+1):active<0?rows.length-1:Math.max(0,active-1));return;
+      }
+      if(ev.key==='Enter'&&!field.value){ev.preventDefault();ev.stopPropagation();if(active>=0)select(rows[active]);else if(rows.length===1)select(rows[0]);return;}
+      if(ev.key==='Tab'&&!field.value){if(active>=0)select(rows[active]);else if(rows.length===1)select(rows[0]);close();}
+    });
+    list.addEventListener('mousedown',ev=>ev.preventDefault());
+    text.addEventListener('blur',()=>{version++;clearTimeout(timer);close();});
+    text.addEventListener('focus',()=>{if(!field.value&&text.value.trim())search();});
+    valid();return{wrap,input:field};
+  }
+
   // Formularfeld-Baustein. spec: {name,label,type,options,value,required,span}
   function feld(spec) {
+    if(spec.type==='suche')return suchFeld(spec);
     const id = 'f_' + spec.name;
     let input;
     if (spec.type === 'select') {

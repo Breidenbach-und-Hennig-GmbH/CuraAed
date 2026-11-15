@@ -26,10 +26,10 @@ async function liste(db, opts = {}) {
   const suche = V.str(opts.suche);
   if (suche) {
     where.push(
-      '(nummer LIKE ? OR vorname LIKE ? OR nachname LIKE ? OR firmenname LIKE ? OR zusatz LIKE ? OR email LIKE ? OR ort LIKE ? OR telefon LIKE ? OR mobil LIKE ?)'
+      "(nummer LIKE ? OR vorname LIKE ? OR nachname LIKE ? OR firmenname LIKE ? OR zusatz LIKE ? OR email LIKE ? OR ort LIKE ? OR telefon LIKE ? OR mobil LIKE ? OR TRIM(COALESCE(vorname,'') || ' ' || COALESCE(nachname,'')) LIKE ? OR TRIM(COALESCE(nachname,'') || ' ' || COALESCE(vorname,'')) LIKE ?)"
     );
     const like = `%${suche}%`;
-    params.push(like, like, like, like, like, like, like, like, like);
+    params.push(like, like, like, like, like, like, like, like, like, like, like);
   }
   const rows = await db.all(
     `SELECT * FROM adressen WHERE ${where.join(' AND ')}
@@ -155,4 +155,3 @@ async function setzeArchiviert(db, id, archiviert) {
 }
 
 module.exports = { anzeigename, liste, holen, anlegen, aktualisieren, setzeArchiviert, datenschutzSetzen };
-

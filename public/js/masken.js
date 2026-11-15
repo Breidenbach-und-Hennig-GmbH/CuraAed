@@ -607,7 +607,11 @@ async function einheitMaske(id, params) {
   const inhalt = el('div');
   if (tab === 'allgemein') {
     // Wie HausPerfekt „Wohnung anzeigen": Eigentümer links, Mieter rechts – mit PKto und Sollwerten
-    const aktuelle = pktos.filter((p) => p.aktiv && p.mit_pkto);
+    // Die Personenfunktion bestimmt Eigentümer/Mieter, unabhängig von einem Personenkonto.
+    const aktuelle = zuord.filter(z=>z.aktiv&&!z.inaktiv&&['eigentuemer','mieter'].includes(z.rolle)).map(z=>{
+      const konto=pktos.find(p=>String(p.zuordnung_id)===String(z.id));
+      return {...konto,...z,zuordnung_id:z.id,pkto_id:konto?.pkto_id,pkto_nummer:konto?.pkto_nummer,soll:konto?.soll};
+    });
     const kasten = (rolle, titel) => {
       const liste = aktuelle.filter((p) => p.rolle === rolle);
       return el('section', { class: 'cu-karte cu-pfkt-kasten', 'aria-label': titel }, [
