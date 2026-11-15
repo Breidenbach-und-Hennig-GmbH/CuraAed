@@ -1,6 +1,6 @@
 'use strict';
 async function m365Maske(){
- const lauf=S.lauf,root=el('section',{class:'cu-karte'},[el('h1',{text:'Firmenpostfach und Postversand'}),el('p',{text:'Einladungen werden einzeln archiviert. E-Mails werden über das gemeinsame Firmenpostfach übergeben; der Postweg gilt je Verwaltung.'})]);if(!zeigeAufDesktop(lauf,root))return;S.kontext={typ:'m365'};
+ const lauf=S.lauf,root=el('section',{class:'cu-karte'},[el('h1',{text:'Firmenpostfach und Postversand'}),istAdmin()?el('a',{href:'#/benutzer',text:'Microsoft-Einrichtung in der Benutzerverwaltung'}):null,el('p',{text:'Einladungen werden einzeln archiviert. E-Mails werden über das gemeinsame Firmenpostfach übergeben; der Postweg gilt je Verwaltung.'})]);if(!zeigeAufDesktop(lauf,root))return;S.kontext={typ:'m365'};
  try{
   const firms=await API.get('/m365/firmen');if(lauf!==S.lauf)return;
   if(!firms.length)root.append(el('p',{text:'Bitte zuerst eine Verwaltung in den Stammdaten anlegen.'}),el('a',{href:'#/verwaltungen',text:'Verwaltungsstammdaten öffnen'}));
@@ -21,4 +21,27 @@ async function m365Maske(){
    u.form.addEventListener('submit',e=>e.preventDefault());for(const input of Object.values(u.inputs))input.disabled=!istAdmin();
   }
  }catch(e){if(lauf===S.lauf)root.append(el('p',{role:'alert',text:e.message}));}
+}
+
+async function m365KonfigurationsPanel(){
+ const c=await API.get('/m365/konfiguration');
+ const u=formular([{grid:2,felder:[
+  {name:'mandant_id',label:'Microsoft-Mandanten-ID',value:c.mandant_id,required:true},
+  {name:'client_id',label:'Anwendungs-ID (Client-ID)',value:c.client_id,required:true}
+ ]},{felder:[{name:'secret',label:c.secret_vorhanden?'Geheimer Schlüssel · gespeichert, leer lassen zum Beibehalten':'Geheimer Schlüssel (Wert)',type:'password'}]}]);
+ u.inputs.secret.autocomplete='new-password';
+ const status=el('p',{role:'status',class:'small muted',text:c.secret_vorhanden?'Die Microsoft-Einrichtung ist verschlüsselt in CuraAed gespeichert.':'Die Microsoft-Einrichtung gilt für CuraAed; das Firmenpostfach wird anschließend verbunden.'});
+ const save=el('button',{type:'submit',class:'btn-primary',text:'Microsoft-Einrichtung speichern'});
+ u.form.append(el('p',{class:'small muted',text:'Rückleitungsadresse für Microsoft: '+c.redirect_uri}),el('div',{class:'cu-aktionen'},[save,el('a',{href:'#/m365',class:'btn',text:'Firmenpostfach verbinden / verwalten'})]),status);
+ u.form.addEventListener('submit',async e=>{
+  e.preventDefault();if(!u.form.reportValidity())return;
+  const b={...u.werte(),revision:c.revision};
+  const changed=c.revision>0&&(b.client_id.toLowerCase()!==c.client_id.toLowerCase()||b.mandant_id.toLowerCase()!==c.mandant_id.toLowerCase());
+  if(changed){if(!await bestaetigen('Andere Microsoft-App verwenden? Bestehende Postfachverbindungen werden getrennt und müssen neu verbunden werden. Dafür muss auch ein neuer geheimer Schlüssel eingegeben werden.')){u.inputs.secret.value='';b.secret='';return;}b.verbindungen_trennen=true;}
+  save.disabled=true;
+  try{const next=await API.put('/m365/konfiguration',b);Object.assign(c,next);u.inputs.secret.value='';status.textContent='Microsoft-Einrichtung verschlüsselt gespeichert.';toast('Microsoft-Einrichtung gespeichert','success');}
+  catch(error){status.textContent=error.message;}
+  finally{b.secret='';u.inputs.secret.value='';save.disabled=false;}
+ });
+ return abschnitt('Microsoft 365',u.form);
 }
