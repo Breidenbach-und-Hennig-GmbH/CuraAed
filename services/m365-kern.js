@@ -19,9 +19,9 @@ function baue(db,options={}){
  async function settings(id){
   const f=await db.get('SELECT id,name FROM firmenbriefkoepfe WHERE id=?',[id]);if(!f)fail('Verwaltung nicht gefunden.',404);
   const row=await db.get('SELECT * FROM firmen_versand WHERE firma_id=?',[id]),conn=await db.get('SELECT konto FROM m365_verbindungen WHERE firma_id=?',[id]);
-  let teamsReady=false;if(conn){const full=await db.get('SELECT token FROM m365_verbindungen WHERE firma_id=?',[id]);try{teamsReady=String(open(id,full.token).scope||'').split(' ').includes('OnlineMeetings.ReadWrite');}catch{}}
+  let teamsReady=false,calendarReady=false;if(conn){const full=await db.get('SELECT token FROM m365_verbindungen WHERE firma_id=?',[id]);try{const scopes=String(open(id,full.token).scope||'').split(' ');teamsReady=scopes.includes('OnlineMeetings.ReadWrite');calendarReady=scopes.includes('Calendars.ReadWrite.Shared');}catch{}}
   const breidenbach=/breidenbach/i.test(f.name);
-  return{firma_id:f.id,name:f.name,absender:row?.absender||(breidenbach?'post@immo-hb.de':''),postweg:row?.postweg||(breidenbach?'epostbox':'drucker'),drucker:row?.drucker||'',revision:row?.revision||0,m365_bereit:ready,teams_bereit:teamsReady,m365_verbunden:!!conn,m365_konto:conn?.konto||null,epostbox_verbunden:false,hinweis:ready?null:'Microsoft 365 bitte in der Benutzerverwaltung einrichten.'};
+  return{firma_id:f.id,name:f.name,absender:row?.absender||(breidenbach?'post@immo-hb.de':''),postweg:row?.postweg||(breidenbach?'epostbox':'drucker'),drucker:row?.drucker||'',revision:row?.revision||0,m365_bereit:ready,teams_bereit:teamsReady,kalender_bereit:calendarReady,m365_verbunden:!!conn,m365_konto:conn?.konto||null,epostbox_verbunden:false,hinweis:ready?null:'Microsoft 365 bitte in der Benutzerverwaltung einrichten.'};
  }
  async function saveSettings(id,b){
   if(!mailbox(b.absender)||!['drucker','epostbox'].includes(b.postweg)||typeof b.drucker!=='string'||b.drucker.length>200||!Number.isSafeInteger(b.revision))fail('Bitte Absenderpostfach und Postweg prüfen.');
@@ -41,8 +41,11 @@ function baue(db,options={}){
   await db.run('DELETE FROM m365_oauth WHERE ablauf_am<?',[Date.now()]);
   const state=random(),verifier=random();
   await db.run('INSERT INTO m365_oauth(state_hash,firma_id,benutzer_id,sitzung_hash,verifier,absender,ablauf_am) VALUES(?,?,?,?,?,?,?)',[sha(state),id,user.id,sha(session),verifier,s.absender,Date.now()+600000]);
-  if(options.teams===true)await db.run('INSERT INTO m365_oauth_teams(state_hash) VALUES(?)',[sha(state)]);
-  const q=new URLSearchParams({client_id:client,response_type:'code',redirect_uri:callback,response_mode:'query',scope:SCOPES+(options.teams===true?' OnlineMeetings.ReadWrite':''),state,code_challenge:crypto.createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256'});
+  const old=await db.get('SELECT token FROM m365_verbindungen WHERE firma_id=?',[id]);let prior=[];if(old)try{prior=String(open(id,old.token).scope||'').split(' ');}catch{}
+  const teams=options.teams===true||prior.includes('OnlineMeetings.ReadWrite'),calendar=options.kalender===true||prior.includes('Calendars.ReadWrite.Shared');
+  if(teams)await db.run('INSERT INTO m365_oauth_teams(state_hash) VALUES(?)',[sha(state)]);
+  if(calendar)await db.run('INSERT INTO m365_oauth_kalender(state_hash) VALUES(?)',[sha(state)]);
+  const q=new URLSearchParams({client_id:client,response_type:'code',redirect_uri:callback,response_mode:'query',scope:SCOPES+(teams?' OnlineMeetings.ReadWrite':'')+(calendar?' Calendars.ReadWrite.Shared':''),state,code_challenge:crypto.createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256'});
   return{url:'https://login.microsoftonline.com/'+tenant+'/oauth2/v2.0/authorize?'+q};
  }
  async function token(parameters){
@@ -56,10 +59,11 @@ function baue(db,options={}){
   if(!ready||typeof state!=='string'||typeof code!=='string'||code.length>10000)fail('Ungültige Microsoft-365-Anmeldung.');
   const pending=await db.get('SELECT firma_id FROM m365_oauth WHERE state_hash=?',[sha(state)]);if(!pending)fail('Microsoft-365-Anmeldung abgelaufen.',403);
   return exclusive(pending.firma_id,async()=>{
-  const row=await db.transaktion(async tx=>{const r=await tx.get('SELECT * FROM m365_oauth WHERE state_hash=?',[sha(state)]);if(!r||r.benutzer_id!==user.id||r.sitzung_hash!==sha(session)||r.ablauf_am<Date.now())fail('Microsoft-365-Anmeldung abgelaufen oder gehört zu einer anderen Sitzung.',403);r.teams=!!await tx.get('SELECT state_hash FROM m365_oauth_teams WHERE state_hash=?',[sha(state)]);await tx.run('DELETE FROM m365_oauth WHERE state_hash=?',[sha(state)]);return r;});
-  const data=await token({grant_type:'authorization_code',code,redirect_uri:callback,code_verifier:row.verifier,scope:SCOPES+(row.teams?' OnlineMeetings.ReadWrite':'')});
+  const row=await db.transaktion(async tx=>{const r=await tx.get('SELECT * FROM m365_oauth WHERE state_hash=?',[sha(state)]);if(!r||r.benutzer_id!==user.id||r.sitzung_hash!==sha(session)||r.ablauf_am<Date.now())fail('Microsoft-365-Anmeldung abgelaufen oder gehört zu einer anderen Sitzung.',403);r.teams=!!await tx.get('SELECT state_hash FROM m365_oauth_teams WHERE state_hash=?',[sha(state)]);r.kalender=!!await tx.get('SELECT state_hash FROM m365_oauth_kalender WHERE state_hash=?',[sha(state)]);await tx.run('DELETE FROM m365_oauth WHERE state_hash=?',[sha(state)]);return r;});
+  const data=await token({grant_type:'authorization_code',code,redirect_uri:callback,code_verifier:row.verifier,scope:SCOPES+(row.teams?' OnlineMeetings.ReadWrite':'')+(row.kalender?' Calendars.ReadWrite.Shared':'')});
   if(!data.refresh_token||!String(data.scope||'').split(' ').includes('Mail.Send.Shared'))fail('Die Freigabe für das gemeinsame Postfach fehlt.',403);
   if(row.teams&&!String(data.scope||'').split(' ').includes('OnlineMeetings.ReadWrite'))fail('Die Teams-Freigabe fehlt. Die bisherige Postfachverbindung bleibt erhalten.',403);
+  if(row.kalender&&!String(data.scope||'').split(' ').includes('Calendars.ReadWrite.Shared'))fail('Die Kalenderfreigabe fehlt. Die bisherige Verbindung bleibt erhalten.',403);
   const me=await call('https://graph.microsoft.com/v1.0/me?$select=id,mail,userPrincipalName',{headers:{Authorization:'Bearer '+data.access_token}});
   if(!me.ok)fail('Microsoft-365-Konto konnte nicht geprüft werden.',502);const profile=await me.json(),account=profile.mail||profile.userPrincipalName;
   if(!mailbox(account))fail('Microsoft-365-Konto nicht eindeutig.',502);data.organizer_id=profile.id||account;
@@ -75,10 +79,10 @@ function baue(db,options={}){
    let data=open(id,row.token);
    if(!data.expires_at||data.expires_at<Date.now()+120000){
     if(!data.refresh_token)fail('Microsoft 365 bitte neu verbinden.',409);
-    const fresh=await token({grant_type:'refresh_token',refresh_token:data.refresh_token,scope:SCOPES+(String(data.scope||'').split(' ').includes('OnlineMeetings.ReadWrite')?' OnlineMeetings.ReadWrite':'')});data={...data,...fresh,refresh_token:fresh.refresh_token||data.refresh_token};
+    const fresh=await token({grant_type:'refresh_token',refresh_token:data.refresh_token,scope:SCOPES+(String(data.scope||'').split(' ').includes('OnlineMeetings.ReadWrite')?' OnlineMeetings.ReadWrite':'')+(String(data.scope||'').split(' ').includes('Calendars.ReadWrite.Shared')?' Calendars.ReadWrite.Shared':'')});data={...data,...fresh,refresh_token:fresh.refresh_token||data.refresh_token};
     const updated=await db.run('UPDATE m365_verbindungen SET token=?,revision=revision+1 WHERE firma_id=? AND revision=?',[seal(id,data),id,row.revision]);if(!updated.changes)fail('Microsoft-365-Verbindung inzwischen geändert.',409);row.revision++;
    }
-   return{firma_id:id,revision:row.revision,absender:s.absender,accessToken:data.access_token,teams: String(data.scope||'').split(' ').includes('OnlineMeetings.ReadWrite'),identitaet:configHash+'|'+(data.organizer_id||row.konto)};
+   return{firma_id:id,revision:row.revision,absender:s.absender,accessToken:data.access_token,kalender:String(data.scope||'').split(' ').includes('Calendars.ReadWrite.Shared'),teams: String(data.scope||'').split(' ').includes('OnlineMeetings.ReadWrite'),identitaet:configHash+'|'+(data.organizer_id||row.konto)};
   });
  }
  async function senden(prepared,b){
@@ -101,7 +105,12 @@ function baue(db,options={}){
   return{meeting_id:data.id,join_url:u.href,organizer:p.identitaet};
  }
 
+ async function kalenderAnfrage(id,{suffix,method='GET',body,etag}={}){
+  if(typeof suffix!=='string'||!/^\/(?:calendarView(?:\?[^\r\n]*)?|calendar\/events(?:\/[^/?#]+)?)$/.test(suffix)||!['GET','POST','PATCH'].includes(method))fail('Ungültige Kalenderanfrage.');
+  const p=await vorbereiten(id);if(!p.kalender)fail('Microsoft 365 bitte zusätzlich für den Firmenkalender freigeben.',409);
+  return call('https://graph.microsoft.com/v1.0/users/'+encodeURIComponent(p.absender)+suffix,{method,headers:{Authorization:'Bearer '+p.accessToken,Prefer:'outlook.timezone="UTC", outlook.body-content-type="text"',...(etag?{'If-Match':etag}:{})},...(body?{headers:{Authorization:'Bearer '+p.accessToken,Prefer:'outlook.timezone="UTC", outlook.body-content-type="text"','Content-Type':'application/json',...(etag?{'If-Match':etag}:{})},body:JSON.stringify(body)}:{})});
+ }
  async function trennen(id){return exclusive(id,async()=>{await db.run('DELETE FROM m365_verbindungen WHERE firma_id=?',[id]);await db.run('DELETE FROM m365_oauth WHERE firma_id=?',[id]);return{ok:true};});}
- return{origin,ready,settings,saveSettings,verbinden,callbackFinish,vorbereiten,senden,trennen,teamsBesprechung};
+ return{origin,ready,settings,saveSettings,verbinden,callbackFinish,vorbereiten,senden,trennen,teamsBesprechung,kalenderAnfrage};
 }
 module.exports={baue,mailbox};

@@ -2,7 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),{JSDOM}=require('jsdom');
 const tick=()=>new Promise(r=>setImmediate(r));
 function setup(t,api){const dom=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example/'});t.after(()=>dom.window.close());const w=dom.window;w.API={...api,qs:o=>'?'+new URLSearchParams(o)};
- for(const file of ['ui','kern','shell','vorgaenge'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());
+ for(const file of ['ui','kern','shell','kalender','vorgaenge'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());
  vm.runInContext('S.lauf=1;S.benutzer={id:1,rolle:"admin"};',dom.getInternalVMContext());w.glockeAktualisieren=()=>{};return w;}
 test('Arbeitsbereiche: Formular speichert ausgewählte Art, Fälligkeit und Kontext lokal',async t=>{
  let saved;const w=setup(t,{get:async()=>[{id:1,name:'Test'}],post:async(url,data)=>{assert.equal(url,'/vorgaenge');saved=data;return{id:9};}});
@@ -19,6 +19,6 @@ test('Arbeitsbereiche: lokaler Datensatz öffnet Bearbeitung und zeigt Quelltext
  [...w.document.querySelectorAll('button')].find(b=>b.textContent==='Bearbeiten').click();await tick();assert.equal(w.document.getElementById('f_art').disabled,true);
 });
 test('Kalender: Monat, Fälligkeiten und Verknüpfung zum gespeicherten Vorgang',async t=>{
- const w=setup(t,{get:async url=>{assert.match(url,/monat=2026-11/);return {monat:'2026-11',eintraege:[{vorgang_id:9,faellig_am:'2026-11-12',uhrzeit:'10:00',titel:'Rückruf'}],mehr:false};}});
+ const w=setup(t,{get:async url=>{if(url==='/kalender/m365/quellen')return [];assert.match(url,/monat=2026-11/);return {monat:'2026-11',eintraege:[{vorgang_id:9,faellig_am:'2026-11-12',uhrzeit:'10:00',titel:'Rückruf'}],mehr:false};}});
  await w.vorgangKalender(new w.URLSearchParams('monat=2026-11'));await tick();assert.match(w.document.body.textContent,/10:00 Rückruf/);assert.equal(w.document.querySelector('a[href="#/vorgaenge/9"]').textContent,'10:00 Rückruf');
 });

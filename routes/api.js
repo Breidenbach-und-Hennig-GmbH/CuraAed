@@ -124,6 +124,7 @@ function baueApi(db, uploadDir, options = {}) {
   router.use('/mitarbeiterprofile',require('./mitarbeiterprofile')(db,options.hausperfekt?.publicUrl));
   const m365=require('../services/m365').baue(db,{...options.m365,publicUrl:options.m365?.publicUrl||options.hausperfekt?.publicUrl});
   router.use('/m365',require('./m365')(db,m365));
+  router.use('/kalender/m365',require('./m365-kalender')(m365.kalender,m365.origin));
   const einladungVersand=require('../services/etv-versand').baue(db,uploadDir,{m365});
   router.use('/versammlungen/:vid/einladungen',require('./etv-versand')(einladungVersand,m365.origin));
   router.get('/cockpit',auth.erfordereSchreibrecht,h(async(req,res)=>res.set('Cache-Control','no-store').json(await require('../services/cockpit').stand(db,req.benutzer))));
