@@ -1,0 +1,65 @@
+/* Kompakte Büroansicht: native Größen statt Browser-Zoom. */
+.cu-suchfeld{position:relative;min-width:0}
+.cu-such-treffer{position:absolute;left:0;right:0;top:calc(100% - 18px);z-index:20;max-height:230px;overflow:auto;background:white;border:1px solid var(--cu-rand-2);border-radius:5px;box-shadow:0 6px 18px #24113922;padding:3px}
+.cu-such-treffer[hidden]{display:none}
+.cu-such-treffer button{display:block;width:100%;text-align:left;white-space:normal;border:0;border-radius:3px;padding:5px 8px;min-height:30px}
+.cu-such-treffer [aria-selected=true]{background:var(--cu-violett-hell);color:var(--cu-violett)}
+.cu-such-status{min-height:17px;font-size:11px;line-height:1.4;margin-top:2px}
+@media(min-width:761px) and (pointer:fine){
+ body{font-size:13px}
+ button,.btn{min-height:30px;padding:4px 10px;gap:5px;border-radius:5px}
+ label{font-size:12px;margin-bottom:2px}
+ input,select,textarea{min-height:30px;padding:4px 7px;border-radius:4px;font-size:13px}
+ textarea{min-height:58px}
+ .field{margin-bottom:7px}.grid-2,.grid-3{column-gap:10px}
+ .cu-icon{width:17px;height:17px}
+ .cu-nav{min-height:40px;padding:0 8px}.cu-nav-logo{width:38px}.cu-nav-logo .cu-icon{width:25px;height:25px}
+ .cu-nav-knopf{min-height:34px;padding:5px 9px;font-size:13px}
+ .cu-kopf{padding:8px 18px;gap:10px}.cu-marke{font-size:26px}
+ .cu-kopf-suche input,.cu-suche input{min-height:32px}
+ .cu-rund{width:30px;min-height:30px}.cu-benutzer{min-height:32px;font-size:13px}
+ .hp-desktop{padding:12px 18px 18px}
+ .cu-seitenkopf{margin-bottom:10px}.cu-seitenkopf-oben{min-height:30px;gap:8px}
+ .cu-brot{font-size:12px;gap:7px}.cu-titel{flex-basis:260px}
+ .cu-h1-zeile{gap:10px}.cu-h1-zeile h1{font-size:27px}.cu-unterzeile{font-size:13px}
+ .cu-chip{font-size:12px;padding:4px 9px;gap:5px}.cu-badge{font-size:12px;padding:2px 9px}
+ .cu-knopf{min-height:32px;padding:5px 11px;font-size:13px}.cu-aktionen{gap:6px}
+ .cu-aktionen .btn-primary{padding:5px 14px}
+ .hp-raster-layout{grid-template-columns:minmax(0,1fr) 220px;gap:10px 12px}
+ .hp-oben{gap:9px}
+ .cu-karte,.hp-panel{padding:10px 12px;border-radius:7px}
+ .cu-karten-titel{font-size:15px;margin-bottom:8px;gap:7px}
+ .cu-karten-titel .cu-icon{width:25px;height:25px;padding:4px;border-radius:5px}
+ .cu-karten-kopf{margin-bottom:8px;gap:7px}
+ .cu-spalten{column-gap:16px}.cu-spalte+.cu-spalte{padding-left:16px}
+ .cu-gruppe{padding:3px 0 6px}.cu-gruppe+.cu-gruppe{padding-top:8px}
+ .cu-kv{font-size:13px;grid-template-columns:150px minmax(0,1fr);gap:7px;padding:2px 0}
+ .cu-streifen .cu-kv{font-size:13px;padding:2px 8px}
+ .cu-pillen{gap:6px}.cu-pille{font-size:12px;padding:4px 10px}
+ .cu-zweispaltig{gap:12px;margin-top:12px}
+ .cu-pfkt-raster{margin-top:0}.cu-pfkt-kopf{font-size:13px;gap:5px 9px;margin-bottom:6px}
+ .cu-pfkt-person+.cu-pfkt-person{margin-top:8px;padding-top:8px}
+ .hp-anschrift{font-size:14px;line-height:1.4}
+ .hp-reiter{margin-bottom:9px}.hp-reiter button{min-height:34px;font-size:13px;padding:7px 12px}
+ .hp-abschnitt{padding:0;margin-top:10px;border-radius:7px}
+ .hp-abschnitt-kopf,.hp-filter{padding:7px 10px;gap:6px 9px}
+ .hp-abschnitt-kopf .hp-blau{font-size:14px}
+ .hp-tabelle{font-size:13px}.hp-tabelle th{font-size:12px;padding:5px 8px}
+ .hp-tabelle td{padding:4px 8px}.hp-tabelle tr.hp-leer td{padding:10px 8px}
+ .hp-seitenleiste.cu-karte{padding:10px;top:98px}.hp-seitenleiste .hp-knoepfe{gap:5px}
+ .cu-schnell,.hp-knoepfe .hp-knopf.cu-schnell{min-height:32px;padding:5px 9px;font-size:13px;gap:8px}
+ .hp-mini{min-height:26px;font-size:12px;padding:2px 7px}
+ .hp-symbol,.hp-datenschutz{min-height:30px}.hp-symbol{width:31px}
+ .cu-leer{padding:12px;font-size:13px;gap:8px}.cu-leer .cu-icon{width:32px;height:32px}
+ .modal-backdrop{padding:20px 10px}
+ .modal{max-width:540px;border-radius:8px}.modal.wide{max-width:720px}
+ .modal header{padding:8px 10px 8px 14px}.modal header h2{font-size:16px}
+ .modal header .modal-x{width:28px;min-height:28px}
+ .modal .modal-body{padding:12px 14px;max-height:78vh}.modal footer{padding:8px 14px;gap:6px}
+ .hp-menue-eintrag{min-height:30px;font-size:13px;padding-top:5px;padding-bottom:5px}
+ .cu-einlass-karte,.cu-live-karte{padding:14px!important}
+ .cu-etv-inhalt .cu-karte{padding:12px}
+}
+@media(pointer:coarse){
+ .cu-such-treffer button{min-height:44px}
+}

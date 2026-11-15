@@ -219,12 +219,6 @@ async function zuordnungBeenden(z, reload) {
 
 async function zuordnungFormular(kontext, reload) {
   const bearb = !!kontext.id;
-  // Adressauswahl-Optionen laden (nur wenn Adresse nicht vorgegeben)
-  let adressOptionen = [];
-  if (!kontext.adresse_id) {
-    const adressen = await API.get('/adressen' + API.qs({}));
-    adressOptionen = adressen.map((a) => ({ value: a.id, label: `${a.nummer} · ${a.anzeigename}` + (a.ort ? ' – ' + a.ort : '') }));
-  }
   // Bezug: wenn adresse_id vorgegeben, Objekt/Einheit wählbar; sonst fix
   let objektOptionen = [];
   if (kontext.adresse_id && !bearb) {
@@ -234,7 +228,7 @@ async function zuordnungFormular(kontext, reload) {
 
   const felder1 = [];
   if (!kontext.adresse_id) {
-    felder1.push({ name: 'adresse_id', label: 'Person / Firma', type: 'select', required: true, options: adressOptionen, value: kontext.adresse_id });
+    felder1.push({ name: 'adresse_id', label: 'Person / Firma', type: 'suche', required: true, placeholder:'Name oder Adressnummer tippen …', suchen:async suche=>(await API.get('/adressen'+API.qs({suche}))).map(a=>({value:a.id,label:[a.nummer,a.anzeigename].filter(Boolean).join(' · ')+(a.ort?' – '+a.ort:'')})) });
   }
   // Handbuch: Mieter, Eigentümer, Leerstände nur in der Wohnung/Einheit – am Objekt nur allgemeine Funktionen
   const nurAllgemein = !bearb && kontext.objekt_id && !kontext.einheit_id;
@@ -300,6 +294,7 @@ async function zuordnungFormular(kontext, reload) {
       el('button', { text: 'Abbrechen', onclick: close }),
       el('button', { class: 'btn-primary', text: 'Speichern', onclick: async () => {
         try {
+          if(!form.reportValidity())return;
           const v = werte();
           const payload = {
             adresse_id: kontext.adresse_id || v.adresse_id,
