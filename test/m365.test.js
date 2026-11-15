@@ -1,5 +1,5 @@
 'use strict';
-const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto'),{openDatabase}=require('../db'),{baue}=require('../services/m365');
+const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto'),{openDatabase}=require('../db'),{baue}=require('../services/m365-kern');
 async function fixture(t){
  const db=await openDatabase(':memory:');t.after(()=>db.close());
  await db.exec("INSERT INTO benutzer(id,benutzername,name,passwort_hash,rolle) VALUES(1,'admin','Admin','x','admin');INSERT INTO firmenbriefkoepfe(id,name,daten) VALUES(1,'Breidenbach und Hennig GmbH','{}'),(2,'Andere Firma','{}');");

@@ -821,3 +821,8 @@ CREATE TABLE IF NOT EXISTS m365_oauth(
  benutzer_id INTEGER NOT NULL REFERENCES benutzer(id), sitzung_hash TEXT NOT NULL,
  verifier TEXT NOT NULL, absender TEXT NOT NULL, ablauf_am INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS m365_app_config(
+ id INTEGER PRIMARY KEY CHECK(id=1), daten TEXT NOT NULL, revision INTEGER NOT NULL,
+ quelle TEXT NOT NULL, geaendert_von INTEGER REFERENCES benutzer(id), geaendert_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

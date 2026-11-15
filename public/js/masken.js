@@ -1905,6 +1905,10 @@ async function benutzerMaske() {
   let daten;
   try { daten = await API.get('/benutzer'); } catch (e) { fehler(e); return geheZu('#/'); }
   if (lauf !== S.lauf) return;
+  let microsoft;
+  try { microsoft = await m365KonfigurationsPanel(); }
+  catch (e) { microsoft = abschnitt('Microsoft 365', el('p', { role: 'alert', text: e.message })); }
+  if (lauf !== S.lauf) return;
   S.kontext = { typ: 'benutzer', erstellen: () => benutzerFormular() };
   zeigeAufDesktop(lauf, maskenFenster({
     titel: 'System – Benutzerverwaltung',
@@ -1923,7 +1927,7 @@ async function benutzerMaske() {
         { label: 'E-Mail', render: (b) => b.email },
         { label: 'Status', render: (b) => (b.aktiv ? badge('aktiv', 'badge-aktiv') : badge('gesperrt', 'badge-inaktiv')) },
         { label: '', class: 'aktionen', render: (b) => el('button', { type: 'button', class: 'hp-mini', text: 'Passwort', onclick: () => benutzerPasswort(b) }) },
-      ], daten, { onOpen: (b) => benutzerFormular(b) }))],
+      ], daten, { onOpen: (b) => benutzerFormular(b) })), microsoft],
     }),
   }));
 }
