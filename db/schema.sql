@@ -763,3 +763,12 @@ CREATE TABLE IF NOT EXISTS mitarbeiterprofile (
  bild BLOB,
  revision INTEGER NOT NULL DEFAULT 0
 );
+
+-- Aktuell geöffnete CuraAed-Fenster. Ein gültiges Login-Cookie allein gilt nicht als online.
+CREATE TABLE IF NOT EXISTS mitarbeiter_anwesenheit (
+ sitzung_token TEXT NOT NULL REFERENCES sitzungen(token) ON DELETE CASCADE,
+ fenster_id TEXT NOT NULL,
+ gesehen_am INTEGER NOT NULL,
+ geschlossen INTEGER NOT NULL DEFAULT 0 CHECK(geschlossen IN (0,1)),
+ PRIMARY KEY(sitzung_token,fenster_id)
+);
