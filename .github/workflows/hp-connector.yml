@@ -27,6 +27,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $hpCompiler /nologo /target:winexe /platform:x86 /out:HP-Adresspruefung.exe /r:System.Data.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Web.Extensions.dll tools\hp-direkt\HPAdressPruefung.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $hpCompiler /nologo /target:winexe /platform:x86 /out:HP-Aktenpruefung.exe /r:System.Data.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Web.Extensions.dll tools\hp-direkt\HPAktenPruefung.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $hpCompiler /nologo /target:winexe /platform:x86 /out:HP-Objektstatuspruefung.exe /r:System.Data.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Web.Extensions.dll tools\hp-direkt\HPObjektstatusPruefung.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $hpCompiler /nologo /target:winexe /platform:x86 /out:HP-Objektimport.exe /r:System.Data.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Web.Extensions.dll /r:System.Security.dll tools\hp-direkt\HPObjektImportConnector.cs

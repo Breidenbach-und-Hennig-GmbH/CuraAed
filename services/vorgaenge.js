@@ -162,16 +162,15 @@ function baueVorgaenge(db,{hp,archiv}={}){
       if((await db.get('SELECT status FROM fach_import_jobs WHERE quelle_id=?',[source.id])).status!=='laeuft')return;
       const id=page.eintraege[i].id;
       try{const data=await hp.fachDetails(owner,connection,resource,id);await importOne(owner,source,resource,data);
-       if(data.unvollstaendig?.length)throw new HpMobileError('HP liefert noch nicht alle Zuordnungen: '+data.unvollstaendig.join(', '),422);
-       await secureDocuments(owner,connection,data);
+       const entries=[data];
        if(resource==='records')for(const ref of data.bezuege.filter(b=>b.typ==='handwerker')){
         const child=await hp.fachDetails(owner,connection,'craftsman_tasks',ref.remote_id);
         await importOne(owner,source,'craftsman_tasks',child);
-        if(child.unvollstaendig?.length)throw new HpMobileError('Handwerkerauftrag '+ref.remote_id+': unvollständige HP-Zuordnungen.',422);
-        await secureDocuments(owner,connection,child);
+        entries.push(child);
        }
+       for(const entry of entries){if(entry.unvollstaendig?.length)throw new HpMobileError('HP liefert noch nicht alle Zuordnungen: '+entry.unvollstaendig.join(', '),422);await secureDocuments(owner,connection,entry);}
        await db.run('DELETE FROM fach_import_fehler WHERE quelle_id=? AND resource=? AND remote_id=?',[source.id,resource,id]);
-      }catch(e){if(!(e instanceof HpMobileError)||[401,403,429,507].includes(e.status))throw e;await db.run('INSERT OR REPLACE INTO fach_import_fehler(quelle_id,resource,remote_id,meldung) VALUES(?,?,?,?)',[source.id,resource,id,e.message]);}
+      }catch(e){if(!(e instanceof HpMobileError)||[401,403,429].includes(e.status))throw e;await db.run('INSERT OR REPLACE INTO fach_import_fehler(quelle_id,resource,remote_id,meldung) VALUES(?,?,?,?)',[source.id,resource,id,e.message]);}
       await db.run('UPDATE fach_import_jobs SET position=? WHERE quelle_id=?',[i+1,source.id]);
      }
      if(!page.weitere)break;job.seite++;job.position=0;await db.run('UPDATE fach_import_jobs SET seite=?,position=0 WHERE quelle_id=?',[job.seite,source.id]);

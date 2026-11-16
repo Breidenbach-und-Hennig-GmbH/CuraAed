@@ -9,10 +9,10 @@ test('HP-Aktenimport: Akte, Adresse, bidirektionale HWA-Zuordnung und PDF bleibe
  const child={id:2,hp_id:122502,subject:'Leckortung',records:[{id:1,hp_id:'118334-0'}]};
  const hp={fachListe:async(o,c,r)=>({eintraege:r==='records'?[{id:1}]:[],weitere:false}),fachDetails:async(o,c,r,id)=>HP.details({fachDetails:async()=>r==='records'?raw:child},r,id)};
  const file={id:99,titel:'Schaden',dateiname:'Schaden.pdf',groesse:8,version:'v1',dokumentart:'Schriftverkehr'};
- const remote={dmsDetails:async()=>({dokument:file,zuordnungen:[]}),dmsDownload:async()=>{if(broken)throw new HpMobileError('Testunterbrechung',502);downloads++;return{bytes:Buffer.from('%PDF-1.7'),version:'v1'};}};
+ const remote={dmsDetails:async()=>({dokument:file,zuordnungen:[]}),dmsDownload:async()=>{if(broken)throw new HpMobileError('Test: Archivspeicher voll',507);downloads++;return{bytes:Buffer.from('%PDF-1.7'),version:'v1'};}};
  const archiv=baueArchiv(db,dir,remote);await archiv.bind(1,'mobile','direct');const svc=baueVorgaenge(db,{hp,archiv});
  async function finish(){for(let i=0;i<300;i++){const info=await svc.overview(1);if(info.auftraege[0]?.status!=='laeuft')return info;await new Promise(r=>setTimeout(r,5));}throw Error('Import läuft zu lange');}
- await svc.start(1,'mobile');let info=await finish();assert.equal(info.auftraege[0].fehler,1);assert.equal(info.uebernahme.ausstehend,1);assert.match(info.auftraege[0].meldung,/nicht vollständig/);
+ await svc.start(1,'mobile');let info=await finish();assert.equal(info.auftraege[0].fehler,1);assert.equal(info.uebernahme.ausstehend,1);assert.equal(info.uebernahme.handwerker,1);assert.match(info.auftraege[0].meldung,/nicht vollständig/);
  broken=false;await svc.start(1,'mobile');info=await finish();assert.equal(info.auftraege[0].fehler,0);assert.equal(info.uebernahme.gesichert,1);assert.equal(info.uebernahme.ausstehend,0);assert.equal(info.uebernahme.akten,1);assert.equal(info.uebernahme.handwerker,1);
  const akte=await db.get("SELECT id FROM fach_vorgaenge WHERE art='akte'"),hwa=await db.get("SELECT id FROM fach_vorgaenge WHERE art='handwerker'");let d=await svc.detail(1,akte.id);assert.equal(d.akte.art_text,'Protokollakte');assert.equal(d.akte.adressen[0].id,1);assert.equal(d.akte.handwerkerauftraege[0].id,hwa.id);assert.equal(d.akte.hp_dokumente[0].gesichert,true);
  await svc.start(1,'mobile');await finish();assert.equal((await db.get('SELECT COUNT(*) n FROM fach_vorgaenge')).n,2);assert.equal(downloads,1);
