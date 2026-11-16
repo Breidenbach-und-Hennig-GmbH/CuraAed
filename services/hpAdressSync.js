@@ -29,7 +29,7 @@ async function metadata(db,a) {
  if(!m)return a;
  let status=m.status;
  if(status==='synchron'&&revision(a,m.hp_nummer)!==digest(JSON.parse(m.basis)))status='ausstehend';
- return {...a,hp_sync:{nummer:m.hp_nummer,status,aktiv:!!m.aktiv&&validUntil(m,Date.now()),online:!!m.zuletzt_gesehen&&Date.now()-m.zuletzt_gesehen<30000,version:revision(a,m.hp_nummer),konflikt_version:digest([m.basis,m.remote,revision(a,m.hp_nummer)]),meldung:m.meldung}};
+ return {...a,hp_sync:{nummer:m.hp_nummer,status,aktiv:!!m.aktiv&&validUntil(m,Date.now()),abgelaufen:!!m.aktiv&&!validUntil(m,Date.now()),zuletzt_gesehen:m.zuletzt_gesehen,online:!!m.zuletzt_gesehen&&Date.now()-m.zuletzt_gesehen<30000,version:revision(a,m.hp_nummer),konflikt_version:digest([m.basis,m.remote,revision(a,m.hp_nummer)]),meldung:m.meldung}};
 }
 async function validateSave(db,old,data) {
  const m=await db.get('SELECT * FROM hp_adress_zuordnung WHERE adresse_id=?',[old.id]);if(!m)return;

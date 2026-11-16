@@ -28,7 +28,7 @@ const MAX_SUCHE = 100;
 const klein = (s) => String(s == null ? '' : s).toLocaleLowerCase('de-DE');
 const ziffern = (s) => String(s == null ? '' : s).replace(/\D+/g, '');
 const listenname = (a) =>
-  a.adresstyp === 'firma' ? a.firmenname || '' : [a.nachname, a.vorname].filter(Boolean).join(', ');
+  (a.adresstyp === 'firma' ? a.firmenname : [a.nachname, a.vorname].filter(Boolean).join(', ')) || require('./adressen').anzeigename(a);
 
 function gruppieren(rows) {
   const m = new Map();
@@ -160,4 +160,3 @@ async function liste(db, opts = {}) {
 }
 
 module.exports = { liste, FILTER, MODI, FELDER: Object.keys(FELDER) };
-

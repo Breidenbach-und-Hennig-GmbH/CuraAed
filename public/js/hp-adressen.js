@@ -2,11 +2,12 @@
 function hpAdressStatus(a) {
  const s=a.hp_sync;if(!s)return 'Lokal in CuraAed · noch keiner HP-Adresse zugeordnet';
  const names={synchron:'Synchron',ausstehend:'Übertragung ausstehend',unterwegs:'Wird an HP übertragen',konflikt:'Konflikt – Entscheidung erforderlich',unklar:'Ergebnis unklar – Abgleich angehalten',fehler:'Übertragung angehalten'};
- return 'HP '+s.nummer+' · '+(names[s.status]||s.status)+(s.aktiv?(s.online?'':' · Connector offline'):' · Freigabe beendet')+(s.meldung?' · '+s.meldung:'');
+ return 'HP '+s.nummer+' · '+(names[s.status]||s.status)+(s.aktiv?(s.online?'':' · Connector offline'):(s.abgelaufen?' · Freigabe abgelaufen – kein Abgleich':' · Freigabe beendet'))+(s.zuletzt_gesehen?' · Letzter Kontakt: '+new Date(s.zuletzt_gesehen).toLocaleString('de-DE'):'')+(s.meldung?' · '+s.meldung:'');
 }
 function hpAdressInfo(a) {
  const text=el('p',{role:'status',text:hpAdressStatus(a)}),box=el('div',{class:'hp-panel'},[text]);
  if(a.hp_sync) {
+  if(![a.vorname,a.nachname,a.firmenname].some(v=>v?.trim()))box.append(el('p',{role:'status',class:'small',text:a.zusatz?'In HP sind Vorname und Name1 leer. Die Anzeige verwendet die originale Zusatzzeile (Name2). Die HP-Felder wurden nicht verändert.':'In HP fehlen die Namensfelder. Bitte den Quelldatensatz unter HP-Adressnummer '+a.hp_sync.nummer+' prüfen.'}));
   box.append(el('p',{class:'small muted',text:'HP-Abgleich: Anrede, Vorname, Name/Firma, Zusatz und Postanschrift. Weitere Felder bleiben lokal.'}));
   box.append(el('button',{type:'button',text:'Aktuellen Stand laden',onclick:()=>neuLaden()}));
   if(S.benutzer?.rolle==='admin'&&['konflikt','unklar','fehler'].includes(a.hp_sync.status))for(const [value,label]of [['hp','HP-Stand übernehmen'],['curaaed','CuraAed-Änderung erneut abgleichen']])box.append(el('button',{type:'button',text:label,onclick:async()=>{
@@ -39,6 +40,7 @@ async function hpAdressBereich(lauf,desktop) {
   el('a',{href:'/downloads/HP-Adressconnector.exe',download:'HP-Adressconnector.exe',text:'HP-Adressconnector für Windows herunterladen'}),
   el('p',{text:'Der neue Connector überträgt nach dem Erstabgleich nur neue oder geänderte vollständige Adressen. Zum Erkennen von HP-Änderungen prüft er den lokalen Bestand weiterhin über Fingerabdrücke.'}),
   el('p',{},[el('a',{href:'/downloads/HP-Strukturpruefung.exe',download:'HP-Strukturpruefung.exe',text:'HP-Feldprüfung für Objekte und weitere Datenbereiche herunterladen (nur Metadaten)'})]),
+  el('p',{},[el('a',{href:'/downloads/HP-Adresspruefung.exe',download:'HP-Adresspruefung.exe',text:'Adressbereiche, Nummernvergabe und Protokollkennungen prüfen (nur lesend)'})]),
   el('button',{text:'Adressabgleich koppeln / Freigabe erneuern',onclick:()=>{
    const f=formular([[{name:'name',label:'Name des Kundenbestands',required:true},{name:'datenbank',label:'HP-Datenbank',required:true}]]),consent=el('input',{type:'checkbox'}),info=el('p',{role:'status'});let secret,busy=false;
    const duration=el('select',{'aria-label':'Freigabedauer'},[el('option',{value:'dauerhaft',text:'Dauerhaft · bis zum Widerruf'}),el('option',{value:'acht',text:'Zeitlich begrenzt · acht Stunden'})]);

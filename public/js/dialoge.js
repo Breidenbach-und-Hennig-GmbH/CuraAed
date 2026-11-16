@@ -166,7 +166,7 @@ function adresseFormular(a) {
         try {
           const v = werte();
           if (bearb) { await API.put('/adressen/' + a.id, {...v,hp_version:a.hp_sync?.version}); toast(a.hp_sync?'Gespeichert; HP-Übertragung folgt automatisch.':'Gespeichert', 'success'); close(); neuLaden(); }
-          else { const neu = await API.post('/adressen', v); toast('Adresse angelegt', 'success'); close(); geheZu('#/adressen/' + neu.id); }
+          else { const dub=await API.post('/adressen/dubletten',v);if(dub.treffer?.length){const text='Diese Adresse könnte bereits vorhanden sein:\n\n'+dub.treffer.map(d=>d.nummer+' · '+d.name+' · '+d.anschrift+(d.archiviert?' (archiviert)':'')).join('\n')+'\n\nTrotzdem eine zusätzliche Adresse anlegen?';if(!await bestaetigen(text,{text:'Zusätzlich anlegen'}))return;v.dubletten_bestaetigung=dub.bestaetigung;}const neu = await API.post('/adressen', v); toast('Adresse angelegt', 'success'); close(); geheZu('#/adressen/' + neu.id); }
         } catch (e) { fehler(e); }
       } }),
     ],
