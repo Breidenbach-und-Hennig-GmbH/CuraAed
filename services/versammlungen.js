@@ -7,10 +7,10 @@ const ARTEN = ['praesenz', 'hybrid', 'online'];
 const STATUS = ['vorbereitung', 'eingeladen', 'durchgefuehrt'];
 
 const SELECT = `
-  SELECT v.*,t.firma_id AS m365_firma_id,t.dauer AS teams_dauer,t.status AS teams_status,t.meldung AS teams_meldung,CASE WHEN v.art!='praesenz' THEN t.join_url END AS teams_url, o.nummer AS objekt_nummer, o.bezeichnung AS objekt_bezeichnung, o.objekttyp, b.name AS leitung_name,b.kuerzel AS leitung_kuerzel,b.aktiv AS leitung_aktiv, bs.name AS beisitzer_name,pf.name AS protokollfuehrer_name,
+  SELECT v.*,COALESCE(k.firma_id,t.firma_id) AS m365_firma_id,COALESCE(k.dauer,t.dauer) AS teams_dauer,k.status AS kalender_status,k.meldung AS kalender_meldung,t.status AS teams_status,t.meldung AS teams_meldung,CASE WHEN v.art!='praesenz' THEN t.join_url END AS teams_url, o.nummer AS objekt_nummer, o.bezeichnung AS objekt_bezeichnung, o.objekttyp, b.name AS leitung_name,b.kuerzel AS leitung_kuerzel,b.aktiv AS leitung_aktiv, bs.name AS beisitzer_name,pf.name AS protokollfuehrer_name,
  CASE WHEN br.adresstyp='firma' THEN br.firmenname ELSE TRIM(COALESCE(br.vorname,'')||' '||COALESCE(br.nachname,'')) END AS beirat_name,
  CASE WHEN uz.adresstyp='firma' THEN uz.firmenname ELSE TRIM(COALESCE(uz.vorname,'')||' '||COALESCE(uz.nachname,'')) END AS unterzeichner_name
-  FROM versammlungen v LEFT JOIN etv_teams t ON t.versammlung_id=v.id JOIN objekte o ON o.id = v.objekt_id LEFT JOIN benutzer b ON b.id=v.leitung_id LEFT JOIN benutzer bs ON bs.id=v.beisitzer_id LEFT JOIN benutzer pf ON pf.id=v.protokollfuehrer_id LEFT JOIN adressen br ON br.id=v.beirat_id LEFT JOIN adressen uz ON uz.id=v.unterzeichner_id`;
+  FROM versammlungen v LEFT JOIN etv_kalender k ON k.versammlung_id=v.id LEFT JOIN etv_teams t ON t.versammlung_id=v.id JOIN objekte o ON o.id = v.objekt_id LEFT JOIN benutzer b ON b.id=v.leitung_id LEFT JOIN benutzer bs ON bs.id=v.beisitzer_id LEFT JOIN benutzer pf ON pf.id=v.protokollfuehrer_id LEFT JOIN adressen br ON br.id=v.beirat_id LEFT JOIN adressen uz ON uz.id=v.unterzeichner_id`;
 
 async function liste(db, opts = {}) {
   const where = ['v.archiviert = ?'];

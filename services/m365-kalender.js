@@ -43,6 +43,16 @@ function baue(db,{config,origin,shared,fetch:fetcher=fetch}){
  async function erstellen(uid,source,b){const body=eventBody(b);if(typeof b.auftrag_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(b.auftrag_id))fail('Ungültiger Erstellungsauftrag.');return serial(db,'create:'+uid,async()=>{const p=await provider(uid,source),requestHash=hash(body);let r=await db.get('SELECT * FROM m365_kalender_auftraege WHERE benutzer_id=? AND auftrag_id=?',[uid,b.auftrag_id]);if(r&&(r.quelle!==source||r.identitaet!==p.identity||r.anfrage_hash!==requestHash))fail('Dieser Erstellungsauftrag gehört zu anderen Termindaten. Bitte zuerst den Kalender aktualisieren.',409);if(r?.event_id)return holen(uid,source,r.event_id);if(!r)await db.run('INSERT INTO m365_kalender_auftraege(benutzer_id,auftrag_id,quelle,identitaet,anfrage_hash) VALUES(?,?,?,?,?)',[uid,b.auftrag_id,source,p.identity,requestHash]);const data=await json(await p.request('/calendar/events','POST',{...body,transactionId:b.auftrag_id,attendees:[]})),result=normal(data,p.shared);await db.run("UPDATE m365_kalender_auftraege SET event_id=?,status='erstellt' WHERE benutzer_id=? AND auftrag_id=?",[result.id,uid,b.auftrag_id]);return result;});}
  async function aendern(uid,source,id,b){const body=eventBody(b);if(typeof b.etag!=='string'||!b.etag||b.etag.length>1024||/[\r\n]/.test(b.etag))fail('Bitte den aktuellen Termin neu öffnen.',409);const p=await provider(uid,source),old=normal(await json(await p.request('/calendar/events/'+eventId(id))),p.shared);if(!old.bearbeitbar)fail('Private Firmentermine und Besprechungen mit Teilnehmern bitte in Outlook bearbeiten.',403);if(old.etag!==b.etag)fail('Der Termin wurde inzwischen geändert. Bitte neu öffnen.',409);return normal(await json(await p.request('/calendar/events/'+eventId(id),'PATCH',body,b.etag)),p.shared);}
  async function trennen(uid){return serial(db,'personal:'+uid,async()=>{await db.run('DELETE FROM m365_persoenliche_kalender WHERE benutzer_id=?',[uid]);await db.run('DELETE FROM m365_kalender_oauth WHERE benutzer_id=?',[uid]);return{ok:true};});}
- return{verbinden,istCallback,callback,quellen,liste,holen,erstellen,aendern,trennen};
+ // Internal ETV writer: the target user comes from the saved meeting, never from a public calendar request.
+ async function etvIdentitaet(uid,source){return(await provider(uid,source)).identity;}
+ async function etvSchreiben(uid,source,b){
+  const p=await provider(uid,source);if(p.identity!==b.identitaet)fail('Microsoft-Konto inzwischen geändert. Bitte den ETV-Kalenderabgleich erneut starten.',409);
+  const body=eventBody(b.body);
+  if(!b.event_id){if(!/^[0-9a-f-]{36}$/i.test(b.transaction_id||''))fail('Ungültiger ETV-Kalenderauftrag.');return normal(await json(await p.request('/calendar/events','POST',{...body,attendees:[],transactionId:b.transaction_id})),p.shared);}
+  const old=normal(await json(await p.request('/calendar/events/'+eventId(b.event_id))),p.shared);
+  if(!old.bearbeitbar||!old.etag)fail('Dieser ETV-Kalendereintrag wurde in Outlook geschützt oder um Teilnehmer ergänzt. Bitte dort prüfen.',409);
+  return normal(await json(await p.request('/calendar/events/'+eventId(b.event_id),'PATCH',{...body,showAs:b.stilllegen?'free':'busy'},old.etag)),p.shared);
+ }
+ return{verbinden,istCallback,callback,quellen,liste,holen,erstellen,aendern,trennen,etvIdentitaet,etvSchreiben};
 }
 module.exports={baue,eventBody,berlin,normal};
