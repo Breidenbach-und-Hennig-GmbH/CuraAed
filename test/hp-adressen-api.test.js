@@ -15,5 +15,14 @@ test('Adressabgleich-API: Mitarbeiter schreibt normale Maske, Freigabe nur Admin
  assert.equal((await db.get('SELECT ablauf_ms FROM hp_adress_verbindungen WHERE id=?',[c.id])).ablauf_ms,0);
  const a=await db.get('SELECT id FROM adressen WHERE nummer=?',['HP-42']);const current=await(await fetch(base+'/api/adressen/'+a.id,{headers:{cookie:staff}})).json();const result=await fetch(base+'/api/adressen/'+a.id,{method:'PUT',headers:{cookie:staff,'content-type':'application/json'},body:JSON.stringify({ort:'Team-Ort',hp_version:current.hp_sync.version})});assert.equal(result.status,200);const scan=await(await post('/hp-adressen/agent/'+c.id+'/abgleich',{datenbank:'HPTEST',records:[record]},'','',c.token)).json();assert.equal(scan.jobs[0].neu.ort,'Team-Ort');
  const pilot=await(await post('/hp-direkt/verbindungen',{name:'Titeltest',datenbank:'HPTEST',test_nummer:42,zustimmung:true},admin)).json();assert.equal((await post('/hp-adressen/agent/'+c.id+'/abgleich',{datenbank:'HPTEST',records:[]},'','',pilot.token)).status,401);
-});
+ const full=await(await post('/hp-adressen/verbindungen',{...input,vollstaendig:true},admin)).json();assert.equal(full.scope,'adressen-v2');
+ const spec=require('../lib/hpAdressBereiche.json').telefon,r=Object.fromEntries(spec.fields.map(f=>[f.name,f.typ===0?'':'0']));Object.assign(r,{AdrNr:'42',LfdNrIDXTel:'1',TelNr:'012345',TelTxt:'Büro'});
+ const body={datenbank:'HPTEST',eintraege:[{nummer:42,bereich:'telefon',zeilen:[r]},{nummer:42,bereich:'__proto__',zeilen:[]}]};
+ assert.equal((await post('/hp-adressen/agent/'+full.id+'/bereiche/stapel',body,'','',c.token)).status,401);
+ const batch=await post('/hp-adressen/agent/'+full.id+'/bereiche/stapel',body,'','',full.token);assert.equal(batch.status,200);const results=await batch.json();assert.deepEqual(results.ergebnisse.map(v=>v.ok),[true,false]);
+ const get=async(path,cookie='')=>fetch(base+'/api'+path,{headers:{cookie}});
+ assert.equal((await get('/hp-adressen/adressen/'+a.id+'/bereiche')).status,401);assert.equal((await get('/hp-adressen/adressen/'+a.id+'/bereiche/telefon',staff)).status,403);
+ const source=await get('/hp-adressen/adressen/'+a.id+'/bereiche/telefon',admin);assert.equal(source.status,200);assert.equal((await source.json()).zeilen[0].TelNr,'012345');
+ assert.equal((await get('/hp-adressen/adressen/'+a.id+'/bereiche/__proto__',admin)).status,400);
 
+});

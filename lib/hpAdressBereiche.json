@@ -1,0 +1,1114 @@
+{
+  "stamm": {
+    "label": "Adressen",
+    "table": "AD_Adr",
+    "adr": "AdrNr",
+    "pk": [
+      "AdrNr"
+    ],
+    "fields": [
+      {
+        "name": "AdrNr",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "SBegrAdr",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Anrede",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Titel",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Vorname",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Name1",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Name2",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Name3",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Strasse",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Land",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "PLZ",
+        "typ": 0,
+        "max": 6
+      },
+      {
+        "name": "Ort",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Zustellpostamt",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "GebDat1",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "GebDat2",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "SBrief_JN",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "SF1",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "SF2",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "SF3",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "SF4",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "SF5",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "SF6",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "SF7",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "SF8",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "SF9",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "SF10",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "BriefAnZeil1",
+        "typ": 0,
+        "max": 50
+      },
+      {
+        "name": "BriefAnZeil2",
+        "typ": 0,
+        "max": 50
+      },
+      {
+        "name": "Geburtsname",
+        "typ": 0,
+        "max": 50
+      },
+      {
+        "name": "BerufsBez",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "SterbeDat1",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "SterbeDat2",
+        "typ": 1,
+        "max": 100
+      }
+    ]
+  },
+  "anlage": {
+    "label": "Adressen SB angelegt",
+    "table": "AD_AdrAn",
+    "adr": "AdrNr",
+    "pk": [
+      "AdrNr"
+    ],
+    "fields": [
+      {
+        "name": "AdrNr",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "anDatum",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "anVonSB",
+        "typ": 0,
+        "max": 3
+      }
+    ]
+  },
+  "bank": {
+    "label": "Adressen Bankverbindung",
+    "table": "AD_Bankverb",
+    "adr": "AdrNr",
+    "pk": [
+      "AdrNr",
+      "LfdNrBV"
+    ],
+    "fields": [
+      {
+        "name": "AdrNr",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "LfdNrBV",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "BVfreigeg",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "KtoNr",
+        "typ": 0,
+        "max": 11
+      },
+      {
+        "name": "BLZ",
+        "typ": 0,
+        "max": 8
+      },
+      {
+        "name": "NameBank",
+        "typ": 0,
+        "max": 40
+      },
+      {
+        "name": "KontoArt",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "Inhaber",
+        "typ": 0,
+        "max": 27
+      },
+      {
+        "name": "bearbVon1Rev",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "bearbAm1",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "bearbVon2",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "bearbAm2",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "ZahlungsoptLKto",
+        "typ": 0,
+        "max": 1
+      },
+      {
+        "name": "IBANLaenderkuerzel",
+        "typ": 0,
+        "max": 2
+      },
+      {
+        "name": "IBANPruefziffer",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "IBANCode",
+        "typ": 0,
+        "max": 18
+      },
+      {
+        "name": "BICBankbezeichnung",
+        "typ": 0,
+        "max": 4
+      },
+      {
+        "name": "BICLaenderkuerzel",
+        "typ": 0,
+        "max": 2
+      },
+      {
+        "name": "BICRegion",
+        "typ": 0,
+        "max": 2
+      },
+      {
+        "name": "BICFilialbezeichnung",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "ausSEPAangelegt",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "SEPAgeprueft",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "IBANkomplett",
+        "typ": 0,
+        "max": 40
+      },
+      {
+        "name": "SEPAaktiv",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "exportiert",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "importiert",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "FREI",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "MandatReferenz",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "BICkomplett",
+        "typ": 0,
+        "max": 11
+      }
+    ]
+  },
+  "mandat": {
+    "label": "Adressen BV Mandat",
+    "table": "AD_SEPA_Mandat",
+    "adr": "AdrNr",
+    "pk": [
+      "AdrNr",
+      "LfdNrBV",
+      "LfdNrReferenz"
+    ],
+    "fields": [
+      {
+        "name": "AdrNr",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "LfdNrBV",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "LfdNrReferenz",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Mandatsreferenz",
+        "typ": 0,
+        "max": 35
+      },
+      {
+        "name": "ErstellDatum",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "VersendeDatum",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Best_tigtDatum",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "ErsteVerwendung",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "LetzteVerwendung",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Beendet",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "SB_erstellt",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "SB_erstelltDatum",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "SB_ge_ndert",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "SB_ge_ndertDatum",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Firma_Mandat",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "DokMandatIntern",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "DokMandatExtern",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Bemerkung",
+        "typ": 13,
+        "max": 100
+      }
+    ]
+  },
+  "telefon": {
+    "label": "Adressen Telefonnummern",
+    "table": "AD_TelNr",
+    "adr": "AdrNr",
+    "pk": [
+      "AdrNr",
+      "LfdNrIDXTel"
+    ],
+    "fields": [
+      {
+        "name": "AdrNr",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Laufende_Nummer",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "TelTxt",
+        "typ": 0,
+        "max": 20
+      },
+      {
+        "name": "TelNr",
+        "typ": 0,
+        "max": 25
+      },
+      {
+        "name": "Kurzwahl",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Bemerkung",
+        "typ": 0,
+        "max": 40
+      },
+      {
+        "name": "LfdNrIDXTel",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "lfdNrDXASP",
+        "typ": 1,
+        "max": 100
+      }
+    ]
+  },
+  "email": {
+    "label": "Adressen E-Mail-Adressen",
+    "table": "AD_eMail",
+    "adr": "Adress_Nr",
+    "pk": [
+      "Adress_Nr",
+      "LfdIDXMail"
+    ],
+    "fields": [
+      {
+        "name": "Adress_Nr",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "lfd__Nr",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "eMail_Adresse___Webs",
+        "typ": 0,
+        "max": 60
+      },
+      {
+        "name": "eMail",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "Standard",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "HPMobile",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "EPost",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "Reserve",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "Suchbegriff",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Bemerkung",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "LfdIDXMail",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "lfdNrDXASP",
+        "typ": 1,
+        "max": 100
+      }
+    ]
+  },
+  "verwendete_email": {
+    "label": "Verwendete E-Mail-Adressen",
+    "table": "AD_eMail_Adresse_mar",
+    "adr": "AdrNr",
+    "pk": [
+      "Typ",
+      "AdrNr",
+      "DokumentenPr_fix",
+      "lfd_Nr_eMail___zugeo"
+    ],
+    "fields": [
+      {
+        "name": "Typ",
+        "typ": 0,
+        "max": 1
+      },
+      {
+        "name": "AdrNr",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "lfd_Nr_eMail___zugeo",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "eMail_Adresse_Suchbe",
+        "typ": 0,
+        "max": 60
+      },
+      {
+        "name": "DokumentenPr_fix",
+        "typ": 0,
+        "max": 2
+      },
+      {
+        "name": "markiert",
+        "typ": 7,
+        "max": 100
+      }
+    ]
+  },
+  "ansprechpartner": {
+    "label": "Adressen Ansprechpartner",
+    "table": "AD_AnsprPart",
+    "adr": "AdrNr",
+    "pk": [
+      "AdrNr",
+      "lfdNrIDXASP"
+    ],
+    "fields": [
+      {
+        "name": "AdrNr",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "VIP",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Anrede",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Titel",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Vorname",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Name",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Suchbegr",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Funktion",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Tel",
+        "typ": 0,
+        "max": 25
+      },
+      {
+        "name": "Geburtstag",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "SerienBriefJN",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "BAnredeZeil1",
+        "typ": 0,
+        "max": 50
+      },
+      {
+        "name": "BAnredeZeil2",
+        "typ": 0,
+        "max": 50
+      },
+      {
+        "name": "Email",
+        "typ": 0,
+        "max": 60
+      },
+      {
+        "name": "lfdNrIDXASP",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "lfdNrIDXTel",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "lfdNrIDXMail",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Korrespondenz",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "Sterbedatum",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Geburtsname",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "PA_Ausstellungsort",
+        "typ": 0,
+        "max": 60
+      },
+      {
+        "name": "PA_Ausstellungsdatum",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "PA_gueltig_bis",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "PA_NR_1",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "PA_NR_2",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "PA_NR_3",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Identifikations_Nr",
+        "typ": 0,
+        "max": 20
+      },
+      {
+        "name": "Bundesland",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "Familienstand",
+        "typ": 0,
+        "max": 20
+      },
+      {
+        "name": "Nation_Staatsangehoe",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "Religion",
+        "typ": 0,
+        "max": 20
+      },
+      {
+        "name": "Sonderschluessel",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "CB_Vertragspartner",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "CB_Kirchensteuer",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "gueltig_von__Frei",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "gueltig_bis_Frei",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Strasse",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "PLZ",
+        "typ": 0,
+        "max": 6
+      },
+      {
+        "name": "Ort",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Ortsteilname_Frei",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Teilort_Frei",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "AdresseLand",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "HausNr",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "HausNr_Zusatz",
+        "typ": 0,
+        "max": 20
+      },
+      {
+        "name": "Geburtsort",
+        "typ": 0,
+        "max": 40
+      },
+      {
+        "name": "KIST_stOeld",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "PA_Reisepass",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Alpha_Frei",
+        "typ": 0,
+        "max": 6
+      },
+      {
+        "name": "Num_Frei",
+        "typ": 1,
+        "max": 100
+      }
+    ]
+  },
+  "asp_zusatz": {
+    "label": "Adressen ASP Zusatzinfo",
+    "table": "AD_ASP_ZusatzInfo",
+    "adr": "AdrNr",
+    "pk": [
+      "AdrNr",
+      "lfdNrIDXASP",
+      "BJ",
+      "ObjNr",
+      "PKto",
+      "WhgNr"
+    ],
+    "fields": [
+      {
+        "name": "AdrNr",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "lfdNrIDXASP",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "BJ",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "ObjNr",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "PFKt",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "PKto",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "WhgNr",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Z_Vertragspartner",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "Z_Kirchensteuer",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "Z_Akte",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Z_AK_LfdAkt",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "KISTA_Datum_von",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "KISTA_Datum_bis",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Kirchensteuersatz",
+        "typ": 2,
+        "max": 100
+      },
+      {
+        "name": "KISTAM_Anfragedatum",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Datum_Frei_von",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Datum_Frei_bis",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Bez1_Frei",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "RadioButton",
+        "typ": 0,
+        "max": 1
+      },
+      {
+        "name": "Check_Box_Text_Frei",
+        "typ": 7,
+        "max": 100
+      },
+      {
+        "name": "Nummeric_Frei",
+        "typ": 2,
+        "max": 100
+      },
+      {
+        "name": "Prozent_frei",
+        "typ": 2,
+        "max": 100
+      },
+      {
+        "name": "Datum_Frei",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "KEY_SBKurz",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "Aend_Datum",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Aend_Time",
+        "typ": 1,
+        "max": 100
+      }
+    ]
+  },
+  "protokoll": {
+    "label": "Adress-DSGVO-Protokoll",
+    "table": "SY_DSGVO_Aenderung",
+    "adr": "IDX",
+    "pk": [
+      "lfdNr"
+    ],
+    "fields": [
+      {
+        "name": "Datum",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "Uhrzeit",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "SB",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "Typ",
+        "typ": 0,
+        "max": 1
+      },
+      {
+        "name": "MODUL",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "MODUL_ID",
+        "typ": 0,
+        "max": 6
+      },
+      {
+        "name": "IDX",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "IDX1n",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "IDXnm",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "IDXff",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "lfdNr",
+        "typ": 2,
+        "max": 100
+      },
+      {
+        "name": "UTCZeit",
+        "typ": 0,
+        "max": 20
+      }
+    ],
+    "filter": {
+      "MODUL": "ADR"
+    }
+  },
+  "bank_aktuell": {
+    "label": "Aktuelle Bankverbindung",
+    "table": "AD_BVakt",
+    "adr": "AdrNr",
+    "pk": [
+      "AdrNr"
+    ],
+    "fields": [
+      {
+        "name": "AdrNr",
+        "typ": 1,
+        "max": 100
+      },
+      {
+        "name": "LfdNr",
+        "typ": 1,
+        "max": 100
+      }
+    ]
+  }
+}

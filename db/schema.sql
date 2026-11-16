@@ -562,6 +562,22 @@ CREATE TABLE IF NOT EXISTS hp_adress_importfehler (
 );
 CREATE INDEX IF NOT EXISTS hp_adress_sync_status ON hp_adress_zuordnung(verbindung_id,status,unterwegs_ms);
 
+CREATE TABLE IF NOT EXISTS hp_adress_vollfreigaben(
+ verbindung_id TEXT PRIMARY KEY REFERENCES hp_adress_verbindungen(id),aktiv INTEGER NOT NULL DEFAULT 0,
+ neuanlagen INTEGER NOT NULL DEFAULT 0,erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS hp_adress_bereiche(
+ verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),hp_nummer INTEGER NOT NULL,
+ bereich TEXT NOT NULL,rohdaten TEXT NOT NULL,hash TEXT NOT NULL,status TEXT NOT NULL,meldung TEXT,
+ gelesen_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(verbindung_id,hp_nummer,bereich)
+);
+CREATE TABLE IF NOT EXISTS hp_adress_detail_zuordnung(
+ verbindung_id TEXT NOT NULL,hp_nummer INTEGER NOT NULL,bereich TEXT NOT NULL,quellschluessel TEXT NOT NULL,
+ lokal_id INTEGER,projektion TEXT,status TEXT NOT NULL DEFAULT 'synchron',
+ PRIMARY KEY(verbindung_id,hp_nummer,bereich,quellschluessel),
+ FOREIGN KEY(verbindung_id,hp_nummer,bereich) REFERENCES hp_adress_bereiche(verbindung_id,hp_nummer,bereich)
+);
+
 -- Durable DMS migration: independent of OAuth connection lifetime.
 CREATE TABLE IF NOT EXISTS hp_dms_quellen (id TEXT PRIMARY KEY,benutzer_id INTEGER NOT NULL REFERENCES benutzer(id),subdomain TEXT NOT NULL,direkt_id TEXT REFERENCES hp_adress_verbindungen(id),UNIQUE(benutzer_id,subdomain));
 CREATE TABLE IF NOT EXISTS hp_dms_dateien (quelle_id TEXT NOT NULL REFERENCES hp_dms_quellen(id),datei_id INTEGER NOT NULL,titel TEXT NOT NULL,dateiname TEXT NOT NULL,datum TEXT,art TEXT,groesse INTEGER NOT NULL,details TEXT NOT NULL,gelesen_am TEXT NOT NULL,speicher_name TEXT,sha256 TEXT,gesichert_am TEXT,fehler TEXT,PRIMARY KEY(quelle_id,datei_id));
