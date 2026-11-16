@@ -6,8 +6,10 @@ const N = require('../lib/nummern');
 /** Anzeigename für Person/Firma. */
 function anzeigename(a) {
   if (!a) return '';
-  if (a.adresstyp === 'firma') return a.firmenname || '(Firma ohne Name)';
-  return [a.vorname, a.nachname].filter(Boolean).join(' ') || '(Person ohne Name)';
+  const name=a.adresstyp==='firma'?a.firmenname:[a.vorname,a.nachname].filter(Boolean).join(' ');
+  if(name?.trim())return name;
+  if(a.zusatz?.trim())return a.zusatz+' (Name aus Zusatzzeile)';
+  return 'Unvollständige Adresse · '+(a.nummer||a.id||'ohne Nummer');
 }
 
 async function liste(db, opts = {}) {

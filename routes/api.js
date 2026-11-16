@@ -447,10 +447,11 @@ function baueApi(db, uploadDir, options = {}) {
       res.json(await gesamtlisteSvc.liste(db, { filter: t(filter), modus: t(modus), q: t(q), feld: t(feld), rolle: t(rolle) }));
     })
   );
+  router.post('/adressen/dubletten',auth.erfordereSchreibrecht,h(async(req,res)=>res.set('Cache-Control','no-store').json(await require('../services/adressDubletten').pruefen(db,req.body||{}))));
   router.post(
     '/adressen',
     auth.erfordereSchreibrecht,
-    h(async (req, res) => res.status(201).json(await mitHistorie(req, 'adresse', null, () => adressenSvc.anlegen(db, req.body))))
+    h(async (req, res) => res.status(201).json(await mitHistorie(req, 'adresse', null, () => db.transaktion(async tx=>{await require('../services/adressDubletten').neuanlagePruefen(tx,req.body||{});return adressenSvc.anlegen(tx,req.body);}))))
   );
   router.get(
     '/adressen/:id',
