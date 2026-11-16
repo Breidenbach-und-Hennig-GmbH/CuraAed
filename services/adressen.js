@@ -46,7 +46,7 @@ async function holen(db, id) {
     'SELECT a.*, b.name AS ampel_von_name FROM adressen a LEFT JOIN benutzer b ON b.id = a.ampel_von WHERE a.id = ?',
     [id]
   );
-  return a ? require('./hpAdressSync').metadata(db, { ...a, anzeigename: anzeigename(a) }) : undefined;
+  return a ? require('./hpAdressNeuanlage').metadata(db,await require('./hpAdressSync').metadata(db, { ...a, anzeigename: anzeigename(a) })) : undefined;
 }
 
 function validiereNamen(data, adresstyp) {
@@ -147,13 +147,17 @@ async function datenschutzSetzen(db, id, data) {
 }
 
 async function setzeArchiviert(db, id, archiviert) {
-  const vorhanden = await db.get('SELECT id FROM adressen WHERE id = ?', [id]);
+  const work=async tx=>{
+  const vorhanden = await tx.get('SELECT id FROM adressen WHERE id = ?', [id]);
   if (!vorhanden) throw new V.ValidationError('Adresse nicht gefunden.', 404);
-  await db.run(
+  const job=await tx.get('SELECT status FROM hp_adress_neuanlagen WHERE adresse_id=?',[id]);
+  if(job&&['abgeholt','reserviert'].includes(job.status))throw new V.ValidationError('HP-Neuanlage läuft. Bitte vor dem Archivieren die Rückprüfung abwarten.',409);
+  await tx.run(
     "UPDATE adressen SET archiviert=?, geaendert_am=datetime('now') WHERE id=?",
     [V.bool(archiviert), id]
   );
-  return holen(db, id);
+  return holen(tx, id);
+  };return db.transaktion?db.transaktion(work):work(db);
 }
 
 module.exports = { anzeigename, liste, holen, anlegen, aktualisieren, setzeArchiviert, datenschutzSetzen };

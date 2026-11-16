@@ -451,7 +451,7 @@ function baueApi(db, uploadDir, options = {}) {
   router.post(
     '/adressen',
     auth.erfordereSchreibrecht,
-    h(async (req, res) => res.status(201).json(await mitHistorie(req, 'adresse', null, () => db.transaktion(async tx=>{await require('../services/adressDubletten').neuanlagePruefen(tx,req.body||{});return adressenSvc.anlegen(tx,req.body);}))))
+    h(async (req, res) => res.status(201).json(await mitHistorie(req, 'adresse', null, () => db.transaktion(async tx=>{await require('../services/adressDubletten').neuanlagePruefen(tx,req.body||{});const hp=require('../services/hpAdressNeuanlage'),prepared=await hp.vorbereiten(tx,req.benutzer.id,req.body||{}),a=await adressenSvc.anlegen(tx,req.body);await hp.einreihen(tx,a.id,prepared);return hp.metadata(tx,a);}))))
   );
   router.get(
     '/adressen/:id',

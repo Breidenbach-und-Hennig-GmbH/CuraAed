@@ -866,3 +866,11 @@ CREATE TABLE IF NOT EXISTS etv_kalender_termine(
  identitaet TEXT,transaction_id TEXT NOT NULL,event_id TEXT,anfrage TEXT,basis_hash TEXT,stillgelegt INTEGER NOT NULL DEFAULT 0,
  UNIQUE(versammlung_id,ziel)
 );
+
+CREATE TABLE IF NOT EXISTS hp_adress_neuanlagen(
+ id TEXT PRIMARY KEY,verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),
+ adresse_id INTEGER NOT NULL UNIQUE REFERENCES adressen(id),daten TEXT NOT NULL,status TEXT NOT NULL,
+ hp_nummer INTEGER,reservierung TEXT,result_hash TEXT,meldung TEXT,abgeholt_ms INTEGER,
+ erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,erledigt_am TEXT
+);
+CREATE INDEX IF NOT EXISTS hp_neuanlage_status ON hp_adress_neuanlagen(verbindung_id,status,erstellt_am);

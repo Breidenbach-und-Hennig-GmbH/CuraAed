@@ -33,6 +33,7 @@ async function metadata(db,a) {
  return {...a,hp_sync:{nummer:m.hp_nummer,status,aktiv:!!m.aktiv&&validUntil(m,Date.now()),abgelaufen:!!m.aktiv&&!validUntil(m,Date.now()),zuletzt_gesehen:m.zuletzt_gesehen,online:!!m.zuletzt_gesehen&&Date.now()-m.zuletzt_gesehen<30000,version:revision(a,m.hp_nummer),konflikt_version:digest([m.basis,m.remote,revision(a,m.hp_nummer)]),meldung:m.meldung}};
 }
 async function validateSave(db,old,data) {
+ const job=await db.get("SELECT status FROM hp_adress_neuanlagen WHERE adresse_id=?",[old.id]);if(job&&['abgeholt','reserviert'].includes(job.status))fail('HP-Neuanlage läuft. Bitte die Rückprüfung abwarten.');
  const m=await db.get('SELECT * FROM hp_adress_zuordnung WHERE adresse_id=?',[old.id]);if(!m)return;
  if(String(data.nummer)!==String(old.nummer))fail('Die HP-Adressnummer ist fest zugeordnet.');
  const before=local(old,m.hp_nummer),after=local(data,m.hp_nummer);
@@ -64,6 +65,8 @@ function service(db,{now=()=>Date.now()}={}) {
  return {
   async zugang(id,token,datenbank){const v=await auth(db,id,token);if(datenbank!==v.datenbank)fail('HP-Kundenbestand stimmt nicht überein.');return v;},
   async create(owner,input) {
+   if(input.neuanlagen!==undefined&&typeof input.neuanlagen!=='boolean')fail('Ungültige Neuanlagefreigabe.',400);
+   if(input.neuanlagen===true&&input.vollstaendig!==true)fail('HP-Neuanlagen benötigen die vollständige Adressfreigabe.',400);
    if(input.vollstaendig!==undefined&&typeof input.vollstaendig!=='boolean')fail('Ungültiger Adressumfang.',400);
    if(input.dauerhaft!==undefined&&typeof input.dauerhaft!=='boolean')fail('Ungültige Freigabedauer.',400);
    if(input.zustimmung!==true||typeof input.name!=='string'||!input.name.trim()||input.name.length>80||typeof input.datenbank!=='string'||!/^[A-Za-z0-9_-]{1,64}$/.test(input.datenbank))fail('Name, Datenbank und Freigabe für den Adressabgleich fehlen.',400);
@@ -74,8 +77,8 @@ function service(db,{now=()=>Date.now()}={}) {
     const id=previous?.id||crypto.randomUUID(),token=crypto.randomBytes(32).toString('base64url'),expires=permanent?0:now()+8*3600000;
     if(previous)await tx.run('UPDATE hp_adress_verbindungen SET token_hash=?,ablauf_ms=?,aktiv=1 WHERE id=?',[digest(token),expires,id]);
     else await tx.run('INSERT INTO hp_adress_verbindungen (id,benutzer_id,name,datenbank,token_hash,ablauf_ms) VALUES (?,?,?,?,?,?)',[id,owner,input.name.trim(),input.datenbank.toUpperCase(),digest(token),expires]);
-    await tx.run('INSERT INTO hp_adress_vollfreigaben(verbindung_id,aktiv) VALUES(?,?) ON CONFLICT(verbindung_id) DO UPDATE SET aktiv=excluded.aktiv',[id,input.vollstaendig===true?1:0]);
-    return {id,token,ablauf_ms:expires,scope:input.vollstaendig===true?'adressen-v2':'adressen-v1'};
+    await tx.run('INSERT INTO hp_adress_vollfreigaben(verbindung_id,aktiv,neuanlagen) VALUES(?,?,?) ON CONFLICT(verbindung_id) DO UPDATE SET aktiv=excluded.aktiv,neuanlagen=excluded.neuanlagen',[id,input.vollstaendig===true?1:0,input.neuanlagen===true?1:0]);
+    return {id,token,ablauf_ms:expires,scope:input.neuanlagen===true?'adressen-v3':input.vollstaendig===true?'adressen-v2':'adressen-v1'};
    });
   },
   async permanent(owner,id,input){
@@ -87,7 +90,7 @@ function service(db,{now=()=>Date.now()}={}) {
     return {ok:true,ablauf_ms:0};
    });
   },
-  async list(owner){const rows=await db.all('SELECT id,name,datenbank,aktiv,ablauf_ms,zuletzt_gesehen,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id) AS anzahl,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id AND m.status IN (\'konflikt\',\'unklar\',\'fehler\')) AS probleme FROM hp_adress_verbindungen v WHERE benutzer_id=?',[owner]);for(const v of rows){v.vollstaendig=!!await db.get('SELECT 1 FROM hp_adress_vollfreigaben WHERE verbindung_id=? AND aktiv=1',[v.id]);v.bereiche=await db.get("SELECT COUNT(*) AS uebernommen,COALESCE(SUM(status!='synchron'),0) AS pruefen FROM hp_adress_bereiche WHERE verbindung_id=?",[v.id]);v.importfehler=await db.all('SELECT hp_nummer,meldung,gesehen_am FROM hp_adress_importfehler WHERE verbindung_id=? ORDER BY hp_nummer',[v.id]);}return rows;},
+  async list(owner){const rows=await db.all('SELECT id,name,datenbank,aktiv,ablauf_ms,zuletzt_gesehen,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id) AS anzahl,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id AND m.status IN (\'konflikt\',\'unklar\',\'fehler\')) AS probleme FROM hp_adress_verbindungen v WHERE benutzer_id=?',[owner]);for(const v of rows){v.vollstaendig=!!await db.get('SELECT 1 FROM hp_adress_vollfreigaben WHERE verbindung_id=? AND aktiv=1',[v.id]);v.neuanlagen=!!await db.get('SELECT 1 FROM hp_adress_vollfreigaben WHERE verbindung_id=? AND neuanlagen=1',[v.id]);v.bereiche=await db.get("SELECT COUNT(*) AS uebernommen,COALESCE(SUM(status!='synchron'),0) AS pruefen FROM hp_adress_bereiche WHERE verbindung_id=?",[v.id]);v.importfehler=await db.all('SELECT hp_nummer,meldung,gesehen_am FROM hp_adress_importfehler WHERE verbindung_id=? ORDER BY hp_nummer',[v.id]);}return rows;},
   async report(id,token,error){return db.transaktion(async tx=>{await auth(tx,id,token);const message=error instanceof ValidationError?error.message:'Interner Abgleichfehler'+(typeof error.code==='string'&&/^SQLITE_[A-Z_]+$/.test(error.code)?' ('+error.code+')':'')+'.';await tx.run('INSERT OR REPLACE INTO hp_adress_importfehler VALUES (?,?,?,?)',[id,0,message,iso()]);});},
   async disconnect(owner,id){return db.transaktion(async tx=>{await tx.run('UPDATE hp_objekt_importe SET aktiv=0 WHERE verbindung_id IN (SELECT id FROM hp_adress_verbindungen WHERE id=? AND benutzer_id=?)',[id,owner]);await tx.run('UPDATE hp_adress_verbindungen SET aktiv=0 WHERE id=? AND benutzer_id=?',[id,owner]);return {ok:true};});},
   async resolve(address,input){return db.transaktion(async tx=>{
@@ -137,6 +140,7 @@ function service(db,{now=()=>Date.now()}={}) {
       await tx.run("INSERT INTO hp_adress_zuordnung (verbindung_id,hp_nummer,adresse_id,basis,status,gelesen_am) VALUES (?,?,?,?,'synchron',?)",[id,remote.nummer,a.id,JSON.stringify(remote),iso()]);continue;
      }
      const a=await tx.get('SELECT * FROM adressen WHERE id=?',[m.adresse_id]);
+     if(m.status==='neuanlage')continue;
      const base=JSON.parse(m.basis),current=local(a,m.hp_nummer);
      if(m.status==='fehler'&&!m.claim&&!m.ziel)m.status='synchron';
      if(['unterwegs','unklar','fehler','konflikt'].includes(m.status)) {
