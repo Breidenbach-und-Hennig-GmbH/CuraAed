@@ -26,9 +26,9 @@ test('Adressabgleich-API: Mitarbeiter schreibt normale Maske, Freigabe nur Admin
  assert.equal((await get('/hp-adressen/adressen/'+a.id+'/bereiche/__proto__',admin)).status,400);
 
  const creation=await(await post('/hp-adressen/verbindungen',{...input,vollstaendig:true,neuanlagen:true},admin)).json();assert.equal(creation.scope,'adressen-v3');
- const newAddress={nachname:'Eigenständige HP-Neuanlage',vorname:'API'};const noCode=await post('/adressen',newAddress,staff);assert.equal(noCode.status,400);assert.match((await noCode.json()).fehler,/Sachbearbeiterkürzel/);
- await db.run("UPDATE benutzer SET kuerzel='TK' WHERE benutzername='team'");const created=await post('/adressen',newAddress,staff);assert.equal(created.status,201);assert.equal((await created.json()).hp_neuanlage.status,'wartend');
+ const newAddress={nachname:'Eigenständige HP-Neuanlage',vorname:'API'};const created=await post('/adressen',newAddress,staff);assert.equal(created.status,201);assert.equal((await created.json()).hp_neuanlage.status,'wartend');
+ await db.run("UPDATE benutzer SET kuerzel='TK' WHERE benutzername='team'");
  assert.equal((await post('/hp-adressen/agent/'+creation.id+'/neuanlagen/abholen',{datenbank:'HPTEST'},staff)).status,401);
- const taken=await post('/hp-adressen/agent/'+creation.id+'/neuanlagen/abholen',{datenbank:'HPTEST'},'','',creation.token);assert.equal(taken.status,200);assert.equal((await taken.json()).anlegen.daten.sb,'TK');
+ const taken=await post('/hp-adressen/agent/'+creation.id+'/neuanlagen/abholen',{datenbank:'HPTEST'},'','',creation.token);assert.equal(taken.status,200);assert.equal((await taken.json()).anlegen.daten.sb,'CA');
 
 });

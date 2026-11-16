@@ -1,14 +1,15 @@
 'use strict';
 const crypto=require('node:crypto'),H=require('./hpAdressSync'),D=require('./adressDubletten'),V=require('../lib/validation'),enc=require('iconv-lite');
 const fail=(m,s=409)=>{throw new V.ValidationError(m,s);},hash=v=>crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex');
+const HP_ANLAGE_KUERZEL='CA';
 function text(v,max,label){v=String(v||'');if(v.length>max||/[\x00-\x1f\x7f]/.test(v)||v!==v.trimEnd()||enc.decode(enc.encode(v,'cp850'),'cp850')!==v)fail(label+' passt nicht in das HP-Feld (maximal '+max+' Zeichen, HP-Zeichensatz).',400);return v;}
-function snapshot(a,sb,bekannt=[]){if(a.email&&!/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(a.email))fail('Bitte eine gültige E-Mail-Adresse für die HP-Neuanlage angeben.',400);const record=H.record(H.local(a,1));if(!record.name1.trim())fail('Für die HP-Neuanlage fehlt der Name.',400);if(!/^[A-Z]{1,3}$/.test(sb||''))fail('Bitte zuerst das persönliche HP-Sachbearbeiterkürzel in der Benutzerverwaltung hinterlegen.',400);return{record,sb,telefon:text(a.telefon,25,'Telefonnummer'),mobil:text(a.mobil,25,'Mobilnummer'),email:text(a.email,60,'E-Mail-Adresse'),bekannte_hp:bekannt};}
+function snapshot(a,sb,bekannt=[]){if(a.email&&!/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(a.email))fail('Bitte eine gültige E-Mail-Adresse für die HP-Neuanlage angeben.',400);const record=H.record(H.local(a,1));if(!record.name1.trim())fail('Für die HP-Neuanlage fehlt der Name.',400);if(!/^[A-Z]{1,3}$/.test(sb||''))fail('Ungültiges HP-Anlagekürzel im Neuanlageauftrag.',400);return{record,sb,telefon:text(a.telefon,25,'Telefonnummer'),mobil:text(a.mobil,25,'Mobilnummer'),email:text(a.email,60,'E-Mail-Adresse'),bekannte_hp:bekannt};}
 async function vorbereiten(tx,owner,b){
  const v=await tx.get('SELECT v.* FROM hp_adress_verbindungen v JOIN hp_adress_vollfreigaben f ON f.verbindung_id=v.id WHERE v.aktiv=1 AND f.neuanlagen=1');if(!v)return null;
  if(v.ablauf_ms!==0&&v.ablauf_ms<=Date.now())fail('Die Freigabe für HP-Neuanlagen ist abgelaufen. Bitte vor der Neuanlage erneuern.');
- const user=await tx.get('SELECT kuerzel FROM benutzer WHERE id=?',[owner]),duplicates=await D.pruefen(tx,b),known=[];
+ const duplicates=await D.pruefen(tx,b),known=[];
  for(const a of duplicates.treffer){const m=await tx.get('SELECT hp_nummer FROM hp_adress_zuordnung WHERE adresse_id=? AND verbindung_id=?',[a.id,v.id]);if(m)known.push(m.hp_nummer);}
- return{verbindung_id:v.id,daten:snapshot(b,user?.kuerzel,known)};
+ return{verbindung_id:v.id,daten:snapshot(b,HP_ANLAGE_KUERZEL,known)};
 }
 async function einreihen(tx,aid,prepared){if(!prepared)return;await tx.run("INSERT INTO hp_adress_neuanlagen(id,verbindung_id,adresse_id,daten,status) VALUES(?,?,?,?,'wartend')",[crypto.randomUUID(),prepared.verbindung_id,aid,JSON.stringify(prepared.daten)]);}
 async function metadata(db,a){const j=await db.get('SELECT status,meldung,hp_nummer FROM hp_adress_neuanlagen WHERE adresse_id=?',[a.id]);return j?{...a,hp_neuanlage:j}:a;}
@@ -36,7 +37,7 @@ function service(db){
    await tx.run("UPDATE hp_adress_neuanlagen SET status='pruefen',meldung='Abholung ohne bestätigte Reservierung unterbrochen. Kein automatischer Neuversuch.' WHERE verbindung_id=? AND status='abgeholt' AND abgeholt_ms<?",[id,Date.now()-120000]);
    const j=await tx.get("SELECT * FROM hp_adress_neuanlagen WHERE verbindung_id=? AND status='wartend' ORDER BY erstellt_am,id LIMIT 1",[id]);if(!j)return{};
    const a=await tx.get('SELECT * FROM adressen WHERE id=?',[j.adresse_id]);if(!a||a.archiviert){await tx.run("UPDATE hp_adress_neuanlagen SET status='pruefen',meldung='Lokale Adresse archiviert oder nicht mehr vorhanden.' WHERE id=?",[j.id]);return{};}
-   let data;try{const old=JSON.parse(j.daten);data=snapshot(a,old.sb,old.bekannte_hp);}catch(e){if(!(e instanceof V.ValidationError))throw e;await tx.run("UPDATE hp_adress_neuanlagen SET status='pruefen',meldung=? WHERE id=?",[e.message,j.id]);return{};}
+   let data;try{const old=JSON.parse(j.daten);data=snapshot(a,HP_ANLAGE_KUERZEL,old.bekannte_hp);}catch(e){if(!(e instanceof V.ValidationError))throw e;await tx.run("UPDATE hp_adress_neuanlagen SET status='pruefen',meldung=? WHERE id=?",[e.message,j.id]);return{};}
    await tx.run("UPDATE hp_adress_neuanlagen SET daten=?,status='abgeholt',abgeholt_ms=? WHERE id=?",[JSON.stringify(data),Date.now(),j.id]);return{anlegen:{id:j.id,daten:data}};
   });},
   async reservieren(id,token,b){return db.transaktion(async tx=>{
