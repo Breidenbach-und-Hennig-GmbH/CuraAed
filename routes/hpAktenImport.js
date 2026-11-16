@@ -9,7 +9,7 @@ module.exports=(db,{directory,publicUrl}={})=>{
  for(const [name,method]of [['abholen','poll'],['seite','page'],['dateistatus','fileResult'],['altnamen','legacyNames'],['fehler','report']])r.post('/agent/:id/'+name,json,h(async(req,res)=>res.json(await svc[method](req.params.id,token(req),req.body||{}))));
  r.post('/agent/:id/datei/:file',h(async(req,res,next)=>{
   if(!req.is('application/octet-stream'))throw new ValidationError('Binärdatei erforderlich.',400);
-  req.hpFile={datenbank:req.get('x-hp-datenbank'),generation:req.get('x-hp-generation'),datei:Number(req.params.file),groesse:Number(req.get('x-hp-groesse')),mtime:req.get('x-hp-mtime'),sha256:req.get('x-hp-sha256')};
+  req.hpFile={vertrag:req.get('x-hp-vertrag'),datenbank:req.get('x-hp-datenbank'),generation:req.get('x-hp-generation'),datei:Number(req.params.file),groesse:Number(req.get('x-hp-groesse')),mtime:req.get('x-hp-mtime'),sha256:req.get('x-hp-sha256')};
   await svc.fileJob(req.params.id,token(req),req.hpFile);if(uploads.has(req.params.id))throw new ValidationError('Eine Dateiübertragung läuft bereits.',409);uploads.add(req.params.id);const release=()=>uploads.delete(req.params.id);res.once('finish',release);res.once('close',release);next();
  }),express.raw({type:'application/octet-stream',limit:'64mb'}),h(async(req,res)=>res.json(await svc.store(req.params.id,token(req),req.hpFile,req.body))));
  r.use(auth.erfordereAdmin);

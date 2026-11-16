@@ -143,7 +143,11 @@
     "keys": [
       "Akten_Nr_",
       "laufende_Akte",
-      "Lfd__Nr"
+      "Lfd__Nr",
+      "PFkt",
+      "Adress_Nr_",
+      "Objekt_Nr",
+      "Wohnungs_Nr"
     ],
     "filter": "",
     "fields": [
