@@ -112,7 +112,8 @@ function baueHpMobileClient({ portalUrl, accessToken, fetchImpl = require('../li
     async fachDetails(resource,id) {
       if(!['records','tasks','craftsman_tasks','cis','notes'].includes(resource))throw new HpMobileError('Ungültiger Fachbereich.',400);
       const key=positiveId(id);await verify();
-      const rel=['cis','tasks'].includes(resource)?'?'+new URLSearchParams({rel:'["units","persons","buildings","records","craftsman_tasks","documents.document_files"]'}):'';
+      const relations=['units','persons','buildings','records','craftsman_tasks','documents','documents.document_files'].filter(r=>r!==resource);
+      const rel='?'+new URLSearchParams({rel:JSON.stringify(relations)});
       return (await request('GET',resource+'/'+key+rel)).data;
     },
     async dmsListe({ page = 1, search = '', importieren = false } = {}) {

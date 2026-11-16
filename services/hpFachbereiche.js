@@ -32,10 +32,12 @@ function bezuege(raw){
   if(!out.some(x=>x.typ===r.typ&&x.remote_id===r.remote_id))out.push(r);
  }
  for(const item of raw.persons||[])add('adresse',item.person||item);
+ if(raw.person)add('adresse',raw.person);
  add('adresse',raw.craftsman_person);
  for(const item of raw.buildings||[])add('objekt',item);
  for(const item of raw.units||[]){add('einheit',item,item.building?.hp_id);if(item.building)add('objekt',item.building);}
  for(const [key,typ] of Object.entries(BEREICHE))for(const item of Array.isArray(raw[key])?raw[key]:[])add(typ,item);
+ if(raw.record)add('akte',raw.record);
  for(const container of Array.isArray(raw.documents)?raw.documents:[]){
   if(Array.isArray(container.document_files))for(const file of container.document_files)add('dokument',file);
   else if(container.container_id)add('dokument',container);
@@ -51,6 +53,7 @@ async function details(client,resource,id){
  bereich(resource);const raw=unwrap(await client.fachDetails(resource,id));
  if(!raw||number(raw.id)!==number(id))throw new HpMobileError('Ungültiger HP-Eintrag.',502);
  const missing=['persons','units','buildings','records','craftsman_tasks','cis','tasks','documents'].filter(k=>Number(raw[k+'_count'])>(Array.isArray(raw[k])?raw[k].length:0));
+ for(const c of raw.documents||[])if(Number(c.document_files_count)>(c.document_files?.length||0)||(!Array.isArray(c.document_files)&&!c.container_id))missing.push('documents.document_files');
  return {remote_id:number(raw.id),hp_nummer:raw.hp_id===undefined?null:typeof raw.hp_id==='object'?JSON.stringify(raw.hp_id):String(raw.hp_id),werte:projection(resource,raw),snapshot:snapshot(raw),bezuege:bezuege(raw),unvollstaendig:missing};
 }
 module.exports={BEREICHE,projection,bezuege,snapshot,liste,details};
