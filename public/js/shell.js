@@ -1128,7 +1128,7 @@ function applikationOeffnen() {
     { text: 'Adressen', info: 'Adressmaske öffnen (Suche darin mit s)', hash: '#/adressen', taste: 'Alt+S, A' },
     { text: 'DMS', info: 'Dauerhaftes Archiv', hash: '#/dms' },
     {text:'Ticketsystem',info:'Objektbezogene Anfragen aus Telefoneingängen',hash:'#/tickets'},
-    { text: 'Arbeitsbereiche', info: 'Akten, Aufträge, Wiedervorlagen, ZIS und Notizen', hash: '#/vorgaenge' },
+    { text: 'Akten / Vorgänge', info: 'Akten- und Vorgangsverwaltung', hash: '#/vorgaenge' },
     { text: 'Archiv', info: 'zentrale Ablage', hash: '#/archiv' },
     { text: 'Archiv – nicht zugeordnete Einträge', info: 'Eingang ohne Zuordnung', hash: '#/archiv?ohne=1' },
     { text: 'Verwaltungen', info: 'Stammdaten', hash: '#/verwaltungen' },
