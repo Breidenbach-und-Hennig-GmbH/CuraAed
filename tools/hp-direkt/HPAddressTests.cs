@@ -18,6 +18,10 @@ internal static class HPAddressTests
   var reservation=new Dictionary<string,object>{{"nummer",65952},{"datum",739936},{"uhrzeit",40000},{"protokoll",93895L}};
   var plan=full.Expected(payload,reservation);Check(plan["stamm"].Count==1&&plan["telefon"].Count==2&&plan["email"].Count==1&&plan["protokoll"].Count==4);
   Check(Convert.ToString(plan["stamm"][0]["AdrNr"])=="65952"&&Convert.ToString(plan["anlage"][0]["anVonSB"])=="FD");
+  Check(plan["suche"].Count==1&&Convert.ToString(plan["suche"][0]["AdrNr"])=="65952"&&Convert.ToString(plan["suche"][0]["SearchField"])=="MÜLLERJÖRGMÜLLER");
+  Check(HPAddressClient.SearchText(new Dictionary<string,object>{{"SBegrAdr","Rupp, Mathias"},{"Vorname","Mathias"},{"Name1","Rupp"}})=="RUPPMATHIASMATHIASRUPP");
+  Check(HPAddressClient.SearchText(new Dictionary<string,object>{{"SBegrAdr","CURAAED-TEST-NEU161126"},{"Name1","CURAAED-TEST-NEU161126"},{"Name2","Nur Schnittstellentest"}})=="CURAAEDTESTNEU161126CURAAEDTESTNEU161126NURSCHNITTSTELLENTEST");
+  Check(HPAddressClient.SearchText(new Dictionary<string,object>{{"Name1",new string('X',300)}}).Length==255);
   Check(Convert.ToString(plan["protokoll"][0]["MODUL_ID"])=="NEUANL"&&Convert.ToString(plan["protokoll"][3]["lfdNr"])=="93898");
   var copy=j.Deserialize<List<Dictionary<string,object>>>(j.Serialize(plan["telefon"]));copy.Reverse();Check(HPAddressClient.EqualRows(copy,plan["telefon"]));copy[0]["TelNr"]="fremd";Check(!HPAddressClient.EqualRows(copy,plan["telefon"]));
   Console.WriteLine("Neuanlage: feste Folgeeinträge, Mitarbeiterkürzel, HP-Nummer und vollständige zeilenweise Rückprüfung geprüft.");
