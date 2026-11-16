@@ -99,6 +99,7 @@ async function vorgaengeMaske(params=new URLSearchParams()){
   const [info,connections]=await Promise.all([API.get('/vorgaenge/uebersicht'),API.get('/hausperfekt/dms/verbindungen')]);if(lauf!==S.lauf)return;
   refreshList();
   body.replaceChildren(el('p',{text:info.bereiche.map(b=>VORGANG_ART[b.art]+': '+b.gesamt+(b.konflikte?' ('+b.konflikte+' Konflikte)':'')).join(' · ')||'Noch keine HP-Fachbereiche übernommen.'}));
+  if(info.uebernahme)body.append(el('p',{text:info.uebernahme.akten+' HP-Akten · '+info.uebernahme.handwerker+' HP-Handwerkeraufträge · '+info.uebernahme.gesichert+' zugeordnete Dateien gespeichert · '+info.uebernahme.ausstehend+' Dateiübernahmen ausstehend'}));
   for(const job of info.auftraege){body.append(el('p',{role:'status',text:(VORGANG_ART[{records:'akte',craftsman_tasks:'handwerker',tasks:'wiedervorlage',cis:'zis',notes:'notiz'}[job.resource]]||job.resource)+' · Seite '+job.seite+' · '+(job.status==='laeuft'?'Übernahme läuft':job.status==='fertig'?'Durchlauf abgeschlossen':'Übernahme angehalten')+' · '+job.fehler+' Fehler'+(job.meldung?' · '+job.meldung:'')}));
    if(job.status==='laeuft')body.append(el('button',{text:'Übernahme anhalten',onclick:async()=>{try{await API.post('/vorgaenge/anhalten',{quelle:job.quelle_id});refresh();}catch(e){fehler(e);}}}));
   }

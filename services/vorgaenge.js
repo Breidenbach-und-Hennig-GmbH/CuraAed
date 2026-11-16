@@ -147,7 +147,10 @@ function baueVorgaenge(db,{hp,archiv}={}){
   const jobs=await db.all('SELECT j.* FROM fach_import_jobs j JOIN hp_dms_quellen s ON s.id=j.quelle_id WHERE s.benutzer_id=?',[owner]);
   for(const j of jobs){if(j.status==='laeuft'&&!active.has(j.quelle_id)){j.status='angehalten';j.meldung='Nach Serverneustart fortsetzen.';await db.run("UPDATE fach_import_jobs SET status='angehalten',meldung=? WHERE quelle_id=?",[j.meldung,j.quelle_id]);}j.fehler=(await db.get('SELECT COUNT(*) AS n FROM fach_import_fehler WHERE quelle_id=?',[j.quelle_id])).n;}
   const errors=await db.all('SELECT f.* FROM fach_import_fehler f JOIN hp_dms_quellen s ON s.id=f.quelle_id WHERE s.benutzer_id=? LIMIT 100',[owner]);
-  return {bereiche:counts,quellen:sources,auftraege:jobs,fehler:errors};
+  const uebernahme=await db.get("SELECT COUNT(*) AS eintraege,SUM(art='akte') AS akten,SUM(art='handwerker') AS handwerker FROM fach_vorgaenge WHERE benutzer_id=? AND quelle_id IS NOT NULL",[owner]);
+  const dateien=await db.get("SELECT COUNT(*) AS gesamt,SUM(f.speicher_name IS NOT NULL) AS gesichert FROM hp_dms_dateien f WHERE EXISTS(SELECT 1 FROM fach_bezuege b JOIN fach_vorgaenge v ON v.id=b.vorgang_id WHERE v.benutzer_id=? AND v.quelle_id=f.quelle_id AND b.typ='dokument' AND b.remote_id=f.datei_id)",[owner]);
+  const ausstehend=await db.get("SELECT COUNT(*) AS n FROM (SELECT DISTINCT v.quelle_id,b.remote_id FROM fach_bezuege b JOIN fach_vorgaenge v ON v.id=b.vorgang_id LEFT JOIN hp_dms_dateien f ON f.quelle_id=v.quelle_id AND f.datei_id=b.remote_id WHERE v.benutzer_id=? AND b.typ='dokument' AND v.quelle_id IS NOT NULL AND f.speicher_name IS NULL)",[owner]);
+  return {bereiche:counts,quellen:sources,auftraege:jobs,fehler:errors,uebernahme:{...uebernahme,dateien:dateien.gesamt,gesichert:dateien.gesichert||0,ausstehend:ausstehend.n}};
  }
  async function run(owner,connection,source){
   try{let job=await db.get('SELECT * FROM fach_import_jobs WHERE quelle_id=?',[source.id]);const resources=Object.keys(BEREICHE);
@@ -160,6 +163,13 @@ function baueVorgaenge(db,{hp,archiv}={}){
       const id=page.eintraege[i].id;
       try{const data=await hp.fachDetails(owner,connection,resource,id);await importOne(owner,source,resource,data);
        if(data.unvollstaendig?.length)throw new HpMobileError('HP liefert noch nicht alle Zuordnungen: '+data.unvollstaendig.join(', '),422);
+       await secureDocuments(owner,connection,data);
+       if(resource==='records')for(const ref of data.bezuege.filter(b=>b.typ==='handwerker')){
+        const child=await hp.fachDetails(owner,connection,'craftsman_tasks',ref.remote_id);
+        await importOne(owner,source,'craftsman_tasks',child);
+        if(child.unvollstaendig?.length)throw new HpMobileError('Handwerkerauftrag '+ref.remote_id+': unvollständige HP-Zuordnungen.',422);
+        await secureDocuments(owner,connection,child);
+       }
        await db.run('DELETE FROM fach_import_fehler WHERE quelle_id=? AND resource=? AND remote_id=?',[source.id,resource,id]);
       }catch(e){if(!(e instanceof HpMobileError)||[401,403,429,507].includes(e.status))throw e;await db.run('INSERT OR REPLACE INTO fach_import_fehler(quelle_id,resource,remote_id,meldung) VALUES(?,?,?,?)',[source.id,resource,id,e.message]);}
       await db.run('UPDATE fach_import_jobs SET position=? WHERE quelle_id=?',[i+1,source.id]);
@@ -167,8 +177,15 @@ function baueVorgaenge(db,{hp,archiv}={}){
      if(!page.weitere)break;job.seite++;job.position=0;await db.run('UPDATE fach_import_jobs SET seite=?,position=0 WHERE quelle_id=?',[job.seite,source.id]);
     }
    }
-   await db.run("UPDATE fach_import_jobs SET status='fertig',meldung='Durchlauf abgeschlossen. Fehler und Konflikte separat prüfen.' WHERE quelle_id=?",[source.id]);
+   const errors=(await db.get('SELECT COUNT(*) AS n FROM fach_import_fehler WHERE quelle_id=?',[source.id])).n;
+   await db.run("UPDATE fach_import_jobs SET status='fertig',meldung=? WHERE quelle_id=?",[errors?'Durchlauf beendet; '+errors+' Einträge nicht vollständig übernommen. Erneuten Durchlauf nach Behebung starten.':'Alle von HP-Mobile gelieferten Einträge und zugeordneten Dateien sind in CuraAed gespeichert.',source.id]);
   }catch(e){await db.run("UPDATE fach_import_jobs SET status='angehalten',meldung=? WHERE quelle_id=?",[e instanceof HpMobileError?e.message:'Übernahme unterbrochen. Bitte erneut starten.',source.id]).catch(()=>{});}finally{active.delete(source.id);}
+ }
+ async function secureDocuments(owner,connection,data){
+  for(const ref of data.bezuege.filter(b=>b.typ==='dokument')){
+   if(!archiv?.store)throw new HpMobileError('Dateiübernahme ist nicht verfügbar.',503);
+   await archiv.store(owner,connection,ref.remote_id);
+  }
  }
  async function start(owner,connection){
   const source=await archiv.source(owner,connection);if(!active.has(source.id)){

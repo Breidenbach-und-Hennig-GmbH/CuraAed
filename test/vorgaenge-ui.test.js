@@ -40,3 +40,9 @@ test('Aktenmaske erhält BB0 und zeigt echte Dokument- und HWA-Zuordnungen',asyn
  w.aktenMaske(r,new w.URLSearchParams('tab=handwerker'));assert.ok(w.document.querySelector('a[href="#/vorgaenge/8"]'));assert.ok(w.document.querySelector('input[type=checkbox]').checked);assert.match(w.document.body.textContent,/BB0|Am Steinberg 49/);
  w.aktenMaske(r,new w.URLSearchParams('tab=archiv'));assert.match(w.document.body.textContent,/Einladung.pdf/);
 });
+
+test('HP-Aktenarchiv zeigt lokale Sicherung und öffnet Dateien innerhalb CuraAed',t=>{
+ const w=setup(t,{get:async()=>[]});let opened;w.dmsVorschau=(url,d)=>{opened={url,d};};
+ const r={id:7,art:'akte',titel:'HP-Akte',status:'offen',bezuege:[{typ:'dokument',remote_id:99,name:'Dokument'}],akte:{hp_dokumente:[{id:99,hp:true,titel:'Schaden',original_name:'Schaden.pdf',gesichert:true},{id:100,hp:true,titel:'Offen',original_name:'Offen.pdf',gesichert:false}]}};
+ w.aktenMaske(r,new w.URLSearchParams('tab=archiv'));const d=w.document;assert.match(d.body.textContent,/In CuraAed gespeichert/);assert.match(d.body.textContent,/Dateiübernahme ausstehend/);[...d.querySelectorAll('button')].find(b=>b.textContent==='Schaden.pdf').click();assert.equal(opened.url,'/api/vorgaenge/7/dokumente/99');assert.equal(opened.d.original_name,'Schaden.pdf');assert.equal(d.querySelectorAll('a[href*="hausperfekt-mobile"]').length,0);
+});
