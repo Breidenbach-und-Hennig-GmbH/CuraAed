@@ -64,8 +64,9 @@ internal sealed partial class HPAddressClient
     for(int i=0;i<Keys.Length;i++)cmd.Parameters.Add("old"+i,OdbcType.Char,Sizes[i]).Value=old[Keys[i]];
     if(cmd.ExecuteNonQuery()!=1)throw new InvalidOperationException();
    }
+   var search=UpdateSearch(c,tx,n);
    if(!Same(Read(c,tx,n),desired))throw new InvalidOperationException();commit=true;tx.Commit();tx.Dispose();tx=null;
-   var after=Read(c,null,n);return Same(after,desired)?Result("erfolg",after):Result("unklar",null);
+   var after=Read(c,null,n);return Same(after,desired)&&EqualRows(ReadRows(c,null,"suche",n),new List<Dictionary<string,object>>{search})?Result("erfolg",after):Result("unklar",null);
   }catch{bool rollback=false;if(tx!=null)try{tx.Rollback();rollback=true;}catch{}return Result(!commit&&rollback?"fehler":"unklar",null);}finally{if(tx!=null)tx.Dispose();}}
  }
  Dictionary<string,object> Post(string action,object data)
