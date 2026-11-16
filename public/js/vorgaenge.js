@@ -9,6 +9,7 @@ function vorgangLink(b){
 }
 async function vorgangForm(record={},context=null){
  if(record.art==='handwerker')return handwerkerForm(record,context);
+ if(record.art==='akte')return akteForm(record,context);
  const lauf=S.lauf;let mitarbeiter;try{mitarbeiter=await API.get('/mitarbeiter');if(lauf!==S.lauf)return;}catch(e){fehler(e);return;}
  const {form,werte}=formular([
   [{name:'art',label:'Bereich',type:'select',options:opt(VORGANG_ART),value:record.art||'akte',disabled:!!record.id},
@@ -43,10 +44,11 @@ async function vorgangZuordnung(record){
  m=modal({titel:'Zuordnung ergänzen',inhalt:form,footer:close=>[el('button',{text:'Abbrechen',onclick:close}),save]});
 }
 async function vorgangDetail(id,params=new URLSearchParams()){
- const lauf=S.lauf,root=el('section');if(!arbeitsMaske(lauf,root,{titel:'Vorgang',aktionen:[{text:'Arbeitsbereiche',onclick:()=>geheZu('#/vorgaenge')},{text:'Kalender',onclick:()=>geheZu('#/kalender')}]}))return;
+ const lauf=S.lauf,root=el('section');if(!arbeitsMaske(lauf,root,{titel:'Vorgang',aktionen:[{text:'Akten / Vorgänge',onclick:()=>geheZu('#/vorgaenge')},{text:'Kalender',onclick:()=>geheZu('#/kalender')}]}))return;
  try{
   const r=await API.get('/vorgaenge/'+encodeURIComponent(id));if(lauf!==S.lauf)return;
   if(r.art==='handwerker')return handwerkerMaske(r,params);
+  if(r.art==='akte')return aktenMaske(r,params);
   root.cuTitelSetzen(r.titel);
   root.append(el('p',{},[el('a',{href:'#/vorgaenge?art='+r.art,text:'← '+VORGANG_ART[r.art]})]),
    panel([['Vorgangsnummer','CA-'+r.id],['Bereich',VORGANG_ART[r.art]],['Status',VORGANG_STATUS[r.status]],['Fällig',datum(r.faellig_am)+(r.uhrzeit?' '+r.uhrzeit:'')],['HP-Nummer',r.hp_nummer||'–'],['Datenhaltung','In CuraAed gespeichert'],['Herkunft',r.subdomain||'In CuraAed angelegt'],['HP-Status',r.remote_snapshot?.status?.name||r.remote_snapshot?.status?.description||'–']]),
@@ -79,16 +81,17 @@ function vorgaengeListe(root,{art='',kontext=null,lauf=S.lauf}={}){
  async function load(p=1){const current=++version;message.textContent='Vorgänge werden geladen …';try{
   const r=await API.get('/vorgaenge'+API.qs({art,status:statusSelect.value,suche:search.value,seite:p,typ:kontext?.typ||'',ziel:kontext?.id||''}));
   if(lauf!==S.lauf||current!==version)return;
-  result.replaceChildren(raster([{label:'Titel',render:v=>el('a',{href:'#/vorgaenge/'+v.id,text:v.titel})},{label:'Bereich',render:v=>VORGANG_ART[v.art]},{label:'Status',render:v=>VORGANG_STATUS[v.status]+(v.quelle_status==='konflikt'?' · Konflikt':'')},{label:'Fällig',render:v=>datum(v.faellig_am)},{label:'Zuständig',render:v=>v.zustaendig||'–'},{label:'HP-Nummer',render:v=>v.hp_nummer||'–'}],r.eintraege,{leer:'Keine Vorgänge gefunden. Vorhandene HP-Daten können in den Arbeitsbereichen dauerhaft übernommen werden.',onOpen:v=>geheZu('#/vorgaenge/'+v.id)}));
+  result.replaceChildren(raster([{label:'Titel',render:v=>el('a',{href:'#/vorgaenge/'+v.id,text:v.titel})},{label:'Bereich',render:v=>VORGANG_ART[v.art]},{label:'Status',render:v=>VORGANG_STATUS[v.status]+(v.quelle_status==='konflikt'?' · Konflikt':'')},{label:'Fällig',render:v=>datum(v.faellig_am)},{label:'Zuständig',render:v=>v.zustaendig||'–'},{label:'HP-Nummer',render:v=>v.hp_nummer||'–'}],r.eintraege,{leer:'Keine Akten oder Vorgänge gefunden.',onOpen:v=>geheZu('#/vorgaenge/'+v.id)}));
   page=r.seite;prev.disabled=page<=1;next.disabled=!r.weitere;message.textContent=r.gesamt+' Vorgänge · Seite '+page;
  }catch(e){if(lauf===S.lauf&&current===version)message.textContent=e.message;}}
  search.addEventListener('input',debounce(()=>load(1)));statusSelect.addEventListener('change',()=>load(1));load(1);return()=>load(page);
 }
 async function vorgaengeMaske(params=new URLSearchParams()){
- const lauf=S.lauf,root=el('section');if(!arbeitsMaske(lauf,root,{titel:'Arbeitsbereiche',info:[['Bereich','Akten, Aufträge, Wiedervorlagen, ZIS und Notizen']],aktionen:Object.entries(VORGANG_ART).map(([art,text])=>({text,onclick:()=>geheZu('#/vorgaenge?art='+art)}))}))return;
- if(!darfSchreiben()){root.append(el('p',{text:'Die persönlichen Arbeitsbereiche sind für Mitarbeiter und Administratoren verfügbar.'}));return;}
+ const selectedArt=Object.hasOwn(VORGANG_ART,params.get('art'))?params.get('art'):'';if((!selectedArt||selectedArt==='akte')&&params.get('liste')!=='1')return aktenStart(params);
+ const lauf=S.lauf,root=el('section');if(!arbeitsMaske(lauf,root,{titel:'Akten / Vorgänge',aktionen:Object.entries(VORGANG_ART).map(([art,text])=>({text,onclick:()=>geheZu('#/vorgaenge?art='+art)}))}))return;
+ if(!darfSchreiben()){root.append(el('p',{text:'Akten und Vorgänge sind für Mitarbeiter und Administratoren verfügbar.'}));return;}
  const art=Object.hasOwn(VORGANG_ART,params.get('art'))?params.get('art'):'';
- root.cuTitelSetzen(art?VORGANG_ART[art]:'Arbeitsbereiche');
+ root.cuTitelSetzen(art?VORGANG_ART[art]:'Akten / Vorgänge');
  root.append(el('p',{text:'Akten, Aufträge, Wiedervorlagen, ZIS und Notizen werden in CuraAed geführt.'}),
   el('nav',{class:'tel-plaud-knoepfe'},[el('a',{href:'#/vorgaenge',text:'Alle Bereiche'}),...Object.entries(VORGANG_ART).map(([key,text])=>el('a',{href:'#/vorgaenge?art='+key,text}))]));
  const imports=el('details',{},[el('summary',{text:'Vorhandene HP-Daten übernehmen'})]),body=el('div'),list=el('div');imports.append(body);root.append(imports,list);const context=['adresse','objekt','einheit'].includes(params.get('typ'))&&Number(params.get('ziel'))>0?{typ:params.get('typ'),id:Number(params.get('ziel'))}:null;const refreshList=vorgaengeListe(list,{art,kontext:context,lauf});
@@ -100,7 +103,7 @@ async function vorgaengeMaske(params=new URLSearchParams()){
    if(job.status==='laeuft')body.append(el('button',{text:'Übernahme anhalten',onclick:async()=>{try{await API.post('/vorgaenge/anhalten',{quelle:job.quelle_id});refresh();}catch(e){fehler(e);}}}));
   }
   if(info.fehler?.length)body.append(raster([{label:'Bereich',render:e=>e.resource},{label:'HP-Eintrag',render:e=>e.remote_id},{label:'Übernahmefehler',render:e=>e.meldung}],info.fehler));
-  const select=el('select',{'aria-label':'HP-Datenquelle für Arbeitsbereiche'},[el('option',{value:'',text:'HP-Datenquelle auswählen'}),...connections.verbindungen.map(c=>el('option',{value:c.id,text:c.subdomain}))]);if(connections.verbindungen.length===1)select.value=connections.verbindungen[0].id;
+  const select=el('select',{'aria-label':'HP-Datenquelle für Vorgänge'},[el('option',{value:'',text:'HP-Datenquelle auswählen'}),...connections.verbindungen.map(c=>el('option',{value:c.id,text:c.subdomain}))]);if(connections.verbindungen.length===1)select.value=connections.verbindungen[0].id;
   body.append(select,el('button',{text:'Fachbereiche übernehmen / fortsetzen',disabled:info.auftraege.some(j=>j.status==='laeuft'),onclick:async()=>{if(!select.value)return;try{await API.post('/vorgaenge/uebernahme',{verbindung:select.value});refresh();}catch(e){fehler(e);}}}),el('p',{class:'small',text:'Gespeicherte Einträge bleiben nach dem Trennen der HP-Verbindung verfügbar. Lokale Änderungen werden bei einem erneuten Abgleich berücksichtigt; Konflikte bleiben zur Prüfung offen.'}));
   if(info.auftraege.some(j=>j.status==='laeuft'))setTimeout(()=>{if(lauf===S.lauf)refresh();},4000);
  }catch(e){if(lauf===S.lauf)body.textContent=e.message;}}

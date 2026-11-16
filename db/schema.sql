@@ -874,3 +874,4 @@ CREATE TABLE IF NOT EXISTS hp_adress_neuanlagen(
  erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,erledigt_am TEXT
 );
 CREATE INDEX IF NOT EXISTS hp_neuanlage_status ON hp_adress_neuanlagen(verbindung_id,status,erstellt_am);
+CREATE TABLE IF NOT EXISTS fach_akten(vorgang_id INTEGER PRIMARY KEY REFERENCES fach_vorgaenge(id) ON DELETE CASCADE,daten TEXT NOT NULL);
