@@ -117,6 +117,7 @@ function baueApi(db, uploadDir, options = {}) {
   // Seine Browser-Routen erzwingen innerhalb des Routers Administratorrechte.
   router.use('/hp-direkt', require('./hausperfektDirekt').baueHpDirektRouter(db, options.hpDirekt));
   router.use('/hp-adressen', require('./hpAdressSync')(db, options.hpDirekt));
+  router.use('/hp-akten',require('./hpAktenImport')(db,{directory:path.join(uploadDir,'hp-dms'),publicUrl:options.hausperfekt?.publicUrl}));
   router.use('/hp-objekte', require('./hpObjektImport')(db, options.hpDirekt));
 
   // Alle folgenden Routen erfordern eine Anmeldung.
