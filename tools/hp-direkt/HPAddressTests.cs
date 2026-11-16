@@ -22,6 +22,10 @@ internal static class HPAddressTests
   Check(HPAddressClient.SearchText(new Dictionary<string,object>{{"SBegrAdr","Rupp, Mathias"},{"Vorname","Mathias"},{"Name1","Rupp"}})=="RUPPMATHIASMATHIASRUPP");
   Check(HPAddressClient.SearchText(new Dictionary<string,object>{{"SBegrAdr","CURAAED-TEST-NEU161126"},{"Name1","CURAAED-TEST-NEU161126"},{"Name2","Nur Schnittstellentest"}})=="CURAAEDTESTNEU161126CURAAEDTESTNEU161126NURSCHNITTSTELLENTEST");
   Check(HPAddressClient.SearchText(new Dictionary<string,object>{{"Name1",new string('X',300)}}).Length==255);
+  Check(HPAddressForm.AutoStartRequested(new[]{"--autostart"}));Check(!HPAddressForm.AutoStartRequested(new string[0]));Check(!HPAddressForm.AutoStartRequested(new[]{"--autostart","unexpected"}));Check(!HPAddressForm.AutoStartRequested(new[]{"--other"}));
+  var offline=new HPAddressClient("HP_NO_SUCH_DSN_TEST","HPTEST","{\"id\":\"00000000-0000-0000-0000-000000000000\",\"token\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"scope\":\"adressen-v1\",\"datenbank\":\"HPTEST\"}");
+  using(var stop=new System.Threading.CancellationTokenSource()){bool retry=false;offline.Run(stop.Token,delegate(string message){if(message.Contains("HP-Datenquelle momentan nicht erreichbar")){retry=true;stop.Cancel();}}).GetAwaiter().GetResult();Check(retry);}
+  Console.WriteLine("Autostart: expliziter Startparameter und Abbruch während einer nicht erreichbaren ODBC-Verbindung geprüft.");
   Check(Convert.ToString(plan["protokoll"][0]["MODUL_ID"])=="NEUANL"&&Convert.ToString(plan["protokoll"][3]["lfdNr"])=="93898");
   var copy=j.Deserialize<List<Dictionary<string,object>>>(j.Serialize(plan["telefon"]));copy.Reverse();Check(HPAddressClient.EqualRows(copy,plan["telefon"]));copy[0]["TelNr"]="fremd";Check(!HPAddressClient.EqualRows(copy,plan["telefon"]));
   Console.WriteLine("Neuanlage: feste Folgeeinträge, Mitarbeiterkürzel, HP-Nummer und vollständige zeilenweise Rückprüfung geprüft.");
