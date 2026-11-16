@@ -8,11 +8,12 @@ const digest=v=>crypto.createHash('sha256').update(JSON.stringify(v)).digest('he
 // 0 bedeutet ausdrücklich unbefristet. Bestehende Zeitfreigaben behalten ihren Ablauf.
 const validUntil=(v,now)=>v.ablauf_ms===0||v.ablauf_ms>now;
 function fingerprint(r){const h=crypto.createHash('sha256');for(const key of ['nummer',...Object.keys(fields)]){const text=String(r[key]);h.update(Buffer.byteLength(text,'utf8')+':');h.update(text,'utf8');}return h.digest('hex');}
-function record(v) {
+function record(v,lesen=false) {
  if(!v || !Number.isSafeInteger(v.nummer) || v.nummer<1 || v.nummer>2147483647)fail('Ungültige HP-Adressnummer.',400);
  const out={nummer:v.nummer};
  for(const [k,max] of Object.entries(fields)) {
   if(typeof v[k]!=='string')fail('Ungültiges HP-Adressfeld: '+k+' – Textwert fehlt.',400);
+  if(lesen){if(v[k].length>2048)fail('HP-Quellfeld zu groß: '+k,400);out[k]=v[k];continue;}
   if(v[k].length>max)fail('Ungültiges HP-Adressfeld: '+k+' – '+v[k].length+' Zeichen; maximal '+max+' erlaubt.',400);
   const control=/[\x00-\x1f\x7f]/.exec(v[k]);
   if(control)fail('Ungültiges HP-Adressfeld: '+k+' – Steuerzeichen U+'+control[0].charCodeAt(0).toString(16).toUpperCase().padStart(4,'0')+'.',400);
@@ -22,7 +23,7 @@ function record(v) {
  }
  return out;
 }
-function local(a,n) {return record({nummer:n,anrede:a.anrede||'',vorname:a.vorname||'',name1:(a.adresstyp==='firma'?a.firmenname:a.nachname)||'',zusatz:a.zusatz||'',strasse:a.strasse||'',land:a.land==='Deutschland'?'DE':a.land||'',plz:a.plz||'',ort:a.ort||''});}
+function local(a,n) {return record({nummer:n,anrede:a.anrede||'',vorname:a.vorname||'',name1:(a.adresstyp==='firma'?a.firmenname:a.nachname)||'',zusatz:a.zusatz||'',strasse:a.strasse||'',land:a.land==='Deutschland'?'DE':a.land||'',plz:a.plz||'',ort:a.ort||''},true);}
 function revision(a,n){return digest(local(a,n));}
 async function metadata(db,a) {
  const m=await db.get('SELECT m.*,v.aktiv,v.ablauf_ms,v.zuletzt_gesehen FROM hp_adress_zuordnung m JOIN hp_adress_verbindungen v ON v.id=m.verbindung_id WHERE m.adresse_id=?',[a.id]);
@@ -37,6 +38,7 @@ async function validateSave(db,old,data) {
  const before=local(old,m.hp_nummer),after=local(data,m.hp_nummer);
  if(!after.name1)fail('Der HP-Name darf nicht leer sein.',400);
  if(digest(before)!==digest(after)) {
+  record(after);
   if(data.hp_version!==digest(before))fail('Die Adresse wurde inzwischen geändert. Bitte neu öffnen.');
   if(['konflikt','unklar','unterwegs'].includes(m.status))fail('HP-Abgleich bitte zuerst klären; die Übertragung dieser Adresse ist angehalten.');
  }
@@ -60,7 +62,9 @@ function service(db,{now=()=>Date.now()}={}) {
   await tx.run("UPDATE adressen SET "+changed.map(([k])=>k+'=?').join(',')+",geaendert_am=datetime('now') WHERE id=?",[...changed.map(([,v])=>v),a.id]);
  }
  return {
+  async zugang(id,token,datenbank){const v=await auth(db,id,token);if(datenbank!==v.datenbank)fail('HP-Kundenbestand stimmt nicht überein.');return v;},
   async create(owner,input) {
+   if(input.vollstaendig!==undefined&&typeof input.vollstaendig!=='boolean')fail('Ungültiger Adressumfang.',400);
    if(input.dauerhaft!==undefined&&typeof input.dauerhaft!=='boolean')fail('Ungültige Freigabedauer.',400);
    if(input.zustimmung!==true||typeof input.name!=='string'||!input.name.trim()||input.name.length>80||typeof input.datenbank!=='string'||!/^[A-Za-z0-9_-]{1,64}$/.test(input.datenbank))fail('Name, Datenbank und Freigabe für den Adressabgleich fehlen.',400);
    return db.transaktion(async tx=>{
@@ -70,7 +74,8 @@ function service(db,{now=()=>Date.now()}={}) {
     const id=previous?.id||crypto.randomUUID(),token=crypto.randomBytes(32).toString('base64url'),expires=permanent?0:now()+8*3600000;
     if(previous)await tx.run('UPDATE hp_adress_verbindungen SET token_hash=?,ablauf_ms=?,aktiv=1 WHERE id=?',[digest(token),expires,id]);
     else await tx.run('INSERT INTO hp_adress_verbindungen (id,benutzer_id,name,datenbank,token_hash,ablauf_ms) VALUES (?,?,?,?,?,?)',[id,owner,input.name.trim(),input.datenbank.toUpperCase(),digest(token),expires]);
-    return {id,token,ablauf_ms:expires};
+    await tx.run('INSERT INTO hp_adress_vollfreigaben(verbindung_id,aktiv) VALUES(?,?) ON CONFLICT(verbindung_id) DO UPDATE SET aktiv=excluded.aktiv',[id,input.vollstaendig===true?1:0]);
+    return {id,token,ablauf_ms:expires,scope:input.vollstaendig===true?'adressen-v2':'adressen-v1'};
    });
   },
   async permanent(owner,id,input){
@@ -82,7 +87,7 @@ function service(db,{now=()=>Date.now()}={}) {
     return {ok:true,ablauf_ms:0};
    });
   },
-  async list(owner){const rows=await db.all('SELECT id,name,datenbank,aktiv,ablauf_ms,zuletzt_gesehen,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id) AS anzahl,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id AND m.status IN (\'konflikt\',\'unklar\',\'fehler\')) AS probleme FROM hp_adress_verbindungen v WHERE benutzer_id=?',[owner]);for(const v of rows){v.importfehler=await db.all('SELECT hp_nummer,meldung,gesehen_am FROM hp_adress_importfehler WHERE verbindung_id=? ORDER BY hp_nummer',[v.id]);}return rows;},
+  async list(owner){const rows=await db.all('SELECT id,name,datenbank,aktiv,ablauf_ms,zuletzt_gesehen,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id) AS anzahl,(SELECT COUNT(*) FROM hp_adress_zuordnung m WHERE m.verbindung_id=v.id AND m.status IN (\'konflikt\',\'unklar\',\'fehler\')) AS probleme FROM hp_adress_verbindungen v WHERE benutzer_id=?',[owner]);for(const v of rows){v.vollstaendig=!!await db.get('SELECT 1 FROM hp_adress_vollfreigaben WHERE verbindung_id=? AND aktiv=1',[v.id]);v.bereiche=await db.get("SELECT COUNT(*) AS uebernommen,COALESCE(SUM(status!='synchron'),0) AS pruefen FROM hp_adress_bereiche WHERE verbindung_id=?",[v.id]);v.importfehler=await db.all('SELECT hp_nummer,meldung,gesehen_am FROM hp_adress_importfehler WHERE verbindung_id=? ORDER BY hp_nummer',[v.id]);}return rows;},
   async report(id,token,error){return db.transaktion(async tx=>{await auth(tx,id,token);const message=error instanceof ValidationError?error.message:'Interner Abgleichfehler'+(typeof error.code==='string'&&/^SQLITE_[A-Z_]+$/.test(error.code)?' ('+error.code+')':'')+'.';await tx.run('INSERT OR REPLACE INTO hp_adress_importfehler VALUES (?,?,?,?)',[id,0,message,iso()]);});},
   async disconnect(owner,id){return db.transaktion(async tx=>{await tx.run('UPDATE hp_objekt_importe SET aktiv=0 WHERE verbindung_id IN (SELECT id FROM hp_adress_verbindungen WHERE id=? AND benutzer_id=?)',[id,owner]);await tx.run('UPDATE hp_adress_verbindungen SET aktiv=0 WHERE id=? AND benutzer_id=?',[id,owner]);return {ok:true};});},
   async resolve(address,input){return db.transaktion(async tx=>{
@@ -133,6 +138,7 @@ function service(db,{now=()=>Date.now()}={}) {
      }
      const a=await tx.get('SELECT * FROM adressen WHERE id=?',[m.adresse_id]);
      const base=JSON.parse(m.basis),current=local(a,m.hp_nummer);
+     if(m.status==='fehler'&&!m.claim&&!m.ziel)m.status='synchron';
      if(['unterwegs','unklar','fehler','konflikt'].includes(m.status)) {
       await tx.run('UPDATE hp_adress_zuordnung SET remote=?,gelesen_am=? WHERE adresse_id=?',[JSON.stringify(remote),iso(),a.id]);
       // Ein unterbrochener Commit kann durch genaues Rücklesen bestätigt werden, niemals durch erneutes Schreiben.

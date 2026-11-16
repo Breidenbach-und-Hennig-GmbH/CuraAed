@@ -13,21 +13,22 @@ using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
-internal sealed class HPAddressClient
+internal sealed partial class HPAddressClient
 {
  internal static readonly string[] Keys={"anrede","vorname","name1","zusatz","strasse","land","plz","ort"};
  static readonly string[] Columns={"Anrede","Vorname","Name1","Name2","Strasse","Land","PLZ","Ort"};
  static readonly int[] Sizes={30,30,30,30,30,3,6,30};
  const string Select="SELECT AdrNr,Anrede,Vorname,Name1,Name2,Strasse,Land,PLZ,Ort FROM AD_Adr";
  readonly string dsn,database,id,token;
- readonly JavaScriptSerializer json=new JavaScriptSerializer{MaxJsonLength=131072};
+ readonly bool full;
+ readonly JavaScriptSerializer json=new JavaScriptSerializer{MaxJsonLength=2097152};
  internal HPAddressClient(string source,string db,string pairing)
  {
   if(!Regex.IsMatch(source,@"\A[A-Za-z0-9_-]{1,64}\z")||!Regex.IsMatch(db,@"\A[A-Za-z0-9_-]{1,64}\z"))throw new ArgumentException();
   var p=json.Deserialize<Dictionary<string,object>>(pairing);Guid guid;
   id=Convert.ToString(p["id"]);token=Convert.ToString(p["token"]);
-  if(!Guid.TryParse(id,out guid)||!Regex.IsMatch(token,@"\A[A-Za-z0-9_-]{43}\z")||Convert.ToString(p["scope"])!="adressen-v1"||Convert.ToString(p["datenbank"])!=db.ToUpperInvariant())throw new ArgumentException();
-  dsn=source;database=db.ToUpperInvariant();
+  if(!Guid.TryParse(id,out guid)||!Regex.IsMatch(token,@"\A[A-Za-z0-9_-]{43}\z")||(Convert.ToString(p["scope"])!="adressen-v1"&&Convert.ToString(p["scope"])!="adressen-v2")||Convert.ToString(p["datenbank"])!=db.ToUpperInvariant())throw new ArgumentException();
+  dsn=source;database=db.ToUpperInvariant();full=Convert.ToString(p["scope"])=="adressen-v2";
  }
  OdbcConnection Open(){var b=new OdbcConnectionStringBuilder();b.Dsn=dsn;var c=new OdbcConnection(b.ConnectionString);try{c.Open();if(!String.Equals(c.Database,database,StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException();return c;}catch{c.Dispose();throw;}}
  static Dictionary<string,object> FromReader(OdbcDataReader r){var a=new Dictionary<string,object>{{"nummer",Convert.ToInt32(r["AdrNr"])}};for(int i=0;i<Keys.Length;i++)a.Add(Keys[i],Convert.ToString(r[Columns[i]]).TrimEnd(' '));return a;}
@@ -71,7 +72,7 @@ internal sealed class HPAddressClient
  {
   var q=(HttpWebRequest)WebRequest.Create("https://curaaed.onrender.com/api/hp-adressen/agent/"+id+"/"+action);q.Method="POST";q.AllowAutoRedirect=false;q.Timeout=30000;q.ReadWriteTimeout=30000;q.ContentType="application/json";q.Headers["Authorization"]="Bearer "+token;
   byte[] bytes=Encoding.UTF8.GetBytes(json.Serialize(data));q.ContentLength=bytes.Length;using(var s=q.GetRequestStream())s.Write(bytes,0,bytes.Length);
-  using(var response=(HttpWebResponse)q.GetResponse()){if(response.StatusCode!=HttpStatusCode.OK)throw new InvalidOperationException();using(var r=new StreamReader(response.GetResponseStream(),Encoding.UTF8)){var chars=new char[131073];int count=0,n;while(count<chars.Length&&(n=r.Read(chars,count,chars.Length-count))>0)count+=n;if(count>131072)throw new InvalidOperationException();return json.Deserialize<Dictionary<string,object>>(new string(chars,0,count));}}
+  using(var response=(HttpWebResponse)q.GetResponse()){if(response.StatusCode!=HttpStatusCode.OK)throw new InvalidOperationException();using(var r=new StreamReader(response.GetResponseStream(),Encoding.UTF8)){var chars=new char[2097153];int count=0,n;while(count<chars.Length&&(n=r.Read(chars,count,chars.Length-count))>0)count+=n;if(count>2097152)throw new InvalidOperationException();return json.Deserialize<Dictionary<string,object>>(new string(chars,0,count));}}
  }
  internal async Task Run(CancellationToken stop,Action<string> log)
  {
@@ -98,6 +99,7 @@ internal sealed class HPAddressClient
     result.Add("id",Convert.ToString(j["id"]));pending.Enqueue(result);log("Adressauftrag: "+result["status"]+". SQL wird nicht wiederholt.");
    }
    while(pending.Count>0){Post("ergebnis",pending.Peek());pending.Dequeue();}
+   if(full&&page.Count>0)FullPage(page,log);
    cursor=page.Count<50?0:Convert.ToInt32(page[page.Count-1]["nummer"]);log("Adressabgleich verbunden; "+page.Count+" lokal geprüft, "+changed.Count+" neue/geänderte Datensätze übertragen. Nächste Seite folgt automatisch.");
    if(cursor!=0&&!stop.IsCancellationRequested)continue;
   }catch(WebException ex){var r=ex.Response as HttpWebResponse;int code=r==null?0:(int)r.StatusCode;if(r!=null)r.Dispose();if(code==401||code==403||code==404||code==409){log("Abgleich angehalten (HTTP "+code+"). Freigabe und Zuordnung in CuraAed prüfen.");return;}log("Verbindung unterbrochen. Ausstehende Ergebnisse werden erneut gemeldet; keine erneute SQL-Ausführung.");}
@@ -121,7 +123,7 @@ internal static class HPAddressProfile
 internal sealed class HPAddressForm:Form
 {
  readonly TextBox dsn=new TextBox{Width=110},db=new TextBox{Width=140},pair=new TextBox{Width=700,UseSystemPasswordChar=true};
- readonly CheckBox consent=new CheckBox{AutoSize=true,Text="Namens- und Postanschriften des gesamten HP-Kundenbestands mit CuraAed abgleichen und zurückschreiben."};
+ readonly CheckBox consent=new CheckBox{AutoSize=true,Text="Freigegebene HP-Adressen abgleichen; bei Vollfreigabe auch Telefon, E-Mail, Bank, Mandate und Ansprechpartner lesen."};
  readonly CheckBox remember=new CheckBox{AutoSize=true,Text="Verbindung für dieses Windows-Konto verschlüsselt speichern (freiwillig)."};
  readonly Button forget=new Button{AutoSize=true,Text="Gespeicherte Verbindung entfernen"};
  readonly Button start=new Button{Text="Adressabgleich starten",AutoSize=true},stop=new Button{Text="Abgleich beenden",AutoSize=true,Enabled=false};
@@ -136,4 +138,3 @@ internal sealed class HPAddressForm:Form
  void Log(string text){if(InvokeRequired){try{BeginInvoke(new Action<string>(Log),text);}catch{}return;}if(log.Lines.Length>100)log.Clear();log.AppendText(DateTime.Now.ToString("HH:mm:ss")+" "+text+Environment.NewLine);}
  [STAThread]static void Main(){ServicePointManager.SecurityProtocol=SecurityProtocolType.Tls12;Application.EnableVisualStyles();Application.Run(new HPAddressForm());}
 }
-

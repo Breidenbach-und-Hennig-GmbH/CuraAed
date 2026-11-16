@@ -33,3 +33,14 @@ Offener Ausbau: Personenfunktionen, Telefonnummern, ZIS und Bankverbindungen sin
 
 Vor produktiver Freigabe: Bereitstellung prüfen, neue Software lokal freigeben, zunächst normale Adressmaske mit CURAAED-TEST verifizieren (Änderung und Rücknahme). Andere echte Kontakte nicht für Teständerungen verwenden. Noch kein Live-Nachweis für diesen neuen Adressconnector; der vorangegangene Titel-Pilot wurde erfolgreich geprüft und zurückgesetzt.
 
+## Erweiterte lesende Adressbereiche (adressen-v2)
+
+Die Freigabe „Zusätzlich alle verknüpften Adressbereiche lesen“ umfasst die zehn HP-Menübereiche mit elf physischen Tabellen: AD_Adr, AD_AdrAn, AD_Bankverb, AD_SEPA_Mandat, AD_TelNr, AD_eMail, AD_eMail_Adresse_mar, AD_AnsprPart, AD_ASP_ZusatzInfo, SY_DSGVO_Aenderung (nur MODUL ADR), zusätzlich AD_BVakt als Hilfszuordnung. Feldlisten und natürliche Schlüssel stehen fest in lib/hpAdressBereiche.json; keine frei eingereichten SQL-Befehle. Alte v1-Freigaben erhalten diese zusätzlichen Rechte nicht. Erneutes Koppeln ohne Vollfreigabe sperrt die zusätzlichen Endpunkte wieder.
+
+Vollständige HP-Zeilen bleiben mit ihren Quellschlüsseln erhalten. Telefon, E-Mail/Webseite, gültige IBAN-Bankverbindungen und Ansprechpartner werden zusätzlich in die normalen Adressbereiche übernommen. Fehlende oder lokal geänderte Einträge bleiben zur Prüfung erhalten. Ungültige IBANs werden ausschließlich in den Originaldaten bewahrt. Ein SEPA-Mandat wird niemals allein aus einer Bankverbindung abgeleitet. Zusätzliche Quellfelder und Protokoll sind für Administratoren in „HP-Adressbereiche“ lesbar. Der Hilfsbereich aktive Bankzuordnung zählt nicht als elfter Menübereich.
+
+Fingerabdrücke vermeiden unveränderte Nutzdatenübertragung. Vollständige Bereiche werden in begrenzten Stapeln übertragen. Eine unvollständige oder zu große Lesung ersetzt keine früheren Daten. Einzelne Quellenfehler verhindern andere Bereiche nicht. Legacy-Namenswerte werden bei Bedarf unverändert lesend übernommen; die strikte CP850-Schreibprüfung bleibt bestehen.
+
+Der Live-Status vor dieser Erweiterung: alter Connector seit 09.11.2026 ohne Kontakt und seine Zeitfreigabe abgelaufen. Ein laufender Windows-Connector und erneuerte Freigabe sind für den produktiven Import nötig. Ein vollständiger Live-Nachweis dieser Erweiterung steht noch aus.
+
+Die automatische Neuanlage in HP ist weiter offen: SY_LfdNum mit Init @ enthält die höchste vergebene AdrNr. AD_AdrAn und das HP-Neuanlageprotokoll müssen konsistent erstellt werden. Ein blindes INSERT nur in AD_Adr oder eine MAX+1-Nummernvergabe ist nicht implementiert. Die erweiterte nur lesende Prüfung erfasst hierfür Anlagezeiten und Protokollschlüssel ohne Kontakt- und Bankwerte. Personenfunktionen und ZIS sind eigene, weiterhin nicht angebundene Bereiche.
