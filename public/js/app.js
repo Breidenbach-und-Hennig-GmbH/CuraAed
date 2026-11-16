@@ -47,6 +47,7 @@ function route() {
   if (bereich === 'hwa') return handwerkerStart();
   if (bereich === 'vorgaenge') return id ? vorgangDetail(id, params) : vorgaengeMaske(params);
   if (bereich === 'dms-uebernahme') return dmsUebernahmeMaske(params);
+  if (bereich === 'hp-akten') return hpAktenMaske();
   if (bereich === 'dms') return dmsMaske(params);
   if (bereich === 'archiv') return archivMaske(params);
   if (bereich === 'etv') return id ? (['basisdaten','teilnehmer','durchfuehrung'].includes(params.get('schritt'))?versammlungSchrittMaske(id,params.get('schritt'),params):tagesordnungMaske(id)) : etvMaske(params);

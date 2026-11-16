@@ -29,6 +29,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $hpCompiler /nologo /target:winexe /platform:x86 /out:HP-Aktenpruefung.exe /r:System.Data.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Web.Extensions.dll tools\hp-direkt\HPAktenPruefung.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $hpCompiler /nologo /target:winexe /platform:x86 /out:HP-Aktenimport.exe /resource:lib\hpAktenImport.json,hpAktenImport.json /r:System.Data.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Security.dll /r:System.Web.Extensions.dll tools\hp-direkt\HPAktenImport.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $hpCompiler /nologo /target:exe /platform:x86 /main:HPAktenImportTests /out:HPAktenImportTests.exe /resource:lib\hpAktenImport.json,hpAktenImport.json /r:System.Data.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Security.dll /r:System.Web.Extensions.dll tools\hp-direkt\HPAktenImport.cs tools\hp-direkt\HPAktenImportTests.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & .\HPAktenImportTests.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $hpCompiler /nologo /target:winexe /platform:x86 /out:HP-Objektstatuspruefung.exe /r:System.Data.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Web.Extensions.dll tools\hp-direkt\HPObjektstatusPruefung.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $hpCompiler /nologo /target:winexe /platform:x86 /out:HP-Objektimport.exe /r:System.Data.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Web.Extensions.dll /r:System.Security.dll tools\hp-direkt\HPObjektImportConnector.cs

@@ -1,0 +1,884 @@
+{
+  "stati": {
+    "table": "GD_AktStat",
+    "keys": [
+      "KEY_Akten_Status"
+    ],
+    "filter": "",
+    "fields": [
+      {
+        "name": "KEY_Akten_Status",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "Bezeichnung",
+        "typ": 0,
+        "max": 40
+      },
+      {
+        "name": "Feld_1",
+        "typ": 0,
+        "max": 25
+      },
+      {
+        "name": "Feld_2",
+        "typ": 0,
+        "max": 25
+      },
+      {
+        "name": "Autoticket",
+        "typ": 7,
+        "max": 1
+      }
+    ]
+  },
+  "akten": {
+    "table": "AK_Akte",
+    "keys": [
+      "AktNr",
+      "laufAkt"
+    ],
+    "filter": "",
+    "fields": [
+      {
+        "name": "AktNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "laufAkt",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "SuchBegr",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "AktenZeich",
+        "typ": 0,
+        "max": 15
+      },
+      {
+        "name": "ObjNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "WhgNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AblageOrt",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "AblAkt",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "Zugriff",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "Firma",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "SB",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "angelegt",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "geschlossen",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "Stat",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "Feld1Stat",
+        "typ": 0,
+        "max": 40
+      },
+      {
+        "name": "Feld2Stat",
+        "typ": 0,
+        "max": 40
+      },
+      {
+        "name": "AdrNr_PFkt",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AnzZugAdr",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "Sonderleistung",
+        "typ": 7,
+        "max": 1
+      }
+    ]
+  },
+  "adressen": {
+    "table": "AK_AdrAkt",
+    "keys": [
+      "Akten_Nr_",
+      "laufende_Akte",
+      "Lfd__Nr"
+    ],
+    "filter": "",
+    "fields": [
+      {
+        "name": "Akten_Nr_",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "laufende_Akte",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "Lfd__Nr",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "PFkt",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "Adress_Nr_",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "Suchwort_Adresse",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Objekt_Nr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "Wohnungs_Nr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "veroeffentlichen",
+        "typ": 7,
+        "max": 1
+      }
+    ]
+  },
+  "folge": {
+    "table": "AK_AktFolgeblatt",
+    "keys": [
+      "AktNr",
+      "LfdAkt",
+      "BlattNr"
+    ],
+    "filter": "",
+    "fields": [
+      {
+        "name": "AktNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "LfdAkt",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "BlattNr",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "Feld1Alpha",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Feld2Alpha",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Feld3Alpha",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Feld4Alpha",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Feld5Alpha",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Feld6Alpha",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Feld7Alpha",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Feld8Alpha",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Feld9Alpha",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Feld10Alpha",
+        "typ": 0,
+        "max": 30
+      },
+      {
+        "name": "Feld11Num",
+        "typ": 2,
+        "max": 8
+      },
+      {
+        "name": "Feld12Num",
+        "typ": 2,
+        "max": 8
+      },
+      {
+        "name": "Feld13Num",
+        "typ": 2,
+        "max": 8
+      },
+      {
+        "name": "Feld14Num",
+        "typ": 2,
+        "max": 8
+      },
+      {
+        "name": "Feld15Num",
+        "typ": 2,
+        "max": 8
+      },
+      {
+        "name": "Feld16Dat",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "Feld17Dat",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "Feld18Dat",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "Feld19Dat",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "Feld20Dat",
+        "typ": 1,
+        "max": 4
+      }
+    ]
+  },
+  "hwa": {
+    "table": "HW_Auftr",
+    "keys": [
+      "HWANr"
+    ],
+    "filter": "",
+    "fields": [
+      {
+        "name": "HWANr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "Firma",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "SBKrz",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "HWAStat",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "Dat",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "Termin",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "erledigt",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "HWAdrNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "Betreff",
+        "typ": 0,
+        "max": 90
+      },
+      {
+        "name": "ObjNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "WhgNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AktNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "LaufAkt",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "Vorgang",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "Art",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "ArtUberschr",
+        "typ": 0,
+        "max": 90
+      },
+      {
+        "name": "SchatzBetr",
+        "typ": 2,
+        "max": 8
+      },
+      {
+        "name": "RechBetr",
+        "typ": 2,
+        "max": 8
+      },
+      {
+        "name": "RechSteller",
+        "typ": 7,
+        "max": 1
+      },
+      {
+        "name": "Leistungsempf_nger",
+        "typ": 7,
+        "max": 1
+      },
+      {
+        "name": "PFkt_LE",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "AdrNr_LE",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "Sachkonto",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "DatumFrei",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "KEY_Alpha",
+        "typ": 0,
+        "max": 10
+      },
+      {
+        "name": "Lfd__Nr__Frei",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "CBmit_Text_Frei",
+        "typ": 7,
+        "max": 1
+      },
+      {
+        "name": "FI_Konto_Frei",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "Text_90_Frei",
+        "typ": 0,
+        "max": 90
+      }
+    ]
+  },
+  "hwa_adressaten": {
+    "table": "HW_Adressaten",
+    "keys": [
+      "HWANr",
+      "AdrNr"
+    ],
+    "filter": "",
+    "fields": [
+      {
+        "name": "HWANr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AdrNr",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "AdrzumAdr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "WhgNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "PFkt",
+        "typ": 0,
+        "max": 3
+      }
+    ]
+  },
+  "hwa_texte": {
+    "table": "HW_Txt",
+    "keys": [
+      "HWANr",
+      "HWAStat"
+    ],
+    "filter": "",
+    "fields": [
+      {
+        "name": "HWANr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "HWAStat",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "Txt",
+        "typ": 13,
+        "max": 5150
+      }
+    ]
+  },
+  "verknuepfungen": {
+    "table": "SY_Verkn_pfungen",
+    "keys": [
+      "AR_ArchivNr",
+      "AR_EintragsNr"
+    ],
+    "filter": "(AR_AktNr>0 OR AR_HWANr>0)",
+    "fields": [
+      {
+        "name": "AR_ArchivNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_EintragsNr",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "AR_AdrNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_ObjNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_WhgNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_AktNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_LfdAktNr",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "AR_HWANr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_SBDatum",
+        "typ": 0,
+        "max": 8
+      },
+      {
+        "name": "AR_Verfalldatum",
+        "typ": 0,
+        "max": 8
+      }
+    ]
+  },
+  "archiv": {
+    "table": "SY_Dokumentarchiv",
+    "keys": [
+      "AR_ArchivNr"
+    ],
+    "filter": "EXISTS(SELECT 1 FROM SY_Verkn_pfungen v WHERE v.AR_ArchivNr=SY_Dokumentarchiv.AR_ArchivNr AND (v.AR_AktNr>0 OR v.AR_HWANr>0))",
+    "fields": [
+      {
+        "name": "AR_ArchivNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_SysDatum",
+        "typ": 0,
+        "max": 8
+      },
+      {
+        "name": "AR_SysZeit",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_Name",
+        "typ": 0,
+        "max": 100
+      },
+      {
+        "name": "AR_Zugriff",
+        "typ": 1,
+        "max": 2
+      }
+    ]
+  },
+  "dateien": {
+    "table": "SY_Dateiarchiv",
+    "keys": [
+      "AR_ArchivNr",
+      "AR_ArchivLfdNr"
+    ],
+    "filter": "EXISTS(SELECT 1 FROM SY_Verkn_pfungen v WHERE v.AR_ArchivNr=SY_Dateiarchiv.AR_ArchivNr AND (v.AR_AktNr>0 OR v.AR_HWANr>0))",
+    "fields": [
+      {
+        "name": "AR_ArchivNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_ArchivLfdNr",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "AR_Dateiname",
+        "typ": 0,
+        "max": 20
+      },
+      {
+        "name": "AR_SB",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "AR_Pfad_ab__ARCHIV_",
+        "typ": 0,
+        "max": 255
+      },
+      {
+        "name": "AR_AddDatum",
+        "typ": 0,
+        "max": 8
+      },
+      {
+        "name": "AR_AddZeit",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_Dateiart",
+        "typ": 0,
+        "max": 2
+      },
+      {
+        "name": "AR_Bemerkung",
+        "typ": 0,
+        "max": 100
+      },
+      {
+        "name": "AR_Exportiert",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "AR_Datei_vorhanden",
+        "typ": 7,
+        "max": 1
+      },
+      {
+        "name": "AR_Mobile_Gruppe",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_Mobile_Veroeffent",
+        "typ": 7,
+        "max": 1
+      },
+      {
+        "name": "AR_Revisionssicher",
+        "typ": 7,
+        "max": 1
+      },
+      {
+        "name": "AR_Revisionspfad",
+        "typ": 0,
+        "max": 255
+      },
+      {
+        "name": "AR_Mail",
+        "typ": 2,
+        "max": 8
+      },
+      {
+        "name": "AR_Mail_Modul",
+        "typ": 0,
+        "max": 1
+      }
+    ]
+  },
+  "altarchiv": {
+    "table": "SY_Archiv",
+    "keys": [
+      "AR_DOS_Dateiname",
+      "AR_Akten_Nr",
+      "AR_Laufende_Akte",
+      "AR_HWA_Nr",
+      "AR_AdrNr",
+      "AR_Objekt_Nr",
+      "AR_WhgNr",
+      "AR_Datum",
+      "AR_Uhrzeit",
+      "AR_Bemerkung_Spooler"
+    ],
+    "filter": "(AR_Akten_Nr>0 OR AR_HWA_Nr>0)",
+    "fields": [
+      {
+        "name": "AR_Datum",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_Uhrzeit",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_DOS_Dateiname",
+        "typ": 0,
+        "max": 20
+      },
+      {
+        "name": "AR_Bemerkung_Spooler",
+        "typ": 0,
+        "max": 100
+      },
+      {
+        "name": "AR_Standardbild",
+        "typ": 7,
+        "max": 1
+      },
+      {
+        "name": "AR_lfdIDXASP",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "AR_Zuordnung_durch_S",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "AR_AnzBilder",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "AR_SB",
+        "typ": 0,
+        "max": 3
+      },
+      {
+        "name": "AR_markiert",
+        "typ": 7,
+        "max": 1
+      },
+      {
+        "name": "AR_Objekt_Nr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_WhgNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_Buchungsjahr",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "AR_PKto_Nr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_AdrNr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_Akten_Nr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_Laufende_Akte",
+        "typ": 1,
+        "max": 2
+      },
+      {
+        "name": "AR_HWA_Nr",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "GUI_Druck",
+        "typ": 7,
+        "max": 1
+      },
+      {
+        "name": "GUI_Verzeichnisname",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "Exportiert",
+        "typ": 7,
+        "max": 1
+      },
+      {
+        "name": "AR_Dateiart",
+        "typ": 0,
+        "max": 2
+      },
+      {
+        "name": "AR_FREI",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_FREI_1",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_HP_mobile_Gruppe",
+        "typ": 1,
+        "max": 4
+      },
+      {
+        "name": "AR_Datei_vorhanden",
+        "typ": 7,
+        "max": 1
+      },
+      {
+        "name": "AR_HP_mobile_Veroeff",
+        "typ": 7,
+        "max": 1
+      },
+      {
+        "name": "AR_FREI_2",
+        "typ": 7,
+        "max": 1
+      }
+    ]
+  }
+}

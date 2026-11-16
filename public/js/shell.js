@@ -595,6 +595,7 @@ function MENUE() {
       ...(darfSchreiben()?[{text:'Mein Profil',aktion:()=>meinProfil().catch(fehler)}]:[]),
       { text: 'Benutzerverwaltung', nurAdmin: true, aktion: () => geheZu('#/benutzer') },
       {text:'HP-Verbindungen',nurAdmin:true,aktion:()=>geheZu('#/hausperfekt')},
+      {text:'HP-Aktenübernahme',nurAdmin:true,aktion:()=>geheZu('#/hp-akten')},
       {text:'Firma auswählen',aktion:()=>cockpitFirmaDialog().catch(fehler)},
       {text:'Stammdaten – Verwaltungen',aktion:()=>geheZu('#/verwaltungen')},
       {text:'Firmenpostfach / Postversand',aktion:()=>geheZu('#/m365')},
@@ -1371,7 +1372,7 @@ function abschnitt(titel, inhalt, aktionen = []) {
       el('span', { class: 'hp-blau', text: titel }),
       el('span', { class: 'hp-spacer' }),
       ...aktionen.filter(Boolean).map((a) => el('button', {
-        type: 'button', class: 'hp-mini' + (a.text ? '' : ' hp-pfeil'), title: a.titel || a.text, 'aria-label': a.titel || a.text, onclick: a.onclick,
+        type: 'button', class: 'hp-mini' + (a.text ? '' : ' hp-pfeil'), title: a.titel || a.text, 'aria-label': a.titel || a.text, onclick: a.onclick, disabled:!!a.disabled,
       }, a.text ? [a.pfeil === false ? null : icon(/^neu$/i.test(a.text) ? 'plus' : 'chevron', 'cu-klein'), el('span', { text: a.text })] : [icon('plus')])),
     ]),
     inhalt,

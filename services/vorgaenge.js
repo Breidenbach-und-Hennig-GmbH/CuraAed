@@ -205,6 +205,7 @@ function baueVorgaenge(db,{hp,archiv}={}){
  }
  async function document(owner,id,fileId) {
   const r=await own(db,owner,id);if(!r.quelle_id||!await db.get("SELECT 1 FROM fach_bezuege WHERE vorgang_id=? AND typ='dokument' AND remote_id=?",[r.id,fileId]))fail('Dokument nicht zugeordnet.',404);
+  if(Number(fileId)>=2**52){const sources=await db.all('SELECT DISTINCT j.quelle_id FROM hp_akten_zuordnung m JOIN hp_akten_importe j ON j.verbindung_id=m.verbindung_id JOIN hp_dms_quellen s ON s.id=j.quelle_id JOIN hp_dms_dateien f ON f.quelle_id=j.quelle_id WHERE m.vorgang_id=? AND f.datei_id=? AND s.benutzer_id=?',[r.id,Number(fileId),r.benutzer_id]);if(sources.length!==1)fail('Direkte HP-Dateizuordnung nicht eindeutig.',404);return archiv.localFile(r.benutzer_id,sources[0].quelle_id,Number(fileId));}
   return archiv.localFile(r.benutzer_id,r.quelle_id,fileId);
  }
  async function timeline(owner,typ,ziel,suche='') {

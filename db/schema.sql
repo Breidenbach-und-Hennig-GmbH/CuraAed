@@ -875,3 +875,18 @@ CREATE TABLE IF NOT EXISTS hp_adress_neuanlagen(
 );
 CREATE INDEX IF NOT EXISTS hp_neuanlage_status ON hp_adress_neuanlagen(verbindung_id,status,erstellt_am);
 CREATE TABLE IF NOT EXISTS fach_akten(vorgang_id INTEGER PRIMARY KEY REFERENCES fach_vorgaenge(id) ON DELETE CASCADE,daten TEXT NOT NULL);
+
+-- Wiederaufnehmbarer, ausschließlich lesender HP-Aktenimport. Quelltabellen und
+-- Schlüssel bleiben getrennt von lokalen Änderungen und persönlichen HP-Tokens.
+CREATE TABLE IF NOT EXISTS hp_akten_importe(verbindung_id TEXT PRIMARY KEY REFERENCES hp_adress_verbindungen(id),quelle_id TEXT NOT NULL REFERENCES hp_dms_quellen(id),generation TEXT NOT NULL,phase INTEGER NOT NULL DEFAULT 0,cursor TEXT NOT NULL DEFAULT '[]',status TEXT NOT NULL,anzahl INTEGER NOT NULL DEFAULT 0,meldung TEXT,zuletzt_gesehen TEXT,erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS hp_akten_rohdaten(verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),bereich TEXT NOT NULL,schluessel TEXT NOT NULL,daten TEXT NOT NULL,hash TEXT NOT NULL,nr INTEGER,lfd INTEGER,archiv_nr INTEGER,akte_nr INTEGER,hwa_nr INTEGER,PRIMARY KEY(verbindung_id,bereich,schluessel));
+CREATE INDEX IF NOT EXISTS hp_akten_rohdaten_akte ON hp_akten_rohdaten(verbindung_id,bereich,akte_nr,nr,lfd);
+CREATE INDEX IF NOT EXISTS hp_akten_rohdaten_hwa ON hp_akten_rohdaten(verbindung_id,bereich,hwa_nr,nr,lfd);
+CREATE INDEX IF NOT EXISTS hp_akten_rohdaten_archiv ON hp_akten_rohdaten(verbindung_id,bereich,archiv_nr,nr,lfd);
+CREATE INDEX IF NOT EXISTS hp_akten_rohdaten_nummer ON hp_akten_rohdaten(verbindung_id,bereich,nr,lfd);
+CREATE TABLE IF NOT EXISTS hp_akten_zuordnung(verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),art TEXT NOT NULL,nummer INTEGER NOT NULL,lfd INTEGER NOT NULL DEFAULT 0,vorgang_id INTEGER NOT NULL REFERENCES fach_vorgaenge(id),basis TEXT,PRIMARY KEY(verbindung_id,art,nummer,lfd));
+CREATE TABLE IF NOT EXISTS hp_akten_dateien(verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),archiv_nr INTEGER NOT NULL,lfd INTEGER NOT NULL,datei_id INTEGER NOT NULL,daten TEXT NOT NULL,metahash TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'ausstehend',generation TEXT,groesse INTEGER,mtime TEXT,meldung TEXT,PRIMARY KEY(verbindung_id,archiv_nr,lfd));
+CREATE TABLE IF NOT EXISTS hp_akten_warnungen(verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),schluessel TEXT NOT NULL,meldung TEXT NOT NULL,PRIMARY KEY(verbindung_id,schluessel));
+CREATE UNIQUE INDEX IF NOT EXISTS hp_akten_datei_id ON hp_akten_dateien(verbindung_id,datei_id);
+CREATE INDEX IF NOT EXISTS hp_akten_datei_name ON hp_akten_dateien(verbindung_id,lower(json_extract(daten,'$.AR_Dateiname')));
+CREATE INDEX IF NOT EXISTS hp_dms_dateiname ON hp_dms_dateien(quelle_id,dateiname COLLATE NOCASE);
