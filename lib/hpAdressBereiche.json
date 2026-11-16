@@ -200,7 +200,8 @@
     "adr": "AdrNr",
     "pk": [
       "AdrNr",
-      "LfdNrBV"
+      "LfdNrBV",
+      "BVfreigeg"
     ],
     "fields": [
       {
@@ -882,8 +883,10 @@
       "lfdNrIDXASP",
       "BJ",
       "ObjNr",
+      "PFKt",
       "PKto",
-      "WhgNr"
+      "WhgNr",
+      "KISTA_Datum_von"
     ],
     "fields": [
       {
@@ -1023,7 +1026,12 @@
     "table": "SY_DSGVO_Aenderung",
     "adr": "IDX",
     "pk": [
-      "lfdNr"
+      "Datum",
+      "Uhrzeit",
+      "MODUL",
+      "MODUL_ID",
+      "IDX",
+      "IDX1n"
     ],
     "fields": [
       {

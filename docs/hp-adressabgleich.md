@@ -4,7 +4,7 @@
 
 Der separate HP-Adressconnector übernimmt vorhandene `AD_Adr`-Adressen in die normalen CuraAed-Adressmasken. Änderungen an Anrede, Vorname, Name1 (Nachname/Firmenname), Name2 (Zusatz), Straße, Land, PLZ und Ort werden in beide Richtungen abgeglichen. Ein Mitarbeiter mit bestehendem CuraAed-Schreibrecht speichert im normalen Formular; keine erneute Adminfreigabe je Änderung.
 
-Telefon, E-Mail, Bankdaten, Titel, Name3, Suchbegriff, Rollen, Objektzuordnungen, Neuanlage und Löschung **in HP** sind nicht angebunden. Lokale Zusatzfelder bleiben erhalten. HP-Typkennzeichen sind noch nicht verifiziert: importierte Einträge werden zunächst als Person mit Name1 als Nachname dargestellt; eine lokale Umstellung auf Firma ist möglich. Keine behauptete vollständige HP-Geschäftslogik oder Mehrmandantenplattform.
+Die Grundfreigabe v1 umfasst nur Namen/Postanschrift. v2 liest zusätzlich die unten genannten Adressbereiche. v3 kann neue Adressen einschließlich Telefon/Mobil/E-Mail in HP anlegen. Änderungen bestehender Telefon-, E-Mail- und Bankzeilen sowie Rollen, Objektzuordnungen und Löschung **in HP** sind weiterhin nicht angebunden. Lokale Zusatzfelder bleiben erhalten. HP-Typkennzeichen sind noch nicht verifiziert: importierte Einträge werden zunächst als Person mit Name1 als Nachname dargestellt; eine lokale Umstellung auf Firma ist möglich. Keine behauptete vollständige HP-Geschäftslogik oder Mehrmandantenplattform.
 
 ## Zuordnung und Abgleich
 
@@ -29,7 +29,7 @@ Im neuen Windows-Connector kann die Verbindung freiwillig gespeichert werden: DP
 
 Der bereits laufende alte Connector profitiert ohne Update vom entfallenen Ablauf. Die optionale DPAPI-Speicherung erfordert das neue Windowsprogramm. Der Connector läuft weiterhin nur bei geöffnetem Fenster; kein Windows-Dienst und kein Autostart. Unbeaufsichtigter Betrieb nach Server-Neustart ist damit noch nicht eingerichtet.
 
-Offener Ausbau: Personenfunktionen, Telefonnummern, ZIS und Bankverbindungen sind noch nicht synchronisiert. Ihre HP-Tabellen, Schlüssel und Schreibregeln müssen zuerst geprüft werden; leere CuraAed-Bereiche sind kein Nachweis leerer HP-Daten. Eine dauerhafte Freigabe dieser Stufe erweitert weder die Tabellen- noch die Feldrechte.
+Personenfunktionen und ZIS benötigen eigene Anbindungen. Die zusätzlichen Adressbereiche und die Neuanlage benötigen die unten beschriebenen getrennten Freigaben.
 
 Vor produktiver Freigabe: Bereitstellung prüfen, neue Software lokal freigeben, zunächst normale Adressmaske mit CURAAED-TEST verifizieren (Änderung und Rücknahme). Andere echte Kontakte nicht für Teständerungen verwenden. Noch kein Live-Nachweis für diesen neuen Adressconnector; der vorangegangene Titel-Pilot wurde erfolgreich geprüft und zurückgesetzt.
 
@@ -43,4 +43,18 @@ Fingerabdrücke vermeiden unveränderte Nutzdatenübertragung. Vollständige Ber
 
 Der Live-Status vor dieser Erweiterung: alter Connector seit 09.11.2026 ohne Kontakt und seine Zeitfreigabe abgelaufen. Ein laufender Windows-Connector und erneuerte Freigabe sind für den produktiven Import nötig. Ein vollständiger Live-Nachweis dieser Erweiterung steht noch aus.
 
-Die automatische Neuanlage in HP ist weiter offen: SY_LfdNum mit Init @ enthält die höchste vergebene AdrNr. AD_AdrAn und das HP-Neuanlageprotokoll müssen konsistent erstellt werden. Ein blindes INSERT nur in AD_Adr oder eine MAX+1-Nummernvergabe ist nicht implementiert. Die erweiterte nur lesende Prüfung erfasst hierfür Anlagezeiten und Protokollschlüssel ohne Kontakt- und Bankwerte. Personenfunktionen und ZIS sind eigene, weiterhin nicht angebundene Bereiche.
+Die v2-Freigabe erzeugt keine Adressen in HP. Automatische Neuanlagen benötigen v3 (siehe unten). Personenfunktionen und ZIS sind eigene, weiterhin nicht angebundene Bereiche.
+
+## Automatische Neuanlage (adressen-v3)
+
+Die ausdrückliche zusätzliche Neuanlagefreigabe gilt für künftig über die normale Adress-API gespeicherte Adressen. Die vorhandene Dublettenbestätigung bleibt vorgeschaltet. Vor dem Speichern werden HP-Feldgrenzen und das persönliche Sachbearbeiterkürzel geprüft. Bestehende lokale Adressen und alte Testdaten werden nicht ungeprüft nachträglich angelegt. Namen/Postanschrift sowie die bei Abholung gespeicherten Telefon-, Mobil- und E-Mail-Werte werden übertragen; weitere lokale Zusatzfelder bleiben lokal.
+
+Die lokale Adresse und ihr Neuanlageauftrag entstehen atomar. Der Connector holt einen Auftrag genau einmal ab. Er prüft erneut mögliche Dubletten in HP und vergleicht sie mit den ausdrücklich bestätigten bestehenden HP-Treffern. Der HP-Zähler SY_LfdNum (Init @, höchste vergebene SY_AdrNr) wird innerhalb einer serialisierbaren HP-Transaktion mit Vergleich des alten Werts fortgeschrieben. Bereits belegte Nummern oder verwaiste Folgeeinträge halten die Anlage an. Eine Nummer wird nicht durch MAX(AdrNr)+1 geraten.
+
+Vor den INSERTs bestätigt CuraAed die feste Bindung von Auftrag, lokaler Adresse, HP-Nummer, Datum, Uhrzeit und Protokollstart. Die Hauptadresse, AD_AdrAn, Telefon/E-Mail und NEUANL/TELEFO/EMAIL-Protokollzeilen werden innerhalb derselben HP-Transaktion geschrieben und vor sowie nach Commit vollständig zurückgelesen. Verlorene Rückmeldungen führen ausschließlich zu einer späteren Rückleseprüfung der reservierten Nummer. Ein unklarer oder fehlgeschlagener Versuch wird nicht automatisch wiederholt. Ohne Reservierungsbestätigung wird nichts angelegt.
+
+Bei Erfolg bleibt die lokale Adress-ID erhalten und die sichtbare Nummer wird HP-<AdrNr>. Bestehende lokale Kommunikationszeilen werden anhand dieser konkreten Anlageoperation den neuen HP-Zeilen zugeordnet, damit der nächste Import sie nicht nochmals anlegt. Der Fortschritt ist in der Adressmaske sichtbar. Freigaben und Programmumfang v1/v2 erzeugen keine Neuanlagen.
+
+Direkt am HP-Bestand am 16.11.2026 geprüft: AD_AdrAn enthält AdrNr/anDatum/anVonSB; NEUANL verwendet Typ C, MODUL ADR, Datum als Tagesordinal und Uhrzeit als Sekunden seit Mitternacht. Der Protokollindex lfdNr erlaubt Duplikate und dient nicht als natürlicher Primärschlüssel. Der eindeutige Schlüssel ist Datum/Uhrzeit/MODUL/MODUL_ID/IDX/IDX1n. Die Protokollreihenfolge beginnt nach dem aktuellen Maximum; die freie SY_LfdNum-Felder sind 0, die alte Tabelle HP_Modul_ID____lfd_N ist physisch nicht vorhanden. Bankverbindungen unterscheiden zusätzlich BVfreigeg; ASP-Zusatzinformationen zusätzlich PFKt und KISTA_Datum_von. Diese tatsächlichen zusammengesetzten Schlüssel werden im Vollimport bewahrt.
+
+Die produktive Aktivierung und ein vollständiger Live-Neuanlagetest stehen nach Implementierung noch aus. Der Connector muss laufen; automatischer Start nach einem Windows-Neustart ist weiterhin nicht eingerichtet.

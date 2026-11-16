@@ -27,3 +27,12 @@ test('Vollimport bewahrt ungültige HP-Bestandsnamen lesend, die bisher vollstä
 test('Wire-Fingerabdrücke erhalten auch escaped Unicode und Antworten werden nur für geänderte Bereiche angefordert',async t=>{
  const f=await setup(t),wire=JSON.stringify([row('telefon',99,{TelNr:'123',TelTxt:'Büro'})]).replace('ü','\\u00fc'),body={datenbank:'HPTEST',nummer:99,bereich:'telefon',daten_json:wire};await f.svc.speichern(f.grant.id,f.grant.token,body);const hash=crypto.createHash('sha256').update(wire).digest('hex');assert.deepEqual((await f.svc.vergleich(f.grant.id,f.grant.token,{datenbank:'HPTEST',fingerprints:[{nummer:99,bereich:'telefon',hash}]})).benoetigt,[]);assert.deepEqual((await f.svc.vergleich(f.grant.id,f.grant.token,{datenbank:'HPTEST',fingerprints:[{nummer:99,bereich:'telefon',hash:'0'.repeat(64)}]})).benoetigt,[{nummer:99,bereich:'telefon'}]);
 });
+
+test('Zusammengesetzte HP-Schlüssel bewahren Bankfreigaben, Funktionen, Gültigkeitszeiträume und Protokollzeilen mit gleicher laufender Nummer',async t=>{
+ const f=await setup(t);
+ await f.save('bank',[row('bank',99,{LfdNrBV:'1',BVfreigeg:'0',IBANkomplett:'DE89370400440532013000'}),row('bank',99,{LfdNrBV:'1',BVfreigeg:'1',IBANkomplett:'DE89370400440532013000'})]);assert.equal((await f.svc.details(f.aid,'bank')).zeilen.length,2);
+ await f.save('asp_zusatz',[row('asp_zusatz',99,{PFKt:'002',KISTA_Datum_von:'739000'}),row('asp_zusatz',99,{PFKt:'003',KISTA_Datum_von:'739000'}),row('asp_zusatz',99,{PFKt:'002',KISTA_Datum_von:'739001'})]);assert.equal((await f.svc.details(f.aid,'asp_zusatz')).zeilen.length,3);
+ await f.save('protokoll',[row('protokoll',99,{lfdNr:'123',MODUL_ID:'NEUANL',Datum:'739936',Uhrzeit:'1000'}),row('protokoll',99,{lfdNr:'123',MODUL_ID:'TELEFO',Datum:'739936',Uhrzeit:'1000'})]);assert.equal((await f.svc.details(f.aid,'protokoll')).zeilen.length,2);
+});
+
+test('Connector und Server verwenden identische Feldprofile und ausschließlich vorhandene physische Schlüsselfelder',()=>{for(const p of Object.values(B.spec))for(const key of p.pk)assert.ok(p.fields.some(f=>f.name===key),p.table+'/'+key);const source=require('node:fs').readFileSync(require('node:path').join(__dirname,'../tools/hp-direkt/HPAdressFull.cs'),'utf8');assert.deepEqual(JSON.parse(Buffer.from(/FullSpecBase64="([^"]+)"/.exec(source)[1],'base64').toString('utf8')),B.spec);});

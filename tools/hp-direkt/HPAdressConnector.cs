@@ -20,15 +20,15 @@ internal sealed partial class HPAddressClient
  static readonly int[] Sizes={30,30,30,30,30,3,6,30};
  const string Select="SELECT AdrNr,Anrede,Vorname,Name1,Name2,Strasse,Land,PLZ,Ort FROM AD_Adr";
  readonly string dsn,database,id,token;
- readonly bool full;
+ readonly bool full,createNew;
  readonly JavaScriptSerializer json=new JavaScriptSerializer{MaxJsonLength=2097152};
  internal HPAddressClient(string source,string db,string pairing)
  {
   if(!Regex.IsMatch(source,@"\A[A-Za-z0-9_-]{1,64}\z")||!Regex.IsMatch(db,@"\A[A-Za-z0-9_-]{1,64}\z"))throw new ArgumentException();
   var p=json.Deserialize<Dictionary<string,object>>(pairing);Guid guid;
   id=Convert.ToString(p["id"]);token=Convert.ToString(p["token"]);
-  if(!Guid.TryParse(id,out guid)||!Regex.IsMatch(token,@"\A[A-Za-z0-9_-]{43}\z")||(Convert.ToString(p["scope"])!="adressen-v1"&&Convert.ToString(p["scope"])!="adressen-v2")||Convert.ToString(p["datenbank"])!=db.ToUpperInvariant())throw new ArgumentException();
-  dsn=source;database=db.ToUpperInvariant();full=Convert.ToString(p["scope"])=="adressen-v2";
+  if(!Guid.TryParse(id,out guid)||!Regex.IsMatch(token,@"\A[A-Za-z0-9_-]{43}\z")||(Convert.ToString(p["scope"])!="adressen-v1"&&Convert.ToString(p["scope"])!="adressen-v2"&&Convert.ToString(p["scope"])!="adressen-v3")||Convert.ToString(p["datenbank"])!=db.ToUpperInvariant())throw new ArgumentException();
+  dsn=source;database=db.ToUpperInvariant();createNew=Convert.ToString(p["scope"])=="adressen-v3";full=createNew||Convert.ToString(p["scope"])=="adressen-v2";
  }
  OdbcConnection Open(){var b=new OdbcConnectionStringBuilder();b.Dsn=dsn;var c=new OdbcConnection(b.ConnectionString);try{c.Open();if(!String.Equals(c.Database,database,StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException();return c;}catch{c.Dispose();throw;}}
  static Dictionary<string,object> FromReader(OdbcDataReader r){var a=new Dictionary<string,object>{{"nummer",Convert.ToInt32(r["AdrNr"])}};for(int i=0;i<Keys.Length;i++)a.Add(Keys[i],Convert.ToString(r[Columns[i]]).TrimEnd(' '));return a;}
@@ -76,8 +76,9 @@ internal sealed partial class HPAddressClient
  }
  internal async Task Run(CancellationToken stop,Action<string> log)
  {
-  using(var c=Open()){}int cursor=0;var pending=new Queue<Dictionary<string,object>>();
+  using(var c=Open()){}int cursor=0;if(full){var begin=Post("vergleich",new{datenbank=database,fingerprints=new object[0]});object last;if(begin.TryGetValue("fortsetzen_ab",out last)){cursor=Convert.ToInt32(last);if(cursor<0)throw new InvalidOperationException();log("Zuerst neue HP-Nummern seit dem letzten Import prüfen; anschließend vollständiger Umlauf.");}}var pending=new Queue<Dictionary<string,object>>();var newResults=new Queue<Dictionary<string,object>>();
   while(!stop.IsCancellationRequested){try{
+   if(createNew)NewAddressStep(newResults,log);
    while(pending.Count>0){Post("ergebnis",pending.Peek());pending.Dequeue();}
    if(stop.IsCancellationRequested)return;
    var page=Page(cursor);var hashes=new List<Dictionary<string,object>>();foreach(var a in page)hashes.Add(new Dictionary<string,object>{{"nummer",a["nummer"]},{"hash",Fingerprint(a)}});
@@ -123,7 +124,7 @@ internal static class HPAddressProfile
 internal sealed class HPAddressForm:Form
 {
  readonly TextBox dsn=new TextBox{Width=110},db=new TextBox{Width=140},pair=new TextBox{Width=700,UseSystemPasswordChar=true};
- readonly CheckBox consent=new CheckBox{AutoSize=true,Text="Freigegebene HP-Adressen abgleichen; bei Vollfreigabe auch Telefon, E-Mail, Bank, Mandate und Ansprechpartner lesen."};
+ readonly CheckBox consent=new CheckBox{AutoSize=true,Text="Freigegebene HP-Adressen abgleichen; Vollfreigabe: Zusatzbereiche lesen. Neuanlage nur mit gesonderter CuraAed-Freigabe."};
  readonly CheckBox remember=new CheckBox{AutoSize=true,Text="Verbindung für dieses Windows-Konto verschlüsselt speichern (freiwillig)."};
  readonly Button forget=new Button{AutoSize=true,Text="Gespeicherte Verbindung entfernen"};
  readonly Button start=new Button{Text="Adressabgleich starten",AutoSize=true},stop=new Button{Text="Abgleich beenden",AutoSize=true,Enabled=false};

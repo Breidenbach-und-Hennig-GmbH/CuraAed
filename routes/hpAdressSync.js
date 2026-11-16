@@ -6,6 +6,7 @@ module.exports=(db,options={})=>{
  const r=express.Router(),svc=require('../services/hpAdressSync').service(db,options),bereiche=require('../services/hpAdressBereiche').service(db);
  r.use((req,res,next)=>{res.set({'Cache-Control':'no-store','Referrer-Policy':'no-referrer'});const max=req.path.includes('/bereiche/')?2000000:65536;if(req.method!=='GET'&&(!req.is('application/json')||Buffer.byteLength(JSON.stringify(req.body||{}))>max))return next(new ValidationError('Ungültige Adressabgleich-Anfrage.',400));next();});
  const token=req=>/^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.get('authorization')||'')?.[1];
+ for(const [path,method]of [['abholen','abholen'],['reservieren','reservieren'],['ergebnis','ergebnis']])r.post('/agent/:id/neuanlagen/'+path,h(async(req,res)=>res.json(await require('../services/hpAdressNeuanlage').service(db)[method](req.params.id,token(req),req.body||{}))));
  r.post('/agent/:id/bereiche/stapel',h(async(req,res)=>res.json(await bereiche.stapel(req.params.id,token(req),req.body||{}))));
  r.post('/agent/:id/bereiche/vergleich',h(async(req,res)=>res.json(await bereiche.vergleich(req.params.id,token(req),req.body||{}))));
  r.post('/agent/:id/bereiche/snapshot',h(async(req,res)=>res.json(await bereiche.speichern(req.params.id,token(req),req.body||{}))));
