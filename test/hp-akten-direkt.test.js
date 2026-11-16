@@ -18,6 +18,13 @@ test('Direkter Aktenimport erkennt vorhandene Mobile-Aufträge und ordnet native
  const bytes=Buffer.from('%PDF-1.7 native'),b={...f.body,generation:p.generation,datei:p.dateien[0].datei_id,groesse:bytes.length,mtime:'555',sha256:digest(bytes)};await f.s.store('direct',f.token,b,bytes);assert.equal((await fs.readFile((await v.document(1,old.id,b.datei)).path)).toString(),bytes.toString());assert.equal((await v.detail(1,old.id)).quelle_id,'mobile');
 });
 
+test('Abgewiesene HP-Leseseite hält mit sichtbarer Ursache und unverändertem Cursor an',async t=>{
+ const f=await fixture(t);await f.s.start(1,'direct');const p=await f.s.poll('direct',f.token,f.body),r=dataset().stati[0];
+ await assert.rejects(f.s.page('direct',f.token,{...f.body,generation:p.generation,bereich:p.bereich,cursor:[],zeilen:[r,r],fertig:false}),e=>e.status===400);
+ const job=(await f.s.status(1)).auftraege[0];assert.equal(job.status,'fehler');assert.match(job.meldung,/Mehrdeutige HP-Quellschlüssel/);assert.equal(job.cursor,'[]');assert.equal(job.anzahl,0);
+ await f.s.start(1,'direct');assert.equal((await f.s.poll('direct',f.token,f.body)).status,'metadaten');
+});
+
 test('Dateifehler und Speicherstopp werden ohne erneuten Metadatenimport wiederaufgenommen',async t=>{
  const f=await fixture(t);await f.s.start(1,'direct');const p=await send(f),file=p.dateien[0];await f.s.fileResult('direct',f.token,{...f.body,generation:p.generation,datei:file.datei_id,status:'fehler',meldung:'Archivspeicher voll',code:'speicher'});assert.equal((await f.s.poll('direct',f.token,f.body)).status,'angehalten');await f.s.start(1,'direct');const again=await f.s.poll('direct',f.token,f.body);assert.equal(again.status,'dateien');assert.equal(again.dateien[0].datei_id,file.datei_id);assert.equal(again.generation,p.generation);
 });
