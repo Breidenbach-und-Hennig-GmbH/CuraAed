@@ -76,7 +76,7 @@ internal sealed partial class HPAddressClient
  }
  internal async Task Run(CancellationToken stop,Action<string> log)
  {
-  using(var c=Open()){}int cursor=0;var pending=new Queue<Dictionary<string,object>>();var newResults=new Queue<Dictionary<string,object>>();
+  using(var c=Open()){}int cursor=0;if(full){var begin=Post("vergleich",new{datenbank=database,fingerprints=new object[0]});object last;if(begin.TryGetValue("fortsetzen_ab",out last)){cursor=Convert.ToInt32(last);if(cursor<0)throw new InvalidOperationException();log("Zuerst neue HP-Nummern seit dem letzten Import prüfen; anschließend vollständiger Umlauf.");}}var pending=new Queue<Dictionary<string,object>>();var newResults=new Queue<Dictionary<string,object>>();
   while(!stop.IsCancellationRequested){try{
    if(createNew)NewAddressStep(newResults,log);
    while(pending.Count>0){Post("ergebnis",pending.Peek());pending.Dequeue();}

@@ -114,7 +114,8 @@ function service(db,{now=()=>Date.now()}={}) {
      if(fingerprint(base)!==r.hash||fingerprint(local(a,r.nummer))!==fingerprint(base))required.push(r.nummer);
     }
     await tx.run('UPDATE hp_adress_verbindungen SET zuletzt_gesehen=? WHERE id=?',[now(),id]);
-    return {protokoll:'adress-delta-v1',benoetigt:required};
+    const last=input.fingerprints.length===0?await tx.get('SELECT COALESCE(MAX(hp_nummer),0) nummer FROM hp_adress_zuordnung m WHERE verbindung_id=? AND NOT EXISTS(SELECT 1 FROM hp_adress_neuanlagen j WHERE j.adresse_id=m.adresse_id)',[id]):null;
+    return {protokoll:'adress-delta-v1',benoetigt:required,...(last?{fortsetzen_ab:last.nummer}:{})};
    });
   },
   async scan(id,token,input) {

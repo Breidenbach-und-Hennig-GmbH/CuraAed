@@ -54,7 +54,8 @@ function service(db){
   });},
   async ergebnis(id,token,b){return db.transaktion(async tx=>{
    await auth(tx,id,token,b.datenbank);const j=await auftrag(tx,id,b.id);if(!['erfolg','fehler','unklar','dublette'].includes(b.status))fail('Ungültiges Neuanlageergebnis.',400);
-   const digest=hash([b.status,b.record||null]);if(j.result_hash){if(j.result_hash!==digest)fail('Abweichendes Ergebnis für bereits abgeschlossenen Auftrag.');return{ok:true};}
+   if(b.diagnose!==undefined&&(typeof b.diagnose!=='string'||!/^([a-z_]{3,20})(\/[A-Z0-9]{4,5})?$/.test(b.diagnose)))fail('Ungültige Neuanlagediagnose.',400);
+   const digest=hash([b.status,b.record||null,b.diagnose||null]);if(j.result_hash){if(j.result_hash!==digest)fail('Abweichendes Ergebnis für bereits abgeschlossenen Auftrag.');return{ok:true};}
    if(!['abgeholt','reserviert'].includes(j.status))fail('Neuanlageauftrag ist nicht ausführbar.');
    if(b.status==='erfolg'){
     if(!j.reservierung)fail('HP-Neuanlage wurde nicht reserviert.');const wanted={...JSON.parse(j.daten).record,nummer:j.hp_nummer},actual=H.record(b.record);if(hash(actual)!==hash(wanted)||b.vollstaendig_geprueft!==true)fail('HP-Rückprüfung stimmt nicht mit der Neuanlage überein.');
@@ -63,7 +64,7 @@ function service(db){
     await tx.run("UPDATE adressen SET nummer=?,geaendert_am=CURRENT_TIMESTAMP WHERE id=?",[number,j.adresse_id]);
     await kommunikationZuordnen(tx,j);
    }else if(j.reservierung)await tx.run("UPDATE hp_adress_zuordnung SET status='unklar',meldung='HP-Neuanlage nicht vollständig bestätigt. Kein automatischer Neuversuch.' WHERE adresse_id=?",[j.adresse_id]);
-   const message=b.status==='erfolg'?null:b.status==='dublette'?'In HP wurde eine mögliche Dublette gefunden. Bitte bestehende Adresse prüfen.':'HP-Neuanlage nicht bestätigt. Kein automatischer Neuversuch; bitte prüfen.';
+   const message=b.status==='erfolg'?null:b.status==='dublette'?'In HP wurde eine mögliche Dublette gefunden. Bitte bestehende Adresse prüfen.':'HP-Neuanlage nicht bestätigt. Kein automatischer Neuversuch; bitte prüfen.'+(b.diagnose?' Prüfschritt: '+b.diagnose:'');
    await tx.run('UPDATE hp_adress_neuanlagen SET status=?,meldung=?,result_hash=?,erledigt_am=CURRENT_TIMESTAMP WHERE id=?',[b.status==='erfolg'?'synchron':'pruefen',message,digest,j.id]);return{ok:true};
   });},
  };

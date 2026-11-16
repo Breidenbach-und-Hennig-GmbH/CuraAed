@@ -9,6 +9,7 @@ test('Neue Adressen werden atomar eingereiht, HP-Kürzel und Feldgrenzen geprüf
 test('Reservierung bindet genau eine HP-Nummer; Import erzeugt keine zweite CuraAed-Adresse und nur vollständige Rückprüfung bestätigt die Anlage',async t=>{
  const f=await setup(t),a=await f.create(),job=(await f.take()).anlegen,b={...f.body,id:job.id,reservierung:reservation};assert.equal((await f.take()).anlegen,undefined);
  await f.svc.reservieren(f.grant.id,f.grant.token,b);await f.svc.reservieren(f.grant.id,f.grant.token,b);await assert.rejects(f.svc.reservieren(f.grant.id,f.grant.token,{...b,reservierung:{...reservation,nummer:101}}),e=>e.status===409);
+ assert.equal((await f.sync.compare(f.grant.id,f.grant.token,{...f.body,fingerprints:[]})).fortsetzen_ab,0);
  const record={...job.daten.record,nummer:100};await f.sync.scan(f.grant.id,f.grant.token,{...f.body,records:[record]});assert.equal((await f.db.get('SELECT COUNT(*) n FROM adressen')).n,1);assert.equal((await f.db.get('SELECT status FROM hp_adress_zuordnung')).status,'neuanlage');
  await assert.rejects(A.aktualisieren(f.db,a.id,{ort:'Während Anlage'}),e=>e.status===409);await assert.rejects(A.setzeArchiviert(f.db,a.id,true),e=>e.status===409);
  const result={...f.body,id:job.id,status:'erfolg',record,vollstaendig_geprueft:true};await assert.rejects(f.svc.ergebnis(f.grant.id,f.grant.token,{...result,vollstaendig_geprueft:false}),e=>e.status===409);await assert.rejects(f.svc.ergebnis(f.grant.id,f.grant.token,{...result,record:{...record,name1:'Fremd'}}),e=>e.status===409);
