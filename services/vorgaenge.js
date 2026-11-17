@@ -148,9 +148,16 @@ function baueVorgaenge(db,{hp,archiv}={}){
   for(const j of jobs){if(j.status==='laeuft'&&!active.has(j.quelle_id)){j.status='angehalten';j.meldung='Nach Serverneustart fortsetzen.';await db.run("UPDATE fach_import_jobs SET status='angehalten',meldung=? WHERE quelle_id=?",[j.meldung,j.quelle_id]);}j.fehler=(await db.get('SELECT COUNT(*) AS n FROM fach_import_fehler WHERE quelle_id=?',[j.quelle_id])).n;}
   const errors=await db.all('SELECT f.* FROM fach_import_fehler f JOIN hp_dms_quellen s ON s.id=f.quelle_id WHERE s.benutzer_id=? LIMIT 100',[owner]);
   const uebernahme=await db.get("SELECT COUNT(*) AS eintraege,SUM(art='akte') AS akten,SUM(art='handwerker') AS handwerker FROM fach_vorgaenge WHERE benutzer_id=? AND quelle_id IS NOT NULL",[owner]);
-  const dateien=await db.get("SELECT COUNT(*) AS gesamt,SUM(f.speicher_name IS NOT NULL) AS gesichert FROM hp_dms_dateien f WHERE EXISTS(SELECT 1 FROM fach_bezuege b JOIN fach_vorgaenge v ON v.id=b.vorgang_id WHERE v.benutzer_id=? AND v.quelle_id=f.quelle_id AND b.typ='dokument' AND b.remote_id=f.datei_id)",[owner]);
-  const ausstehend=await db.get("SELECT COUNT(*) AS n FROM (SELECT DISTINCT v.quelle_id,b.remote_id FROM fach_bezuege b JOIN fach_vorgaenge v ON v.id=b.vorgang_id LEFT JOIN hp_dms_dateien f ON f.quelle_id=v.quelle_id AND f.datei_id=b.remote_id WHERE v.benutzer_id=? AND b.typ='dokument' AND v.quelle_id IS NOT NULL AND f.speicher_name IS NULL)",[owner]);
-  return {bereiche:counts,quellen:sources,auftraege:jobs,fehler:errors,uebernahme:{...uebernahme,dateien:dateien.gesamt,gesichert:dateien.gesichert||0,ausstehend:ausstehend.n}};
+  const dateien=await db.get(`WITH zugeordnete_dateien AS (
+   SELECT DISTINCT CASE WHEN b.remote_id>=4503599627370496 THEN COALESCE(ns.id,v.quelle_id) ELSE v.quelle_id END AS quelle_id,b.remote_id
+   FROM fach_bezuege b JOIN fach_vorgaenge v ON v.id=b.vorgang_id
+   LEFT JOIN hp_akten_zuordnung a ON a.vorgang_id=v.id
+   LEFT JOIN hp_akten_importe j ON j.verbindung_id=a.verbindung_id
+   LEFT JOIN hp_dms_quellen ns ON ns.id=j.quelle_id AND ns.benutzer_id=v.benutzer_id
+   WHERE v.benutzer_id=? AND b.typ='dokument' AND v.quelle_id IS NOT NULL
+  ) SELECT COUNT(f.datei_id) AS gesamt,SUM(f.speicher_name IS NOT NULL) AS gesichert,SUM(f.speicher_name IS NULL) AS ausstehend
+   FROM zugeordnete_dateien z LEFT JOIN hp_dms_dateien f ON f.quelle_id=z.quelle_id AND f.datei_id=z.remote_id`,[owner]);
+  return {bereiche:counts,quellen:sources,auftraege:jobs,fehler:errors,uebernahme:{...uebernahme,dateien:dateien.gesamt,gesichert:dateien.gesichert||0,ausstehend:dateien.ausstehend||0}};
  }
  async function run(owner,connection,source){
   try{let job=await db.get('SELECT * FROM fach_import_jobs WHERE quelle_id=?',[source.id]);const resources=Object.keys(BEREICHE);
