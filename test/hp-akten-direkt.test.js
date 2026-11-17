@@ -35,7 +35,7 @@ test('Adresszuordnungen mit gleicher laufender Nummer bleiben getrennt; alte Les
 });
 
 test('Leerer HP-Auftrag null bleibt als Original erhalten; nichtleere ungültige Aufträge halten an',async t=>{
- const f=await fixture(t),data=dataset(),empty=row('hwa',{HWANr:'0',ObjNr:'0',WhgNr:'0',AktNr:'0',HWAdrNr:'0',Dat:'0',erledigt:'0',HWAStat:'',Betreff:''});data.hwa.unshift(empty);await f.s.start(1,'direct');assert.equal((await send(f,data)).status,'dateien');
+ const f=await fixture(t),data=dataset(),empty=row('hwa',{HWANr:'0',ObjNr:'0',WhgNr:'0',AktNr:'0',HWAdrNr:'0',Dat:'0',erledigt:'739363',HWAStat:'',Betreff:''});data.hwa.unshift(empty);await f.s.start(1,'direct');assert.equal((await send(f,data)).status,'dateien');
  assert.equal((await f.db.get("SELECT COUNT(*) n FROM hp_akten_rohdaten WHERE bereich='hwa'")).n,2);assert.equal((await f.db.get("SELECT COUNT(*) n FROM hp_akten_zuordnung WHERE art='handwerker'")).n,1);assert.match((await f.s.warnings(1,'direct')).find(x=>x.schluessel==='hwa-leersatz:0').meldung,/Original erhalten/);
  const g=await fixture(t),bad=dataset();bad.hwa=[{...empty,Betreff:'Echter ungeklärter Auftrag'}];await g.s.start(1,'direct');await assert.rejects(send(g,bad),/Übernahme blieb hängen/);assert.match((await g.s.status(1)).auftraege[0].meldung,/Ungültige HP-Vorgangsnummer/);
 });
