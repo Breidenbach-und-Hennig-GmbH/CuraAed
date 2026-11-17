@@ -591,6 +591,7 @@ CREATE INDEX IF NOT EXISTS fach_vorgaenge_kontext ON fach_vorgaenge(benutzer_id,
 CREATE INDEX IF NOT EXISTS fach_vorgaenge_hp_nummer ON fach_vorgaenge(art,hp_nummer,quelle_id);
 CREATE TABLE IF NOT EXISTS fach_bezuege (id INTEGER PRIMARY KEY AUTOINCREMENT,vorgang_id INTEGER NOT NULL REFERENCES fach_vorgaenge(id),typ TEXT NOT NULL,ziel_id INTEGER,remote_id INTEGER,hp_nummer TEXT,objekt_nummer TEXT,name TEXT NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS fach_bezug_eindeutig ON fach_bezuege(vorgang_id,typ,COALESCE(ziel_id,0),COALESCE(remote_id,0),COALESCE(hp_nummer,''),COALESCE(objekt_nummer,''));
+CREATE INDEX IF NOT EXISTS fach_bezug_remote ON fach_bezuege(typ,remote_id,vorgang_id);
 CREATE TABLE IF NOT EXISTS fach_verlauf (id INTEGER PRIMARY KEY AUTOINCREMENT,vorgang_id INTEGER NOT NULL REFERENCES fach_vorgaenge(id),benutzer_id INTEGER NOT NULL REFERENCES benutzer(id),aktion TEXT NOT NULL,vorher TEXT,nachher TEXT NOT NULL,erstellt_am TEXT NOT NULL DEFAULT (datetime('now')));
 CREATE TABLE IF NOT EXISTS fach_import_jobs (quelle_id TEXT PRIMARY KEY REFERENCES hp_dms_quellen(id),verbindung_id TEXT NOT NULL,resource TEXT NOT NULL,seite INTEGER NOT NULL,position INTEGER NOT NULL,status TEXT NOT NULL,meldung TEXT);
 CREATE TABLE IF NOT EXISTS fach_import_fehler (quelle_id TEXT NOT NULL REFERENCES hp_dms_quellen(id),resource TEXT NOT NULL,remote_id INTEGER NOT NULL,meldung TEXT NOT NULL,PRIMARY KEY(quelle_id,resource,remote_id));
@@ -886,9 +887,9 @@ CREATE INDEX IF NOT EXISTS hp_akten_rohdaten_hwa ON hp_akten_rohdaten(verbindung
 CREATE INDEX IF NOT EXISTS hp_akten_rohdaten_archiv ON hp_akten_rohdaten(verbindung_id,bereich,archiv_nr,nr,lfd);
 CREATE INDEX IF NOT EXISTS hp_akten_rohdaten_nummer ON hp_akten_rohdaten(verbindung_id,bereich,nr,lfd);
 CREATE TABLE IF NOT EXISTS hp_akten_zuordnung(verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),art TEXT NOT NULL,nummer INTEGER NOT NULL,lfd INTEGER NOT NULL DEFAULT 0,vorgang_id INTEGER NOT NULL REFERENCES fach_vorgaenge(id),basis TEXT,PRIMARY KEY(verbindung_id,art,nummer,lfd));
+CREATE INDEX IF NOT EXISTS hp_akten_vorgang ON hp_akten_zuordnung(vorgang_id,verbindung_id);
 CREATE TABLE IF NOT EXISTS hp_akten_dateien(verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),archiv_nr INTEGER NOT NULL,lfd INTEGER NOT NULL,datei_id INTEGER NOT NULL,daten TEXT NOT NULL,metahash TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'ausstehend',generation TEXT,groesse INTEGER,mtime TEXT,meldung TEXT,PRIMARY KEY(verbindung_id,archiv_nr,lfd));
 CREATE TABLE IF NOT EXISTS hp_akten_warnungen(verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),schluessel TEXT NOT NULL,meldung TEXT NOT NULL,PRIMARY KEY(verbindung_id,schluessel));
 CREATE UNIQUE INDEX IF NOT EXISTS hp_akten_datei_id ON hp_akten_dateien(verbindung_id,datei_id);
 CREATE INDEX IF NOT EXISTS hp_akten_datei_name ON hp_akten_dateien(verbindung_id,lower(json_extract(daten,'$.AR_Dateiname')));
 CREATE INDEX IF NOT EXISTS hp_dms_dateiname ON hp_dms_dateien(quelle_id,dateiname COLLATE NOCASE);
-
