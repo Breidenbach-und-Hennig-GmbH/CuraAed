@@ -19,6 +19,14 @@ test('HWA zeigt ursprüngliche Objekt- und Wohnungsnummern ohne erfundene lokale
  assert.equal(a.objekt.nummer,'18059');assert.equal(a.objekt.id,null);assert.equal(a.objekt.nur_original,true);assert.equal(a.einheit.nummer,'7');assert.equal(a.einheit.id,null);assert.equal(a.objekt_id,null);assert.equal(a.einheit_id,null);
 });
 
+test('Importierter Auftragnehmer erscheint nicht zusätzlich als namenloser HP-Adressat',async t=>{
+ const f=await fixture(t),data=dataset();data.hwa_adressaten.push(row('hwa_adressaten',{HWANr:'122502',AdrNr:'2',AdrzumAdr:'5678',WhgNr:'0',PFkt:''}));await f.s.start(1,'direct');await send(f,data);
+ const r=await f.db.get("SELECT id FROM fach_vorgaenge WHERE art='handwerker'"),v=require('../services/vorgaenge').baueVorgaenge(f.db);const a=(await v.detail(1,r.id)).auftrag;
+ assert.equal(a.handwerker.id,2);assert.equal(a.adressaten.length,2);assert.deepEqual(a.adressaten_details.map(x=>x.id),[1]);
+ const stored=JSON.parse((await f.db.get('SELECT daten FROM handwerkerauftraege WHERE vorgang_id=?',[r.id])).daten);await f.db.run('UPDATE handwerkerauftraege SET daten=? WHERE vorgang_id=?',[JSON.stringify({...stored,adressaten:[...stored.adressaten,{adresse_id:2,bezeichnung:'Ansprechpartner',kontakt_name:'Werkstattleitung'}]}),r.id]);
+ assert.ok((await v.detail(1,r.id)).auftrag.adressaten_details.some(x=>x.kontakt_name==='Werkstattleitung'));
+});
+
 test('Altarchiv erhält abweichende Kontenzuordnungen und fasst nur vollständig identische Einträge zusammen',async t=>{
  const f=await fixture(t),data=dataset(),a=row('altarchiv',{AR_DOS_Dateiname:'Alt.pdf',AR_Akten_Nr:'118334',AR_Laufende_Akte:'0',AR_Datum:'738328',AR_Uhrzeit:'1',AR_PKto_Nr:'100'}),b={...a,AR_PKto_Nr:'200'};
  data.altarchiv=[a,{...a},b];await f.s.start(1,'direct');const p=await send(f,data);assert.equal(p.status,'dateien');
