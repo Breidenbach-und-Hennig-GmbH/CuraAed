@@ -38,9 +38,9 @@ async function load(db,r){
  const supplier=refs.find(b=>b.typ==='adresse'&&hp.craftsman_person&&Number(b.remote_id)===Number(hp.craftsman_person.id));
  const hpMoney=v=>/^[0-9]{1,9}(\.[0-9]{1,2})?$/.test(String(v??''))?Math.round(Number(v)*100):null;
  const d=row?JSON.parse(row.daten):{handwerker_id:supplier?.ziel_id||null,objekt_id:refs.find(b=>b.typ==='objekt')?.ziel_id||null,einheit_id:refs.find(b=>b.typ==='einheit')?.ziel_id||null,akte_id:refs.find(b=>b.typ==='akte')?.fach_id||null,firma:typeof hp.company?.name==='string'?hp.company.name.slice(0,30):'',auftragsart:/notdienst/i.test(hp.type?.name||'')?'notdienst':/eilauftrag/i.test(hp.type?.name||'')?'eilauftrag':'normal',datum:typeof hp.to_occur==='string'?hp.to_occur.slice(0,10):r.erstellt_am.slice(0,10),erledigt_am:null,gewaehrleistung_bis:null,garantie_notiz:'',betrag:hpMoney(hp.estimated_price),adressaten:[]};
- const sourceUnit=(hp.units||[])[0]||hp.first_unit,sourceObject=(hp.buildings||[])[0]||sourceUnit?.building||hp.first_building;
- const remoteObject=!row&&sourceObject?{id:null,nummer:String(sourceObject.hp_id??''),bezeichnung:sourceObject.search||refs.find(b=>b.typ==='objekt')?.name||'',strasse:sourceObject.address?.street||'',plz:sourceObject.address?.zip||'',ort:sourceObject.address?.city||'',nur_original:true}:null;
- const remoteUnit=!row&&sourceUnit?{id:null,nummer:String(sourceUnit.hp_id??''),bezeichnung:sourceUnit.position||'',nur_original:true}:null;
+ const direct=hp.odbc?.kopf,sourceUnit=direct?(Number(direct.WhgNr)>0?{hp_id:direct.WhgNr}:null):((hp.units||[])[0]||hp.first_unit),sourceObject=direct?(Number(direct.ObjNr)>0?{hp_id:direct.ObjNr}:null):((hp.buildings||[])[0]||sourceUnit?.building||hp.first_building);
+ const remoteObject=(!row||direct)&&sourceObject?{id:null,nummer:String(sourceObject.hp_id??''),bezeichnung:sourceObject.search||(!direct?refs.find(b=>b.typ==='objekt')?.name:'')||'',strasse:sourceObject.address?.street||'',plz:sourceObject.address?.zip||'',ort:sourceObject.address?.city||'',nur_original:true}:null;
+ const remoteUnit=(!row||direct)&&sourceUnit?{id:null,nummer:String(sourceUnit.hp_id??''),bezeichnung:sourceUnit.position||'',nur_original:true}:null;
  const handwerker=d.handwerker_id?await db.get('SELECT * FROM adressen WHERE id=?',[d.handwerker_id]):null;
  const objekt=d.objekt_id?await db.get('SELECT id,nummer,bezeichnung,strasse,plz,ort,objekttyp FROM objekte WHERE id=?',[d.objekt_id]):null;
  const einheit=d.einheit_id?await db.get('SELECT id,nummer,bezeichnung,objekt_id FROM einheiten WHERE id=?',[d.einheit_id]):null;
