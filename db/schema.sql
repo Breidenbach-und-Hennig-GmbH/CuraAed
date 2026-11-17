@@ -588,6 +588,7 @@ CREATE TABLE IF NOT EXISTS hp_dms_auftraege (quelle_id TEXT PRIMARY KEY REFERENC
 -- Independent work modules, scoped to the importing CuraAed account.
 CREATE TABLE IF NOT EXISTS fach_vorgaenge (id INTEGER PRIMARY KEY AUTOINCREMENT,benutzer_id INTEGER NOT NULL REFERENCES benutzer(id),quelle_id TEXT REFERENCES hp_dms_quellen(id),remote_art TEXT,remote_id INTEGER,hp_nummer TEXT,art TEXT NOT NULL CHECK(art IN ('akte','handwerker','wiedervorlage','zis','notiz')),titel TEXT NOT NULL,text TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'offen',prioritaet TEXT NOT NULL DEFAULT 'normal',faellig_am TEXT,uhrzeit TEXT,zustaendig_id INTEGER REFERENCES benutzer(id),basis TEXT,remote_snapshot TEXT,remote_hash TEXT,incoming TEXT,quelle_status TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,erstellt_am TEXT NOT NULL DEFAULT (datetime('now')),geaendert_am TEXT NOT NULL DEFAULT (datetime('now')),UNIQUE(quelle_id,remote_art,remote_id));
 CREATE INDEX IF NOT EXISTS fach_vorgaenge_kontext ON fach_vorgaenge(benutzer_id,art,status,faellig_am);
+CREATE INDEX IF NOT EXISTS fach_vorgaenge_hp_nummer ON fach_vorgaenge(art,hp_nummer,quelle_id);
 CREATE TABLE IF NOT EXISTS fach_bezuege (id INTEGER PRIMARY KEY AUTOINCREMENT,vorgang_id INTEGER NOT NULL REFERENCES fach_vorgaenge(id),typ TEXT NOT NULL,ziel_id INTEGER,remote_id INTEGER,hp_nummer TEXT,objekt_nummer TEXT,name TEXT NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS fach_bezug_eindeutig ON fach_bezuege(vorgang_id,typ,COALESCE(ziel_id,0),COALESCE(remote_id,0),COALESCE(hp_nummer,''),COALESCE(objekt_nummer,''));
 CREATE TABLE IF NOT EXISTS fach_verlauf (id INTEGER PRIMARY KEY AUTOINCREMENT,vorgang_id INTEGER NOT NULL REFERENCES fach_vorgaenge(id),benutzer_id INTEGER NOT NULL REFERENCES benutzer(id),aktion TEXT NOT NULL,vorher TEXT,nachher TEXT NOT NULL,erstellt_am TEXT NOT NULL DEFAULT (datetime('now')));
@@ -890,3 +891,4 @@ CREATE TABLE IF NOT EXISTS hp_akten_warnungen(verbindung_id TEXT NOT NULL REFERE
 CREATE UNIQUE INDEX IF NOT EXISTS hp_akten_datei_id ON hp_akten_dateien(verbindung_id,datei_id);
 CREATE INDEX IF NOT EXISTS hp_akten_datei_name ON hp_akten_dateien(verbindung_id,lower(json_extract(daten,'$.AR_Dateiname')));
 CREATE INDEX IF NOT EXISTS hp_dms_dateiname ON hp_dms_dateien(quelle_id,dateiname COLLATE NOCASE);
+
