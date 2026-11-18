@@ -891,5 +891,7 @@ CREATE INDEX IF NOT EXISTS hp_akten_vorgang ON hp_akten_zuordnung(vorgang_id,ver
 CREATE TABLE IF NOT EXISTS hp_akten_dateien(verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),archiv_nr INTEGER NOT NULL,lfd INTEGER NOT NULL,datei_id INTEGER NOT NULL,daten TEXT NOT NULL,metahash TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'ausstehend',generation TEXT,groesse INTEGER,mtime TEXT,meldung TEXT,PRIMARY KEY(verbindung_id,archiv_nr,lfd));
 CREATE TABLE IF NOT EXISTS hp_akten_warnungen(verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),schluessel TEXT NOT NULL,meldung TEXT NOT NULL,PRIMARY KEY(verbindung_id,schluessel));
 CREATE UNIQUE INDEX IF NOT EXISTS hp_akten_datei_id ON hp_akten_dateien(verbindung_id,datei_id);
+CREATE INDEX IF NOT EXISTS hp_akten_datei_status ON hp_akten_dateien(verbindung_id,status);
+CREATE INDEX IF NOT EXISTS hp_akten_datei_warteschlange ON hp_akten_dateien(verbindung_id,generation,CASE WHEN status='ausstehend' THEN 0 ELSE 1 END,archiv_nr DESC,lfd);
 CREATE INDEX IF NOT EXISTS hp_akten_datei_name ON hp_akten_dateien(verbindung_id,lower(json_extract(daten,'$.AR_Dateiname')));
 CREATE INDEX IF NOT EXISTS hp_dms_dateiname ON hp_dms_dateien(quelle_id,dateiname COLLATE NOCASE);
