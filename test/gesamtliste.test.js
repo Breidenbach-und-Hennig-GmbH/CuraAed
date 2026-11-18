@@ -35,6 +35,11 @@ test('Gesamtliste Adresse: Pfkt.-Filter und Suchmodi', async () => {
 
   assert.deepEqual(await namen({ q: 'vuk' }), ['Vukovic, Jovo', 'Vukusic, Anja'], 'Suche: Name beginnt mit');
   assert.deepEqual(await namen({ q: 'vujica, l' }), ['Vujica, Luka']);
+  for (const opts of [{}, { modus: 'intensiv' }, { modus: 'feld', feld: 'name' }]) {
+    for (const q of ['Luka Vujica', 'Vujica Luka', 'Vujica, Luka']) {
+      assert.deepEqual(await namen({ ...opts, q }), ['Vujica, Luka'], 'Vollständiger Name in beiden Reihenfolgen: '+JSON.stringify({ ...opts, q }));
+    }
+  }
   assert.deepEqual(await namen({ q: luka.nummer }), ['Vujica, Luka'], 'Suche: Adress-Nr.');
   assert.deepEqual(await namen({ modus: 'intensiv', q: 'schlüssel' }), ['Vukusic, Anja'], 'Intensiv: Notizen');
   assert.deepEqual(await namen({ modus: 'intensiv', q: 'schmitz' }), ['VULCAVO GmbH'], 'Intensiv: Ansprechpartner');

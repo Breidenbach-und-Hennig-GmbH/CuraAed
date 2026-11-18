@@ -13,9 +13,17 @@ const { istAktiv } = require('./zuordnungen');
 
 const FILTER = ['alle', 'aktiv', 'nicht_aktiv', 'ohne'];
 const MODI = ['suche', 'intensiv', 'feld', 'telefon', 'pfkt', 'ansprechp'];
+const namenswerte = a => [a.nachname, a.vorname, a.firmenname,
+  [a.vorname, a.nachname].filter(Boolean).join(' '),
+  [a.nachname, a.vorname].filter(Boolean).join(' '),
+  [a.nachname, a.vorname].filter(Boolean).join(', ')];
+const namensspalten = ['a.nachname', 'a.vorname', 'a.firmenname',
+  "TRIM(COALESCE(a.vorname,'') || ' ' || COALESCE(a.nachname,''))",
+  "TRIM(COALESCE(a.nachname,'') || ' ' || COALESCE(a.vorname,''))",
+  "COALESCE(a.nachname,'') || ', ' || COALESCE(a.vorname,'')"];
 const FELDER = {
   nummer: (a) => [a.nummer],
-  name: (a) => [a.nachname, a.vorname, a.firmenname],
+  name: namenswerte,
   plz: (a) => [a.plz],
   ort: (a) => [a.ort],
   strasse: (a) => [a.strasse],
@@ -51,14 +59,14 @@ async function liste(db, opts = {}) {
   // Tastendruck vollständig in JavaScript materialisieren.
   const where=['a.archiviert=0'],args=[];
   const sqlLike=(cols,term)=>{where.push('('+cols.map(c=>c+' LIKE ?').join(' OR ')+')');args.push(...cols.map(()=>term));};
-  if(q&&modus==='suche')sqlLike(['a.nachname','a.firmenname','a.nummer',"COALESCE(a.nachname,'') || ', ' || COALESCE(a.vorname,'')"],q+'%');
+  if(q&&modus==='suche')sqlLike([...namensspalten,'a.nummer'],q+'%');
   if(q&&modus==='intensiv'){
-    const cols=['nummer','vorname','nachname','firmenname','ansprechpartner','strasse','plz','ort','land','telefon','mobil','email','notizen','lkto_nr'].map(c=>'a.'+c);
+    const cols=[...namensspalten,...['nummer','ansprechpartner','strasse','plz','ort','land','telefon','mobil','email','notizen','lkto_nr'].map(c=>'a.'+c)];
     const parts=cols.map(c=>c+' LIKE ?');args.push(...cols.map(()=>'%'+q+'%'));
     for(const [table,col]of [['adress_telefone','nummer'],['adress_emails','adresse'],['adress_ansprechpartner','name']]){parts.push(`EXISTS (SELECT 1 FROM ${table} x WHERE x.adresse_id=a.id AND x.${col} LIKE ?)`);args.push('%'+q+'%');}
     where.push('('+parts.join(' OR ')+')');
   }
-  if(q&&modus==='feld'&&['nummer','name','plz','ort','strasse','lkto_nr','notizen'].includes(opts.feld||'name'))sqlLike((opts.feld||'name')==='name'?['a.nachname','a.vorname','a.firmenname']:['a.'+opts.feld],'%'+q+'%');
+  if(q&&modus==='feld'&&['nummer','name','plz','ort','strasse','lkto_nr','notizen'].includes(opts.feld||'name'))sqlLike((opts.feld||'name')==='name'?namensspalten:['a.'+opts.feld],'%'+q+'%');
   if(q&&modus==='feld'&&opts.feld==='email'){where.push('(a.email LIKE ? OR EXISTS (SELECT 1 FROM adress_emails x WHERE x.adresse_id=a.id AND x.adresse LIKE ?))');args.push('%'+q+'%','%'+q+'%');}
   if(q&&modus==='ansprechp'){where.push('(a.ansprechpartner LIKE ? OR EXISTS (SELECT 1 FROM adress_ansprechpartner x WHERE x.adresse_id=a.id AND x.name LIKE ?))');args.push('%'+q+'%','%'+q+'%');}
   if(modus==='pfkt'){
@@ -120,9 +128,9 @@ async function liste(db, opts = {}) {
     if (!q) return true;
     switch (modus) {
       case 'suche':
-        return [listenname(a), a.nachname, a.firmenname, a.nummer].some((w) => klein(w).startsWith(qk));
+        return [...namenswerte(a), a.nummer].some((w) => klein(w).startsWith(qk));
       case 'intensiv':
-        return enthaelt([a.nummer, a.vorname, a.nachname, a.firmenname, a.ansprechpartner, a.strasse, a.plz, a.ort,
+        return enthaelt([a.nummer, ...namenswerte(a), a.ansprechpartner, a.strasse, a.plz, a.ort,
           a.land, a.telefon, a.mobil, a.email, a.notizen, a.lkto_nr, ...x.telefone, ...x.emails, ...x.ansprech]);
       case 'feld':
         return enthaelt(FELDER[opts.feld || 'name'](a, x));
