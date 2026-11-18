@@ -51,7 +51,7 @@ konkrete Vorgangszuordnung und den Quelleninhaber geprüft. Fehlende lokale
 Stammdaten werden mit ihrer HP-Nummer bewahrt und gemeldet. Alte Dateien ohne
 modernen Pfad werden nur bei eindeutigem Treffer im freigegebenen Archivordner
 übernommen. Verzeichnis- und Dateiverknüpfungen sowie Pfade außerhalb dieses
-Ordners werden nicht verfolgt. Dateien über 64 MB werden zur Prüfung ausgewiesen.
+Ordners werden nicht verfolgt. Dateien bis 2 GB werden blockweise übertragen und mit SHA-256 bestätigt. Abgebrochene Übertragungen hinterlassen keine bestätigte Datei und geben die Verbindung wieder frei.
 
 Die Dateiannahme verlangt Connector-Token, aktiven Auftrag, Generation,
 Dateizuordnung, Größe und SHA-256. Bestätigte Dateien werden atomar abgelegt;
@@ -59,3 +59,7 @@ später veränderte Quelldateien überschreiben vorhandene Sicherungen nicht.
 Fehlgeschlagene Downloads können ohne erneutes Einlesen sämtlicher Metadaten
 fortgesetzt werden. Das Programm muss während des einmaligen Imports laufen;
 es wird nicht zusätzlich in den Windows-Autostart installiert.
+
+Interne Archiv-Mails mit AR_Mail, AR_Mail_Modul und AR_SB werden ausschließlich anhand dieses vollständigen Schlüssels aus IE_Inbox/IE_Outbox sowie den zugehörigen _Ex- und _Anhang-Tabellen gelesen. Es werden keine Kennwort- oder Profile-Felder abgefragt. Die Nachricht wird als EML mit Herkunftsvermerk gespeichert; Anhänge werden nur aus dem freigegebenen Archiv beziehungsweise dem danebenliegenden HP-Ordner Attachments gelesen. Fehlende oder nicht eindeutig zugeordnete Anhänge verhindern eine Erfolgsmeldung.
+
+Fehlt ein normaler Dateipfad, sucht der Reader einmalig nach den noch offenen Dateinamen innerhalb des Archivordners und des vorhandenen gleichgeordneten ARCHIV2019. Bei Dateinamen mit Erweiterung muss der Name vollständig übereinstimmen; bei alten Namen ohne Erweiterung ist genau ein Treffer erforderlich. Doppelte Namen bleiben zur Prüfung stehen. Die Rohzuordnungen werden nicht umgeschrieben.

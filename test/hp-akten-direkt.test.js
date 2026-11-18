@@ -71,3 +71,22 @@ test('HTTP-Aktenübernahme schützt Bedienung und Dateiannahme mit Rolle, Origin
  assert.equal((await fetch(url+'/status')).status,401);assert.equal((await fetch(url+'/direct/starten',{method:'POST',headers:{...headers,origin:'https://evil.invalid'},body:'{}'})).status,403);assert.equal((await fetch(url+'/direct/starten',{method:'POST',headers:{...headers,cookie:other},body:'{}'})).status,404);await f.s.start(1,'direct');const p=await send(f);const bytes=Buffer.from('%PDF-1.7 upload');const h={'content-type':'application/octet-stream','x-hp-datenbank':'HPSERVSD','x-hp-vertrag':'3','x-hp-generation':p.generation,'x-hp-groesse':String(bytes.length),'x-hp-mtime':'555','x-hp-sha256':digest(bytes)};
  assert.equal((await fetch(url+'/agent/direct/datei/'+p.dateien[0].datei_id,{method:'POST',headers:h,body:bytes})).status,401);assert.equal((await fetch(url+'/agent/direct/datei/'+p.dateien[0].datei_id,{method:'POST',headers:{...h,authorization:'Bearer '+f.token},body:bytes})).status,200);assert.equal((await f.s.status(1)).auftraege[0].gesichert,1);
 });
+
+test('Gestreamter Import übernimmt Dateien über 64 MB und räumt abgebrochene oder falsche Inhalte auf',async t=>{
+ const f=await fixture(t);await f.s.start(1,'direct');const p=await send(f),file=p.dateien[0],{Readable}=require('node:stream');
+ const chunk=Buffer.alloc(1024*1024,7),h=crypto.createHash('sha256');for(let i=0;i<65;i++)h.update(chunk);const b={...f.body,generation:p.generation,datei:file.datei_id,groesse:65*chunk.length,mtime:'123',sha256:h.digest('hex')};
+ await assert.rejects(f.s.storeStream('direct',f.token,b,Readable.from([chunk])),e=>e.status===400);assert.deepEqual(await fs.readdir(f.dir),[]);
+ async function* broken(){yield chunk;throw Error('connection closed');}await assert.rejects(f.s.storeStream('direct',f.token,b,Readable.from(broken())),/connection closed/);assert.deepEqual(await fs.readdir(f.dir),[]);
+ await f.s.storeStream('direct',f.token,b,Readable.from((function*(){for(let i=0;i<65;i++)yield chunk;})()));assert.equal((await f.s.status(1)).auftraege[0].gesichert,1);const saved=await f.db.get('SELECT * FROM hp_dms_dateien');assert.equal((await fs.stat(path.join(f.dir,saved.speicher_name))).size,b.groesse);
+});
+
+test('Interne HP-Mail bleibt zugeordnet, erhält EML-Dateinamen und beseitigt ihre Fehlermeldung',async t=>{
+ const f=await fixture(t),data=dataset();Object.assign(data.dateien[0],{AR_Dateiname:'IA7834JF',AR_Dateiart:'IA',AR_Mail:'7834',AR_Mail_Modul:'O',AR_SB:'JF'});await f.s.start(1,'direct');const p=await send(f,data),file=p.dateien[0],bytes=Buffer.from('MIME-Version: 1.0\r\nSubject: HP-Mail\r\n\r\nBody');
+ await f.s.fileResult('direct',f.token,{...f.body,generation:p.generation,datei:file.datei_id,status:'fehler',meldung:'Mail fehlte',code:'datei'});await f.s.start(1,'direct');assert.deepEqual(await f.s.searchNames('direct',f.token,f.body),['IA7834JF']);
+ const b={...f.body,generation:p.generation,datei:file.datei_id,groesse:bytes.length,mtime:'123',sha256:digest(bytes),format:'eml'};await f.s.store('direct',f.token,b,bytes);const saved=await f.db.get('SELECT * FROM hp_dms_dateien');assert.equal(saved.dateiname,'IA7834JF.eml');assert.equal(JSON.parse(saved.details).dokument.dateiname,saved.dateiname);assert.equal((await f.s.warnings(1,'direct')).filter(x=>x.schluessel.startsWith('datei:')).length,0);
+});
+
+test('HTTP-Dateisperre wird auch nach fehlgeschlagener Prüfsumme wieder freigegeben',async t=>{
+ const f=await fixture(t),app=require('../lib/appFactory').baueApp(f.db,{uploadDir:f.dir}),server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});t.after(()=>new Promise(r=>server.close(r)));await f.s.start(1,'direct');const p=await send(f),bytes=Buffer.from('retry after error'),url='http://127.0.0.1:'+server.address().port+'/api/hp-akten/agent/direct/datei/'+p.dateien[0].datei_id,h={authorization:'Bearer '+f.token,'content-type':'application/octet-stream','x-hp-datenbank':'HPSERVSD','x-hp-vertrag':'3','x-hp-generation':p.generation,'x-hp-groesse':String(bytes.length),'x-hp-mtime':'555','x-hp-sha256':'0'.repeat(64)};
+ assert.equal((await fetch(url,{method:'POST',headers:h,body:bytes})).status,400);h['x-hp-sha256']=digest(bytes);assert.equal((await fetch(url,{method:'POST',headers:h,body:bytes})).status,200);
+});
