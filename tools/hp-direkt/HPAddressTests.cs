@@ -5,6 +5,8 @@ internal static class HPAddressTests
 {
  static void Check(bool ok){if(!ok)throw new Exception("Adressconnector-Prüfung fehlgeschlagen.");}
  public static void Main(){
+  Check(HPAddressClient.BtrieveDiagnostic("Driver SQL with private text (Btrieve Error 84)")=="/BTR84");Check(HPAddressClient.BtrieveDiagnostic("No numeric code; private details")=="");
+  Check(HPAddressClient.CreationDiagnostic("email","HY000",-4990)=="email/HY000/-4990");Check(HPAddressClient.CreationDiagnostic("email","HY000",null)=="email/HY000");Check(HPAddressClient.CreationDiagnostic("email","unexpected detail",-1)=="email");
   var j=new JavaScriptSerializer();var r=j.Deserialize<Dictionary<string,object>>("{\"nummer\":65937,\"anrede\":\"Herr\",\"vorname\":\"Jörg\",\"name1\":\"Müller\",\"zusatz\":\"\",\"strasse\":\"Test 1\",\"land\":\"DE\",\"plz\":\"12345\",\"ort\":\"Köln\"}");
   Check(HPAddressClient.Valid(r));Check(HPAddressClient.Same(r,j.Deserialize<Dictionary<string,object>>(j.Serialize(r))));
   Check(HPAddressClient.Fingerprint(r)=="952062ac5ba53f2fa432a4a8bb144c4613774b205a35016de908d5e22e1ec34f");

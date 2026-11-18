@@ -1,6 +1,11 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {JSDOM}=require('jsdom');const tick=()=>new Promise(r=>setImmediate(r));
+
+test('HP-Adressstatus zeigt die genaue Neuanlagediagnose auch bei vorläufiger HP-Zuordnung',t=>{
+ const dom=new JSDOM('',{runScripts:'outside-only'});t.after(()=>dom.window.close());vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/hp-adressen.js'),'utf8'),dom.getInternalVMContext());
+ const text=dom.window.hpAdressStatus({hp_sync:{nummer:100,status:'unklar',aktiv:true,online:true},hp_neuanlage:{status:'pruefen',meldung:'Prüfschritt: email/HY000/-4990'}});assert.match(text,/email\/HY000\/-4990/);assert.doesNotMatch(text,/Synchron/);
+});
 test('Adressabgleich-UI: bestehende Zeitfreigabe nur nach Bestätigung unbefristet, keine neue Kopplung',async t=>{
  const dom=new JSDOM('<div id="desktop"></div><div id="modal-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example/'});t.after(()=>dom.window.close());const w=dom.window,calls=[];let expiry=Date.now()+100000;
  w.API={get:async()=>({verbindungen:[{id:'existing',name:'Eigener Bestand',datenbank:'HPTEST',aktiv:1,ablauf_ms:expiry,anzahl:10,probleme:0}]}),post:async(url,body)=>{calls.push({url,body});expiry=0;return {ok:true};}};
