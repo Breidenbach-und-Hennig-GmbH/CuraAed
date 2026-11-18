@@ -5,6 +5,7 @@ internal static class HPAktenImportTests
  static void Require(bool value){if(!value)throw new Exception("HP archive boundary check failed");}
  static void Rejected(Action action){bool failed=false;try{action();}catch{failed=true;}Require(failed);}
  static void RepairChecks(string root){
+  Require(HPAktenReader.SameSubject("Objekt 123 - Reparatur","Objekt 123 - Reparatur"));Require(HPAktenReader.SameSubject("  Objekt 123  Reparatur ","Objekt 123\r\nReparatur"));Require(!HPAktenReader.SameSubject("","Irgendeine Nachricht"));Require(!HPAktenReader.SameSubject("Auftrag A","Auftrag B"));string subject=new String('X',120);Require(HPAktenReader.SameSubject(subject.Substring(0,100),subject));
   string a=Path.Combine(root,"2026","Bericht.pdf"),b=Path.Combine(root,"Bericht.pdf");
   Require(HPAktenReader.SelectUnique("Bericht.pdf",new[]{a})==a);
   Require(HPAktenReader.SelectUnique("Bericht",new[]{a})==a);
