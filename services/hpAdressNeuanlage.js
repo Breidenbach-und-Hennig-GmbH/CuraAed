@@ -55,7 +55,7 @@ function service(db){
   });},
   async ergebnis(id,token,b){return db.transaktion(async tx=>{
    await auth(tx,id,token,b.datenbank);const j=await auftrag(tx,id,b.id);if(!['erfolg','fehler','unklar','dublette'].includes(b.status))fail('Ungültiges Neuanlageergebnis.',400);
-   if(b.diagnose!==undefined&&(typeof b.diagnose!=='string'||!/^([a-z_]{3,20})(\/[A-Z0-9]{4,5}(\/-?[0-9]{1,10})?)?$/.test(b.diagnose)))fail('Ungültige Neuanlagediagnose.',400);
+   if(b.diagnose!==undefined&&(typeof b.diagnose!=='string'||!/^([a-z_]{3,20})(\/[A-Z0-9]{4,5}(\/-?[0-9]{1,10}(\/BTR[0-9]{1,5})?)?)?$/.test(b.diagnose)))fail('Ungültige Neuanlagediagnose.',400);
    const digest=hash([b.status,b.record||null,b.diagnose||null]);if(j.result_hash){if(j.result_hash!==digest)fail('Abweichendes Ergebnis für bereits abgeschlossenen Auftrag.');return{ok:true};}
    if(!['abgeholt','reserviert'].includes(j.status))fail('Neuanlageauftrag ist nicht ausführbar.');
    if(b.status==='erfolg'){

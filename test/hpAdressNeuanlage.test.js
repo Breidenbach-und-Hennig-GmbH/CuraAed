@@ -7,8 +7,8 @@ test('HP-Neuanlage erhält begrenzte native Fehlernummer ohne Freitext und über
  const f=await setup(t),a=await f.create(),j=(await f.take()).anlegen;
  await f.svc.reservieren(f.grant.id,f.grant.token,{...f.body,id:j.id,reservierung:reservation});
  await assert.rejects(f.svc.ergebnis(f.grant.id,f.grant.token,{...f.body,id:j.id,status:'fehler',diagnose:'email/HY000/private text'}),e=>e.status===400);
- await f.svc.ergebnis(f.grant.id,f.grant.token,{...f.body,id:j.id,status:'fehler',diagnose:'email/HY000/-4990'});
- const saved=await A.holen(f.db,a.id);assert.equal(saved.nummer,a.nummer);assert.equal(saved.hp_neuanlage.status,'pruefen');assert.match(saved.hp_neuanlage.meldung,/email\/HY000\/-4990/);assert.deepEqual(await f.take(),{});
+ await f.svc.ergebnis(f.grant.id,f.grant.token,{...f.body,id:j.id,status:'fehler',diagnose:'email/HY000/-4990/BTR84'});
+ const saved=await A.holen(f.db,a.id);assert.equal(saved.nummer,a.nummer);assert.equal(saved.hp_neuanlage.status,'pruefen');assert.match(saved.hp_neuanlage.meldung,/email\/HY000\/-4990\/BTR84/);assert.deepEqual(await f.take(),{});
 });
 test('Neue Adressen werden atomar mit HP-Kürzel CA eingereiht; Feldgrenzen bleiben geschützt und bestehende lokale Adressen werden nicht nachträglich angelegt',async t=>{
  const f=await setup(t);assert.equal(f.grant.scope,'adressen-v3');await A.anlegen(f.db,{nachname:'Alt'});const a=await f.create();assert.equal(a.hp_neuanlage.status,'wartend');assert.equal((await f.db.all('SELECT * FROM hp_adress_neuanlagen')).length,1);
