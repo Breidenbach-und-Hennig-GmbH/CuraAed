@@ -2,7 +2,7 @@
 function hpAdressStatus(a) {
  const s=a.hp_sync;if(!s&&a.hp_neuanlage)return 'HP-Neuanlage · '+({wartend:'wartet auf den Connector',abgeholt:'wird vorbereitet',reserviert:'Rückprüfung läuft',pruefen:'Bitte prüfen'}[a.hp_neuanlage.status]||a.hp_neuanlage.status)+(a.hp_neuanlage.meldung?' · '+a.hp_neuanlage.meldung:'');if(!s)return 'Lokal in CuraAed · noch keiner HP-Adresse zugeordnet';
  const names={synchron:'Synchron',neuanlage:'Neuanlage wird geprüft',ausstehend:'Übertragung ausstehend',unterwegs:'Wird an HP übertragen',konflikt:'Konflikt – Entscheidung erforderlich',unklar:'Ergebnis unklar – Abgleich angehalten',fehler:'Übertragung angehalten'};
- return 'HP '+s.nummer+' · '+(names[s.status]||s.status)+(s.aktiv?(s.online?'':' · Connector offline'):(s.abgelaufen?' · Freigabe abgelaufen – kein Abgleich':' · Freigabe beendet'))+(s.zuletzt_gesehen?' · Letzter Kontakt: '+new Date(s.zuletzt_gesehen).toLocaleString('de-DE'):'')+(s.meldung?' · '+s.meldung:'');
+ return 'HP '+s.nummer+' · '+(names[s.status]||s.status)+(s.aktiv?(s.online?'':' · Connector offline'):(s.abgelaufen?' · Freigabe abgelaufen – kein Abgleich':' · Freigabe beendet'))+(s.zuletzt_gesehen?' · Letzter Kontakt: '+new Date(s.zuletzt_gesehen).toLocaleString('de-DE'):'')+(s.meldung?' · '+s.meldung:'')+(a.hp_neuanlage?.status==='pruefen'&&a.hp_neuanlage.meldung?' · '+a.hp_neuanlage.meldung:'');
 }
 function hpAdressInfo(a) {
  const text=el('p',{role:'status',text:hpAdressStatus(a)}),box=el('div',{class:'hp-panel'},[text]);

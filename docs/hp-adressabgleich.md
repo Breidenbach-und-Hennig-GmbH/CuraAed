@@ -21,6 +21,8 @@ Die Grundfreigabe v1 umfasst nur Namen/Postanschrift. v2 liest zusätzlich die u
 
 ## Einrichtung und Grenzen
 
+Fehler einer HP-Neuanlage enthalten den festen Prüfschritt, SQLSTATE und bei aktuellen Connectoren zusätzlich die native numerische Treiberfehlernummer. Freitext, SQL-Befehle und Zugangsdaten werden nicht übertragen. Die Adressmaske zeigt diese Diagnose auch bei bereits reservierter, noch nicht bestätigter HP-Nummer. Erst eine vollständig bestätigte Anlage ersetzt die lokale Adressnummer durch die HP-Nummer.
+
 Neue, getrennte Freigabe in der HP-Einrichtungsmaske, explizit für alle Namen/Postanschriften. Der Testconnector-Schlüssel berechtigt nicht dazu. Schlüssel werden nur gehasht im Server gespeichert, im Browser verdeckt angezeigt und beim Schließen geleert. Der Windows-Connector prüft die lokale ODBC-Datenbank vor Übertragung. TLS, feste Zieladresse, keine Weiterleitungen oder Zertifikatausnahmen.
 
 Freigaben sind wahlweise für acht Stunden oder dauerhaft bis zum Widerruf möglich. Eine bestehende aktive Verbindung kann der zugehörige Administrator mit „Dauerhaft freigeben“ nach ausdrücklicher Bestätigung umstellen; Schlüssel und Zuordnungen bleiben erhalten. Bestehende Zeitfreigaben werden nicht automatisch erweitert. `ablauf_ms=0` bedeutet unbefristet. Bei einer erneuten Kopplung wird der Schlüssel rotiert; ohne neue Dauerangabe bleibt eine zuvor dauerhafte Verbindung dauerhaft. Explizit acht Stunden wählen begrenzt sie wieder. „Adressabgleich trennen“, Deaktivierung des Administrators oder Entzug seiner Adminrolle sperren auch dauerhafte Schlüssel.

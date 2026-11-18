@@ -2,6 +2,14 @@
 const test=require('node:test'),assert=require('node:assert/strict'),{openDatabase}=require('../db'),H=require('../services/hpAdressSync'),N=require('../services/hpAdressNeuanlage'),A=require('../services/adressen');
 async function setup(t){const db=await openDatabase(':memory:');t.after(()=>db.close());await db.run("INSERT INTO benutzer(id,benutzername,name,rolle,kuerzel,passwort_hash) VALUES(1,'admin','Admin','admin','FD','x')");const sync=H.service(db),grant=await sync.create(1,{name:'HP',datenbank:'HPTEST',zustimmung:true,vollstaendig:true,neuanlagen:true,dauerhaft:true}),svc=N.service(db),body={datenbank:'HPTEST'},create=(b={})=>db.transaktion(async tx=>{const data={nachname:'Test',vorname:'Neu',telefon:'0221-1',email:'test@example.test',...b};await require('../services/adressDubletten').neuanlagePruefen(tx,data);const prepared=await N.vorbereiten(tx,1,data),a=await A.anlegen(tx,data);await N.einreihen(tx,a.id,prepared);return N.metadata(tx,a);}),take=()=>svc.abholen(grant.id,grant.token,body);return{db,sync,grant,svc,create,take,body};}
 const reservation={nummer:100,datum:739936,uhrzeit:40000,protokoll:1000};
+
+test('HP-Neuanlage erhält begrenzte native Fehlernummer ohne Freitext und übernimmt keine unbestätigte HP-Nummer',async t=>{
+ const f=await setup(t),a=await f.create(),j=(await f.take()).anlegen;
+ await f.svc.reservieren(f.grant.id,f.grant.token,{...f.body,id:j.id,reservierung:reservation});
+ await assert.rejects(f.svc.ergebnis(f.grant.id,f.grant.token,{...f.body,id:j.id,status:'fehler',diagnose:'email/HY000/private text'}),e=>e.status===400);
+ await f.svc.ergebnis(f.grant.id,f.grant.token,{...f.body,id:j.id,status:'fehler',diagnose:'email/HY000/-4990'});
+ const saved=await A.holen(f.db,a.id);assert.equal(saved.nummer,a.nummer);assert.equal(saved.hp_neuanlage.status,'pruefen');assert.match(saved.hp_neuanlage.meldung,/email\/HY000\/-4990/);assert.deepEqual(await f.take(),{});
+});
 test('Neue Adressen werden atomar mit HP-Kürzel CA eingereiht; Feldgrenzen bleiben geschützt und bestehende lokale Adressen werden nicht nachträglich angelegt',async t=>{
  const f=await setup(t);assert.equal(f.grant.scope,'adressen-v3');await A.anlegen(f.db,{nachname:'Alt'});const a=await f.create();assert.equal(a.hp_neuanlage.status,'wartend');assert.equal((await f.db.all('SELECT * FROM hp_adress_neuanlagen')).length,1);
  assert.equal(JSON.parse((await f.db.get('SELECT daten FROM hp_adress_neuanlagen')).daten).sb,'CA');
