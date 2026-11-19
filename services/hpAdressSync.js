@@ -94,6 +94,7 @@ function service(db,{now=()=>Date.now()}={}) {
   async report(id,token,error){return db.transaktion(async tx=>{await auth(tx,id,token);const message=error instanceof ValidationError?error.message:'Interner Abgleichfehler'+(typeof error.code==='string'&&/^SQLITE_[A-Z_]+$/.test(error.code)?' ('+error.code+')':'')+'.';await tx.run('INSERT OR REPLACE INTO hp_adress_importfehler VALUES (?,?,?,?)',[id,0,message,iso()]);});},
   async disconnect(owner,id){return db.transaktion(async tx=>{await tx.run('UPDATE hp_objekt_importe SET aktiv=0 WHERE verbindung_id IN (SELECT id FROM hp_adress_verbindungen WHERE id=? AND benutzer_id=?)',[id,owner]);await tx.run('UPDATE hp_adress_verbindungen SET aktiv=0 WHERE id=? AND benutzer_id=?',[id,owner]);return {ok:true};});},
   async resolve(address,input){return db.transaktion(async tx=>{
+   if(await tx.get("SELECT 1 FROM hp_adress_neuanlagen WHERE adresse_id=? AND status!='synchron'",[address]))fail('Unbestätigte HP-Neuanlage zuerst prüfen. Keine Übernahme oder Rückschreibung über eine vorläufige Nummer.');
    const m=await tx.get('SELECT * FROM hp_adress_zuordnung WHERE adresse_id=?',[address]);
    if(!m||!['konflikt','fehler','unklar'].includes(m.status)||!m.remote)fail('Bitte zuerst einen aktuellen HP-Abgleich abwarten.');
    const a=await tx.get('SELECT * FROM adressen WHERE id=?',[address]);
