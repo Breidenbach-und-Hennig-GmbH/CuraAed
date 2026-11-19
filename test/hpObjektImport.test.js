@@ -43,6 +43,7 @@ test('vollständiger aktueller Objektbaum wird idempotent mit exakten Jahresante
  assert.equal((await x.db.get('SELECT jahresuebergreifend FROM personenkonto_verteilung_zeitwerte')).jahresuebergreifend,1);
  assert.equal((await x.db.get('SELECT anzahl_personen_dezimal FROM personenkonto_verteilung_zeitwerte')).anzahl_personen_dezimal,'2.5');
  assert.equal((await x.compare(rs)).benoetigt.length,0);const twice=await x.scan(rs);assert.equal(twice.neu,0);assert.equal(twice.geaendert,0);
+ assert.equal((await x.db.get("SELECT COUNT(*) AS n FROM hp_import_datensaetze WHERE status<>'synchron'")).n,0);
  assert.deepEqual(await x.db.all('PRAGMA foreign_key_check'),[]);
 });
 

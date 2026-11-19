@@ -9,7 +9,7 @@ const integer=(v,min=0,feld='')=>{if(typeof v!=='string'||!(/^-?(0|[1-9]\d*)$/).
 const optionalInt=(v,feld)=>v===null||v===''?null:integer(v,0,feld);
 const decimal=(v,feld)=>{if(v===null||v==='')return null;if(typeof v!=='string'||v.length>64||!(/^-?\d+(\.\d+)?$/).test(v)||!Number.isFinite(Number(v)))fail('Ungültiger HP-Dezimalwert'+(feld?': '+feld:'')+'.',400);return v;};
 const boolean=(v,feld)=>{if(v===null||v==='')return null;if(v==='J')return 1;if(v==='N')return 0;if(!['0','1'].includes(v))fail('Ungültiger HP-Ja/Nein-Wert'+(feld?': '+feld:'')+'.',400);return Number(v);};
-const charCode=(v,feld)=>{if(v===null||v==='')return null;if(typeof v!=='string'||v.length!==1||/[\x00-\x1f\x7f]/.test(v))fail('Ungültiger HP-Zeichenschlüssel: '+feld+'.',400);return v;};
+const charCode=(v,feld)=>{if(v===null||v==='')return null;if(typeof v!=='string'||v.length!==1||/[\x00-\x1f\x7f]/.test(v))fail('Ungültiger HP-Zeichenschlüssel: '+feld+'.',400);return /^[0-9]$/.test(v)?Number(v):v;};
 const currency=v=>{if(v===null||v==='')return null;if(typeof v==='string'&&/^[A-Z]{3}$/.test(v))return v;return optionalInt(v,'FIBJ_Wahrung');};
 const date=(v,feld)=>{if(v===null||v===''||v==='0')return null;try{return ordinalDatum(integer(v,1));}catch{fail('Ungültiger HP-Datumswert'+(feld?': '+feld:'')+'.',400);}};
 const tables=new Set(['objekte','objekt_gebaeude','objekt_buchungsjahre','einheiten','rollen_zuordnungen','personenkonten','verteilerschluessel_jahre','einheit_verteilung_jahre','personenkonto_verteilung_jahre','personenkonto_verteilung_zeitwerte']);
