@@ -59,6 +59,19 @@ async function liste(db, opts = {}) {
   // Tastendruck vollständig in JavaScript materialisieren.
   const where=['a.archiviert=0'],args=[];
   const sqlLike=(cols,term)=>{where.push('('+cols.map(c=>c+' LIKE ?').join(' OR ')+')');args.push(...cols.map(()=>term));};
+  // Kombinierte Spaltenfilter gelten für den gesamten Bestand vor dem LIMIT.
+  for (const key of ['nummer','name','plz','ort','strasse']) {
+    const value=String(opts[key]||'').trim().slice(0,MAX_SUCHE);
+    if(value)sqlLike(key==='name'?namensspalten:['a.'+key],'%'+value+'%');
+  }
+  if(opts.rolle&&!V.ROLLEN.includes(opts.rolle))throw new V.ValidationError('Unbekannte Personenfunktion.');
+  const objekt=String(opts.objekt||'').trim().slice(0,MAX_SUCHE);
+  if(opts.rolle||objekt){
+    let clause='EXISTS (SELECT 1 FROM rollen_zuordnungen z LEFT JOIN einheiten e ON e.id=z.einheit_id LEFT JOIN objekte o ON o.id=COALESCE(z.objekt_id,e.objekt_id) WHERE z.adresse_id=a.id';
+    if(opts.rolle){clause+=' AND z.rolle=?';args.push(opts.rolle);}
+    if(objekt){clause+=' AND o.nummer LIKE ?';args.push('%'+objekt+'%');}
+    where.push(clause+')');
+  }
   if(q&&modus==='suche')sqlLike([...namensspalten,'a.nummer'],q+'%');
   if(q&&modus==='intensiv'){
     const cols=[...namensspalten,...['nummer','ansprechpartner','strasse','plz','ort','land','telefon','mobil','email','notizen','lkto_nr'].map(c=>'a.'+c)];
@@ -85,10 +98,15 @@ async function liste(db, opts = {}) {
   if(filter==='nicht_aktiv'){where.push(`EXISTS (SELECT 1 FROM rollen_zuordnungen z WHERE z.adresse_id=a.id) AND NOT EXISTS (SELECT 1 FROM rollen_zuordnungen z WHERE z.adresse_id=a.id AND ${active})`);args.push(stichtag,stichtag);}
   // Spezialmodi benötigen weiterhin ihre bestehende Prüfung; auch diese sind
   // begrenzt. Keine verdeckte Behauptung eines vollständigen CSV-Exports.
-  const idsSql=`SELECT a.id FROM adressen a WHERE ${where.join(' AND ')} ORDER BY COALESCE(NULLIF(a.nachname,''),a.firmenname) COLLATE NOCASE,a.id LIMIT 500`;
+  const nameSql="COALESCE(NULLIF(a.nachname,''),a.firmenname,'')";
+  const sortierung={name:nameSql,nummer:"CAST(CASE WHEN a.nummer LIKE 'HP-%' THEN SUBSTR(a.nummer,4) ELSE a.nummer END AS INTEGER)",plz:'a.plz',ort:'a.ort',strasse:'a.strasse'};
+  if(opts.sort&&!Object.hasOwn(sortierung,opts.sort))throw new V.ValidationError('Unbekannte Sortierspalte.');
+  if(opts.richtung&&!['asc','desc'].includes(opts.richtung))throw new V.ValidationError('Unbekannte Sortierrichtung.');
+  const order=(sortierung[opts.sort]||nameSql)+' COLLATE NOCASE '+(opts.richtung==='desc'?'DESC':'ASC')+',a.id ASC';
+  const idsSql=`SELECT a.id FROM adressen a WHERE ${where.join(' AND ')} ORDER BY ${order} LIMIT 500`;
 
   const [adressen, zuord, telefone, emails, ansprech] = await Promise.all([
-    db.all(`SELECT * FROM adressen WHERE id IN (${idsSql})`,args),
+    db.all(`SELECT a.* FROM adressen a WHERE a.id IN (${idsSql}) ORDER BY ${order}`,args),
     db.all(
       `SELECT z.id, z.adresse_id, z.rolle, z.gueltig_von, z.gueltig_bis, z.einheit_id,
               o.nummer AS objekt_nummer, e.nummer AS einheit_nummer
@@ -145,7 +163,7 @@ async function liste(db, opts = {}) {
     }
   });
 
-  return treffer
+  const result = treffer
     .map((a) => {
       const z = zMap.get(a.id) || [];
       const aktiv = z.filter((x) => istAktiv(x, stichtag));
@@ -163,8 +181,8 @@ async function liste(db, opts = {}) {
         pf_einheit: pf ? pf.einheit_nummer : null,
         pf_objekt: pf ? pf.objekt_nummer : null,
       };
-    })
-    .sort((x, y) => x.name.localeCompare(y.name, 'de', { sensitivity: 'base' }) || String(x.nummer).localeCompare(String(y.nummer)));
+    });
+  return opts.sort ? result : result.sort((x, y) => x.name.localeCompare(y.name, 'de', { sensitivity: 'base' }) || String(x.nummer).localeCompare(String(y.nummer)));
 }
 
 module.exports = { liste, FILTER, MODI, FELDER: Object.keys(FELDER) };

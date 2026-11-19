@@ -1,0 +1,64 @@
+/* Masken reagieren auf ihren verfügbaren Platz, auch innerhalb eines Fensters. */
+@media screen {
+ .hp-maske,.modal-body,.cu-frame-inhalt { container-type:inline-size; }
+ .hp-maske-inhalt,.hp-oben,.hp-unten,.hp-seite,.cu-frame-inhalt,.cu-etv-inhalt,
+ .cu-spalte,.cu-rechnung-spalte,.field,fieldset { min-width:0; }
+ .hp-panel,.cu-karte,.cu-formular,.cu-hwa-form { min-width:0; }
+ .hp-tabelle-wrap { max-width:100%; overflow:auto; overscroll-behavior-inline:contain; }
+ .modal .modal-body { min-width:0; overflow:auto; }
+ .modal { max-height:calc(100dvh - 24px); }
+ .modal>header,.modal>footer { flex-shrink:0; }
+ .modal>header h2 { min-width:0; overflow-wrap:anywhere; }
+ .modal-body img,.hp-maske-inhalt img { max-width:100%; object-fit:contain; }
+ .modal-body iframe,.hp-maske-inhalt iframe { max-width:100%; }
+ .hp-filter,.cu-etv-werkzeug,.cu-aktionen,.cu-rechnung-pruefung { min-width:0; flex-wrap:wrap; }
+ .hp-filter>input,.hp-filter>select { min-width:0; max-width:100%; }
+ .cu-tippfeld>.cu-such-treffer { min-width:min(280px,100%); max-width:100%; }
+ .hp-reiter { max-width:100%; overflow-x:auto; }
+ .cu-unterzeile,.hp-anschrift,.cu-hwa-text,.cu-live-beschluss { overflow-wrap:anywhere; }
+}
+@container (max-width:900px) {
+ .hp-raster-layout { grid-template-columns:minmax(0,1fr)!important; grid-template-areas:'oben' 'unten' 'seite'; }
+ .hp-seitenleiste { position:static; }
+ .hp-seitenleiste .hp-knoepfe { display:flex; flex-direction:row; flex-wrap:wrap; }
+ .hp-seitenleiste .hp-knoepfe>button { flex:1 1 145px; width:auto; }
+ .cu-spalten,.cu-zweispaltig,.cu-akte-kopf,.cu-hwa-kopf,.cu-hwa-kontakte,
+ .cu-dms-oben,.cu-dms-unten,.cu-rechnung-bereich,.cu-rechnung-freigabe,.tel-maske { grid-template-columns:minmax(0,1fr); }
+ .cu-spalte+.cu-spalte { padding-left:0; border-left:0; }
+ .cu-formular .field { display:block; }
+ .cu-formular .cu-suchfeld>.cu-such-treffer { left:0; right:0; }
+ .cu-etv-ablauf { grid-template-columns:minmax(0,1fr); }
+ .cu-etv-seitenleiste { position:static; min-height:0; }
+ .cu-etv-seitenleiste nav { display:flex; flex-wrap:wrap; }
+ .cu-etv-schritt { flex:1 1 160px; padding:10px 12px; }
+}
+@container (max-width:600px) {
+ .grid-2,.grid-3,.cu-formular .grid-2,.cu-formular .grid-3,.cu-dms-datei,.cu-hwa-adressat,
+ .cu-rechnung-ziel,.cu-rechnung-zuordnung,.cu-live-qr,.cu-live-ausschluss { grid-template-columns:minmax(0,1fr); }
+ .span-2,.span-3,.cu-formular .span-2 { grid-column:auto!important; }
+ .hp-zeile,.hp-objekt-kopf .hp-zeile,.hp-kennzahlen .hp-zeile { grid-template-columns:minmax(80px,110px) minmax(0,1fr); }
+ .hp-zeile .hp-w2 { grid-column:2; }
+ .tel-zeile,.tel-bezug .tel-zeile,.cu-rechnung-zeile,.cu-rechnung-ziel .cu-rechnung-zeile { grid-template-columns:minmax(0,1fr); gap:3px; }
+ .tel-zeile>input { grid-column:auto!important; max-width:100%; }
+ .cu-dms-aktionen { display:flex; flex-wrap:wrap; }
+ .cu-dms-aktionen>button { flex:1 1 130px; width:auto; }
+ .cu-hwa-erfassung .hwa-feld { flex-wrap:wrap; min-width:0; }
+ .cu-hwa-erfassung .hwa-feld>input,.cu-hwa-erfassung .hwa-feld>.cu-tippfeld { max-width:100%; min-width:0; }
+ .cu-hwa-erfassung .hwa-feld label { white-space:normal; }
+ .cu-hwa-erfassung .hwa-mitte,.cu-hwa-erfassung .hwa-handwerker,.cu-hwa-erfassung .hwa-abschluss { grid-template-columns:minmax(0,1fr); }
+ .cu-hwa-erfassung .hwa-druck { grid-column:1; grid-row:auto; }
+ .cu-hwa-erfassung .hwa-zuordnung .hwa-namen { margin-left:0; flex-wrap:wrap; }
+ .cu-rechnungsmaske .check-inline { white-space:normal; }
+}
+@media screen and (max-width:600px) {
+ .hp-desktop { padding:8px; }
+ .cu-kopf { flex-wrap:wrap; padding:8px; }
+ .cu-kopf-suche { flex:1 1 100%; min-width:0; }
+ .cu-seitenkopf,.cu-frame-inhalt { padding:10px; }
+ .cu-h1-zeile h1 { font-size:clamp(20px,6vw,27px); overflow-wrap:anywhere; }
+ .cu-aktionen { width:100%; }
+ .modal:not(.cu-listenfenster) { width:100%; min-height:0; max-height:100dvh; }
+ .modal:not(.cu-listenfenster)>.modal-body { flex:1; min-height:0; max-height:none; }
+ .modal footer button { flex:1 1 auto; }
+ .cu-schnell-text { white-space:normal; }
+}
