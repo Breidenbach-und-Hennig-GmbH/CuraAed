@@ -99,6 +99,21 @@ internal sealed class HPObjectImportClient
   if(changed.Count>0){if(!Active(obj))throw new HPInactiveException();var result=Post("abgleich",new{datenbank=database,objnr=obj,records=changed});if(s.Art=="objekt"&&Convert.ToInt32(result["fehler"])>0)throw new InvalidOperationException();log("HP "+obj+" / "+s.Art+": "+result["neu"]+" neu, "+result["geaendert"]+" geändert, "+result["konflikt"]+" Konflikte, "+result["fehler"]+" zurückgestellt.");}
  }
  void Report(int obj,string art,string code){Post("diagnose",new{datenbank=database,objnr=obj,art,code});}
+ // Make the complete current object list available before traversing historic
+ // allocation rows. Each root still requires fresh HP status and source checks.
+ internal void ImportRoots(CancellationToken stop,Action<string> log)
+ {
+  int cursor=0,count=0;while(!stop.IsCancellationRequested){var objects=Objects(cursor);if(objects.Count==0)break;
+   foreach(int obj in objects){if(stop.IsCancellationRequested)return;cursor=obj;try{
+    if(!Active(obj))continue;var root=Page(Specs[0],obj,null);
+    if(root.Count!=1){Report(obj,"objekt","QUELLE_UNKLAR");continue;}
+    if(Convert.ToString(root[0]["ObjTyp"])=="BKS")continue;
+    Send(Specs[0],obj,root,log);Report(obj,"objekt",null);count++;
+   }catch(HPInactiveException){continue;}catch(OdbcException e){Report(obj,"objekt","ODBC_"+e.Errors[0].SQLState);log("HP "+obj+": Objektstamm vorerst zurückgestellt.");}
+    catch(InvalidOperationException){Report(obj,"objekt","QUELLE_UNKLAR");log("HP "+obj+": Objektstamm nicht eindeutig; zurückgestellt.");}
+   }if(objects.Count<50)break;
+  }if(!stop.IsCancellationRequested)log("Objektübersicht vollständig geprüft: "+count+" aktuelle Verwaltungsobjekte. Jetzt folgen Wohnungen und weitere Objektbereiche.");
+ }
  internal async Task Run(CancellationToken stop,Action<string> log)
  {
   try{using(var c=Open()){}Post("quelle",new{datenbank=database});}
@@ -106,6 +121,7 @@ internal sealed class HPObjectImportClient
   catch(OdbcException e){log("Start angehalten: ODBC "+e.Errors[0].SQLState+". Datenquelle und Datenbank prüfen.");return;}
   catch{log("Start angehalten: Die tatsächliche ODBC-Quelle konnte nicht eindeutig bestätigt werden.");return;}
   while(!stop.IsCancellationRequested){int delay=60000;try{
+   ImportRoots(stop,log);
    int cursor=0;while(!stop.IsCancellationRequested){var objects=Objects(cursor);if(objects.Count==0)break;
     foreach(int obj in objects){if(stop.IsCancellationRequested)return;cursor=obj;try{if(!Active(obj))continue;
      var root=Page(Specs[0],obj,null);if(root.Count!=1){log("HP "+obj+": Objektstamm nicht eindeutig; zurückgestellt.");continue;}if(Convert.ToString(root[0]["ObjTyp"])=="BKS")continue;

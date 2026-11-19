@@ -43,7 +43,18 @@ test('vollständiger aktueller Objektbaum wird idempotent mit exakten Jahresante
  assert.equal((await x.db.get('SELECT jahresuebergreifend FROM personenkonto_verteilung_zeitwerte')).jahresuebergreifend,1);
  assert.equal((await x.db.get('SELECT anzahl_personen_dezimal FROM personenkonto_verteilung_zeitwerte')).anzahl_personen_dezimal,'2.5');
  assert.equal((await x.compare(rs)).benoetigt.length,0);const twice=await x.scan(rs);assert.equal(twice.neu,0);assert.equal(twice.geaendert,0);
+ assert.equal((await x.db.get("SELECT COUNT(*) AS n FROM hp_import_datensaetze WHERE status<>'synchron'")).n,0);
  assert.deepEqual(await x.db.all('PRAGMA foreign_key_check'),[]);
+});
+
+test('einbuchstabige HP-Funktions- und Anteilsschlüssel bleiben erhalten',async t=>{
+ const x=await setup(t);await x.address();const rs=records();rs[5].werte.Typ_PW='P';
+ const role=sample('funktion',{lfdNrDatensatz:'10',AdrNr:'65937',WhgNr:'1',PFKt:'002',PFktArtEigMiet:'E'});
+ assert.equal((await x.scan([...rs,role])).fehler,0);
+ assert.equal((await x.db.get('SELECT hp_typ_pw FROM verteilerschluessel_jahre')).hp_typ_pw,'P');
+ assert.equal((await x.db.get('SELECT hp_pfkt_art FROM rollen_zuordnungen')).hp_pfkt_art,'E');
+ role.werte.PFktArtEigMiet='XX';assert.equal((await x.scan([role])).fehler,1);
+ assert.equal((await x.db.get('SELECT hp_pfkt_art FROM rollen_zuordnungen')).hp_pfkt_art,'E');
 });
 
 test('beendete, fehlende und veraltete Statuswerte erlauben weder Objektanlage noch Kinderimport',async t=>{
