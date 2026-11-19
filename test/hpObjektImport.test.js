@@ -46,6 +46,16 @@ test('vollständiger aktueller Objektbaum wird idempotent mit exakten Jahresante
  assert.deepEqual(await x.db.all('PRAGMA foreign_key_check'),[]);
 });
 
+test('einbuchstabige HP-Funktions- und Anteilsschlüssel bleiben erhalten',async t=>{
+ const x=await setup(t);await x.address();const rs=records();rs[5].werte.Typ_PW='P';
+ const role=sample('funktion',{lfdNrDatensatz:'10',AdrNr:'65937',WhgNr:'1',PFKt:'002',PFktArtEigMiet:'E'});
+ assert.equal((await x.scan([...rs,role])).fehler,0);
+ assert.equal((await x.db.get('SELECT hp_typ_pw FROM verteilerschluessel_jahre')).hp_typ_pw,'P');
+ assert.equal((await x.db.get('SELECT hp_pfkt_art FROM rollen_zuordnungen')).hp_pfkt_art,'E');
+ role.werte.PFktArtEigMiet='XX';assert.equal((await x.scan([role])).fehler,1);
+ assert.equal((await x.db.get('SELECT hp_pfkt_art FROM rollen_zuordnungen')).hp_pfkt_art,'E');
+});
+
 test('beendete, fehlende und veraltete Statuswerte erlauben weder Objektanlage noch Kinderimport',async t=>{
  const x=await setup(t);const ended={...x.input,objnr:4020,fi_beendet:737424};assert.equal((await x.svc.status(x.p.id,x.p.token,ended)).erlaubt,false);
  await assert.rejects(x.svc.scan(x.p.id,x.p.token,{...ended,records:[sample('objekt',{ObjNr:'4020'})]}),/Verwaltungsstatus/);
