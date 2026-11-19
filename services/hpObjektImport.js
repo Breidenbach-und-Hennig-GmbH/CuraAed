@@ -8,7 +8,8 @@ const hash=t=>crypto.createHash('sha256').update(t).digest('hex');
 const integer=(v,min=0,feld='')=>{if(typeof v!=='string'||!(/^-?(0|[1-9]\d*)$/).test(v)||!Number.isSafeInteger(Number(v))||Number(v)<min||Number(v)>2147483647)fail('Ungültige HP-Ganzzahl'+(feld?': '+feld:'')+'.',400);return Number(v);};
 const optionalInt=(v,feld)=>v===null||v===''?null:integer(v,0,feld);
 const decimal=(v,feld)=>{if(v===null||v==='')return null;if(typeof v!=='string'||v.length>64||!(/^-?\d+(\.\d+)?$/).test(v)||!Number.isFinite(Number(v)))fail('Ungültiger HP-Dezimalwert'+(feld?': '+feld:'')+'.',400);return v;};
-const boolean=(v,feld)=>{if(v===null)return null;if(!['0','1'].includes(v))fail('Ungültiger HP-Ja/Nein-Wert'+(feld?': '+feld:'')+'.',400);return Number(v);};
+const boolean=(v,feld)=>{if(v===null||v==='')return null;if(v==='J')return 1;if(v==='N')return 0;if(!['0','1'].includes(v))fail('Ungültiger HP-Ja/Nein-Wert'+(feld?': '+feld:'')+'.',400);return Number(v);};
+const currency=v=>{if(v===null||v==='')return null;if(typeof v==='string'&&/^[A-Z]{3}$/.test(v))return v;return optionalInt(v,'FIBJ_Wahrung');};
 const date=(v,feld)=>{if(v===null||v===''||v==='0')return null;try{return ordinalDatum(integer(v,1));}catch{fail('Ungültiger HP-Datumswert'+(feld?': '+feld:'')+'.',400);}};
 const tables=new Set(['objekte','objekt_gebaeude','objekt_buchungsjahre','einheiten','rollen_zuordnungen','personenkonten','verteilerschluessel_jahre','einheit_verteilung_jahre','personenkonto_verteilung_jahre','personenkonto_verteilung_zeitwerte']);
 function whereClause(keys){if(!keys||!Object.keys(keys).length||Object.keys(keys).some(k=>!(/^[a-z_]+$/).test(k)))fail('Ungültige lokale Zuordnung.');return Object.keys(keys).map(k=>k+'=?').join(' AND ');}
@@ -32,7 +33,7 @@ async function project(tx,id,r){
  if(!o)fail('Aktuelles Elternobjekt noch nicht importiert.');const oid=o.objekt_id;
  if(r.art==='objektzahlen'){if(integer(w.ObjNr,1)!==n)fail('Abweichende HP-Objektnummer.');return {table:'objekte',keys:{id:oid},values:{anzahl_gebaeude:optionalInt(w.AnzGeb,'AnzGeb'),hp_anzahl_ein:optionalInt(w.AnzEin,'AnzEin')}};}
  if(r.art==='gebaeude')return {table:'objekt_gebaeude',keys:{objekt_id:oid,nummer:integer(w.IndGeb)},values:{bezeichnung:w.BezGeb},create:true};
- if(r.art==='jahr')return {table:'objekt_buchungsjahre',keys:{objekt_id:oid,jahr:integer(w.FIBJ_BJ,1)},values:{beginnt_am:date(w.FIBJ_BjVon,'FIBJ_BjVon'),endet_am:date(w.FIBJ_BjBis,'FIBJ_BjBis'),gebucht_bis:date(w.FIBJ_gebBis,'FIBJ_gebBis'),hp_sb_code:w.FIBJ_SB,hp_waehrung:optionalInt(w.FIBJ_Wahrung,'FIBJ_Wahrung'),vorsteuerquote_dezimal:decimal(w.FIBJ_VorstAbzQuote,'FIBJ_VorstAbzQuote')},create:true};
+ if(r.art==='jahr')return {table:'objekt_buchungsjahre',keys:{objekt_id:oid,jahr:integer(w.FIBJ_BJ,1)},values:{beginnt_am:date(w.FIBJ_BjVon,'FIBJ_BjVon'),endet_am:date(w.FIBJ_BjBis,'FIBJ_BjBis'),gebucht_bis:date(w.FIBJ_gebBis,'FIBJ_gebBis'),hp_sb_code:w.FIBJ_SB,hp_waehrung:currency(w.FIBJ_Wahrung),vorsteuerquote_dezimal:decimal(w.FIBJ_VorstAbzQuote,'FIBJ_VorstAbzQuote')},create:true};
  if(r.art==='einheit'){
   const number=integer(w.WhgNr);let m=await tx.get('SELECT * FROM hp_einheit_zuordnung WHERE verbindung_id=? AND hp_objnr=? AND hp_whgnr=?',[id,n,number]);
   if(!m){const a=await tx.run("INSERT INTO einheiten(objekt_id,nummer,bezeichnung,einheitstyp) VALUES(?,?,?,'sonstiges')",[oid,'HP-'+id.replace(/-/g,'').slice(0,8)+'-'+n+'-'+number,'HP-Einheit '+number]);await tx.run('INSERT INTO hp_einheit_zuordnung(verbindung_id,hp_objnr,objekt_id,hp_whgnr,einheit_id) VALUES(?,?,?,?,?)',[id,n,oid,number,a.lastID]);m={einheit_id:a.lastID};}

@@ -19,6 +19,22 @@ const records=()=>[
 ];
 async function setup(t){const db=await openDatabase(':memory:');t.after(()=>db.close());await db.run("INSERT INTO benutzer(id,benutzername,passwort_hash,name,rolle) VALUES(1,'import-admin','x','Test','admin')");let time=Date.UTC(2026,10,9,12);const options={now:()=>time};const addr=A.service(db,options);const c=await addr.create(1,{name:'Testkunde',datenbank:'HPSERVSD',zustimmung:true,dauerhaft:true});const svc=I.service(db,options),p=await svc.create(1,{verbindung_id:c.id,zustimmung:true});const input={datenbank:'HPSERVSD',objnr:4010,quelle:'a'.repeat(64)};await svc.bindSource(p.id,p.token,input);await svc.status(p.id,p.token,{...input,fi_beendet:0});const scan=rs=>svc.scan(p.id,p.token,{...input,records:rs});const compare=rs=>svc.compare(p.id,p.token,{...input,fingerprints:rs.map(raw=>{const r=F.record(raw);return {art:r.art,key:r.key,hash:r.hash};})});const address=()=>addr.scan(c.id,c.token,{datenbank:'HPSERVSD',records:[{nummer:65937,anrede:'',vorname:'',name1:'Testkontakt',zusatz:'',strasse:'',land:'DE',plz:'',ort:''}]});return {db,svc,p,c,input,scan,compare,address,advance:ms=>{time+=ms;}};}
 
+test('native HP-Zeichenfelder J/N und EUR/DEM importieren Wohnungs- und Jahresabhängigkeiten',async t=>{
+ const x=await setup(t);await x.address();const rs=records();
+ rs[2].werte.FIBJ_Wahrung='EUR';
+ Object.assign(rs[3].werte,{Whg_JN:'J',GewEinhJN:'N',MwStoptJN:'',TeilEigJN:'N'});
+ const first=await x.scan(rs);assert.equal(first.fehler,0);assert.equal(first.neu,10);
+ assert.deepEqual(await x.db.get('SELECT einheitstyp,wohnung,gewerbe,mwst_optiert FROM einheiten'),{einheitstyp:'wohnung',wohnung:1,gewerbe:0,mwst_optiert:null});
+ assert.equal((await x.db.get('SELECT hp_waehrung FROM objekt_buchungsjahre')).hp_waehrung,'EUR');
+ rs[2].werte.FIBJ_Wahrung='DEM';assert.equal((await x.scan([rs[2]])).fehler,0);
+ assert.equal((await x.db.get('SELECT hp_waehrung FROM objekt_buchungsjahre')).hp_waehrung,'DEM');
+ assert.equal((await x.compare(rs)).benoetigt.length,0);
+ rs[3].werte.GewEinhJN='X';assert.equal((await x.scan([rs[3]])).fehler,1);
+ assert.equal((await x.db.get('SELECT gewerbe FROM einheiten')).gewerbe,0);
+ rs[2].werte.FIBJ_Wahrung='unbekannt';assert.equal((await x.scan([rs[2]])).fehler,1);
+ assert.equal((await x.db.get('SELECT hp_waehrung FROM objekt_buchungsjahre')).hp_waehrung,'DEM');
+});
+
 test('vollständiger aktueller Objektbaum wird idempotent mit exakten Jahresanteilen importiert',async t=>{
  const x=await setup(t);await x.address();const rs=records();const first=await x.scan(rs);assert.equal(first.neu,10);assert.equal(first.fehler,0);
  assert.equal((await x.db.get('SELECT COUNT(*) AS n FROM objekte')).n,1);
