@@ -444,8 +444,8 @@ function baueApi(db, uploadDir, options = {}) {
     '/adressen/gesamtliste',
     h(async (req, res) => {
       const t = (v) => (typeof v === 'string' ? v : '');
-      const { filter, modus, q, feld, rolle } = req.query;
-      res.json(await gesamtlisteSvc.liste(db, { filter: t(filter), modus: t(modus), q: t(q), feld: t(feld), rolle: t(rolle) }));
+      const keys = ['filter','modus','q','feld','rolle','nummer','name','plz','ort','strasse','objekt','sort','richtung'];
+      res.json(await gesamtlisteSvc.liste(db, Object.fromEntries(keys.map(key => [key,t(req.query[key])]))));
     })
   );
   router.post('/adressen/dubletten',auth.erfordereSchreibrecht,h(async(req,res)=>res.set('Cache-Control','no-store').json(await require('../services/adressDubletten').pruefen(db,req.body||{}))));

@@ -1,0 +1,25 @@
+.modal.cu-listenfenster { position:fixed; margin:0; min-height:0; max-width:none; max-height:none; display:flex; flex-direction:column; overflow:hidden; border-radius:8px; }
+.cu-listenfenster>header { flex:0 0 auto; position:relative; display:flex; gap:4px; cursor:move; touch-action:none; user-select:none; }
+.cu-listenfenster>header h2 { flex:1; min-width:0; }
+.modal.cu-listenfenster>.modal-body { flex:1; min-height:0; max-height:none; overflow:auto; padding:10px 12px 22px; }
+.cu-listenfenster .hp-gesamtliste { height:100%; min-height:0; grid-template-rows:minmax(0,1fr) auto; }
+.cu-listenfenster .hp-gl-haupt { display:flex; flex-direction:column; min-height:0; }
+.cu-listenfenster .hp-gl-liste { flex:1; min-height:100px; height:auto; border-radius:5px; }
+.cu-listenfenster .hp-gl-knoepfe { overflow:auto; }
+.hp-gl-tabelle { min-width:850px; width:100%; }
+.hp-gl-tabelle thead { position:sticky; top:0; z-index:2; }
+.hp-gl-tabelle thead th { position:static; background:var(--cu-streifen,#f5f2fa); }
+.hp-gl-tabelle th button { padding:2px 4px; min-height:26px; width:100%; border:0; background:transparent; color:inherit; text-align:inherit; white-space:nowrap; }
+.hp-gl-spaltenfilter input,.hp-gl-spaltenfilter select { width:100%; min-width:62px; max-width:180px; min-height:26px; padding:2px 4px; font-size:12px; }
+.hp-gl-spaltenfilter th:nth-child(3) input { min-width:155px; }
+.hp-gl-spaltenfilter th:nth-child(8) select { max-width:125px; }
+.cu-fenster-groesse { position:absolute; bottom:0; right:0; border:0; padding:0; width:24px; height:22px; min-height:22px; background:transparent; color:var(--cu-violett,#7136cc); cursor:nwse-resize; touch-action:none; }
+.hp-gl-filter input[type=radio] { width:15px; height:15px; min-height:15px; flex:0 0 15px; padding:0; }
+@media(max-width:760px) {
+ .cu-listenfenster .hp-gesamtliste { display:flex; flex-direction:column; }
+ .cu-listenfenster .hp-gl-haupt { flex:1; }
+ .cu-listenfenster .hp-gl-knoepfe { flex-shrink:0; max-height:90px; }
+ .cu-listenfenster .hp-gl-filter { flex-shrink:0; gap:0 10px; }
+ .cu-listenfenster .hp-gl-filter label { min-height:28px; }
+ .cu-listenfenster .hp-gl-liste { min-height:80px; }
+}

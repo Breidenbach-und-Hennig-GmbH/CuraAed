@@ -57,3 +57,12 @@ test('Gesamtliste Adresse: Pfkt.-Filter und Suchmodi', async () => {
   await assert.rejects(() => gesamtliste.liste(db, { modus: 'pfkt', rolle: 'chef' }), /Personenfunktion/);
   await db.close();
 });
+
+test('Gesamtliste filtert kombiniert und sortiert den ganzen Bestand vor der Treffergrenze',async t=>{
+ const db=await openDatabase(':memory:');t.after(()=>db.close());
+ await db.transaktion(async tx=>{for(let i=1;i<=520;i++)await tx.run('INSERT INTO adressen(nummer,adresstyp,nachname,ort,plz,strasse) VALUES(?,?,?,?,?,?)',[String(i),'person','Adresse '+String(i).padStart(4,'0'),i===520?'Zürich':'Berlin','12345','Teststraße']);});
+ const rows=await gesamtliste.liste(db,{sort:'nummer',richtung:'desc'});assert.equal(rows.length,500);assert.equal(rows[0].nummer,'520');assert.equal(rows[499].nummer,'21');
+ const result=await gesamtliste.liste(db,{name:'0520',ort:'Zürich',plz:'123',sort:'name'});assert.deepEqual(result.map(x=>x.nummer),['520']);
+ assert.equal((await gesamtliste.liste(db,{name:'0520',ort:'Berlin'})).length,0);
+ for(const opts of [{sort:'id; DROP TABLE adressen'},{richtung:'sideways'},{rolle:'unbekannt'}])await assert.rejects(()=>gesamtliste.liste(db,opts),/Unbekannt/);
+});

@@ -197,17 +197,42 @@ const GL_FILTER = [['aktiv', 'Aktive Personenfunktionen'], ['nicht_aktiv', 'Nich
 const GL_ROLLE_KURZ = { eigentuemer: 'ET', mieter: 'MI', handwerker: 'HW', beirat: 'BR', verwalter_kontakt: 'VK', hausmeister: 'HM', sonstiges: 'SO' };
 
 function gesamtlisteAdresse(aktuelleId) {
-  const z = { modus: 'suche', filter: 'alle', daten: [], auswahl: -1, anfrage: 0, tippen: '', tippenZeit: 0 };
+  const z = { modus: 'suche', filter: 'alle', sort: 'name', richtung: 'asc', daten: [], auswahl: -1, anfrage: 0, laden: false, geschlossen: false, tippen: '', tippenZeit: 0 };
   const opts = (map) => Object.entries(map).map(([value, label]) => el('option', { value, text: label }));
   const feldSel = el('select', { id: 'gl_feld', 'aria-label': 'Suchfeld' }, opts(GL_FELDER));
   const rolleSel = el('select', { id: 'gl_rolle', 'aria-label': 'Personenfunktion' }, [el('option', { value: '', text: 'alle Funktionen' }), ...opts(L.rolle)]);
   const modusLabel = el('label', { class: 'hp-gl-modus', for: 'gl_q' });
   const q = el('input', { id: 'gl_q', type: 'search', autocomplete: 'off', spellcheck: 'false' });
   const tbody = el('tbody');
+  const spalten = [null, 'nummer', 'name', 'plz', 'ort', 'strasse', null, null, null];
+  const filterFelder = {};
+  const sortKopf = [];
+  const kopf = el('tr', {}, ['Status', 'Adr.-Nr.', 'Name / Firma', 'PLZ', 'Ort', 'Straße', 'Mobile', 'PFKt', 'ObjNr'].map((text, i) => {
+    const th = el('th', { class: ['hp-gl-warn', 'r', '', '', '', '', 'c', '', 'r'][i] });
+    const key = spalten[i];
+    if (!key) th.textContent = text;
+    else {
+      const button = el('button', { type: 'button', text, title: 'Nach ' + text + ' sortieren', onclick: () => {
+        z.richtung = z.sort === key && z.richtung === 'asc' ? 'desc' : 'asc'; z.sort = key; laden();
+      } });
+      sortKopf.push({ th, button, key, text }); th.appendChild(button);
+    }
+    return th;
+  }));
+  const filterZeile = el('tr', { class: 'hp-gl-spaltenfilter' }, ['Status', 'nummer', 'name', 'plz', 'ort', 'strasse', '', 'rolle', 'objekt'].map(key => {
+    const td = el('th');
+    if (['nummer', 'name', 'plz', 'ort', 'strasse', 'objekt'].includes(key)) {
+      const label = { nummer: 'Adressnummer', name: 'Name / Firma', plz: 'PLZ', ort: 'Ort', strasse: 'Straße', objekt: 'Objektnummer' }[key];
+      const f = el('input', { type: 'search', 'aria-label': label + ' filtern', placeholder: label, autocomplete: 'off' });
+      f.addEventListener('input', () => spaeter());
+      f.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); clearTimeout(timer); timer = null; laden(); } });
+      filterFelder[key] = f; td.appendChild(f);
+    } else if (key === 'rolle') { td.appendChild(rolleSel); rolleSel.setAttribute('aria-label', 'Personenfunktion filtern'); }
+    return td;
+  }));
   const liste = el('div', { class: 'hp-gl-liste', tabindex: '0', role: 'listbox', 'aria-label': 'Adressen' }, [
     el('table', { class: 'hp-tabelle hp-gl-tabelle' }, [
-      el('thead', {}, [el('tr', {}, ['', 'Adr- Nr.', '', 'PLZ', 'Ort', 'Strasse', 'Mobile', 'PFKt', 'ObjNr']
-        .map((t, i) => el('th', { class: ['hp-gl-warn', 'r', '', '', '', '', 'c', '', 'r'][i], text: t })))]),
+      el('thead', {}, [kopf, filterZeile]),
       tbody,
     ]),
   ]);
@@ -222,6 +247,7 @@ function gesamtlisteAdresse(aktuelleId) {
     if (scrollen) tr[z.auswahl].scrollIntoView?.({ block: 'nearest' });
   }
   function oeffnen(i = z.auswahl) {
+    if (z.laden || z.geschlossen) return;
     const d = z.daten[i];
     if (!d) return;
     m.close();
@@ -254,18 +280,22 @@ function gesamtlisteAdresse(aktuelleId) {
   }
   async function laden() {
     const nr = ++z.anfrage;
-    const p = { filter: z.filter, modus: z.modus, q: q.value };
+    if (z.geschlossen) return;
+    const p = { filter: z.filter, modus: z.modus, q: q.value, sort: z.sort, richtung: z.richtung, rolle: rolleSel.value };
+    Object.entries(filterFelder).forEach(([key, field]) => { if (field.value.trim()) p[key] = field.value.trim(); });
     if (z.modus === 'feld') p.feld = feldSel.value;
-    if (z.modus === 'pfkt') p.rolle = rolleSel.value;
+    z.laden = true; liste.setAttribute('aria-busy', 'true'); anzahl.textContent = 'Adressen werden geladen …';
+    sortKopf.forEach(({th, button, key, text}) => { th.setAttribute('aria-sort', z.sort === key ? (z.richtung === 'asc' ? 'ascending' : 'descending') : 'none'); button.textContent = text + (z.sort === key ? (z.richtung === 'asc' ? ' ▲' : ' ▼') : ''); });
     try {
       const daten = await API.get('/adressen/gesamtliste' + API.qs(p));
-      if (nr !== z.anfrage) return;
+      if (nr !== z.anfrage || z.geschlossen) return;
       const vorher = z.daten[z.auswahl] ? z.daten[z.auswahl].id : aktuelleId;
       z.daten = daten;
       zeichnen();
       const i = daten.findIndex((d) => String(d.id) === String(vorher));
       waehle(i >= 0 ? i : 0);
-    } catch (e) { fehler(e); }
+    } catch (e) { if (nr === z.anfrage && !z.geschlossen) { anzahl.textContent = 'Adressen konnten nicht geladen werden.'; fehler(e); } }
+    finally { if (nr === z.anfrage) { z.laden = false; liste.setAttribute('aria-busy', 'false'); } }
   }
   let timer = null;
   const spaeter = () => { clearTimeout(timer); timer = setTimeout(() => { timer = null; laden(); }, 200); };
@@ -275,7 +305,6 @@ function gesamtlisteAdresse(aktuelleId) {
     z.modus = modus;
     modusLabel.textContent = GL_MODI[modus].label;
     feldSel.hidden = modus !== 'feld';
-    rolleSel.hidden = modus !== 'pfkt';
     q.placeholder = modus === 'pfkt' ? 'z. B. 4010 oder 4010-01' : modus === 'telefon' ? 'z. B. 0152 540' : '';
     Object.entries(knoepfe).forEach(([k, b]) => b.classList.toggle('aktiv', k === modus));
     q.value = '';
@@ -285,6 +314,10 @@ function gesamtlisteAdresse(aktuelleId) {
   const seite = el('div', { class: 'hp-gl-knoepfe' }, [
     ...['intensiv', 'feld', 'telefon', 'pfkt', 'ansprechp'].map((k) => (knoepfe[k] = el('button', { type: 'button', class: 'hp-knopf', text: GL_MODI[k].knopf, onclick: () => setzeModus(k) }))),
     el('button', { type: 'button', class: 'hp-knopf gesperrt', 'aria-disabled': 'true', text: 'Sonderfunkt.', onclick: () => toast('Sonderfunktionen: ' + SPAETER) }),
+    el('button', { type: 'button', class: 'hp-knopf', text: 'Filter zurücksetzen', onclick: () => {
+      clearTimeout(timer); timer = null; Object.values(filterFelder).forEach(f => { f.value = ''; }); rolleSel.value = ''; z.filter = 'alle';
+      filter.querySelector('input[value="alle"]').checked = true; setzeModus('suche');
+    } }),
     (knoepfe.suche = el('button', { type: 'button', class: 'hp-knopf', text: 'Suche', onclick: () => setzeModus('suche') })),
     el('button', { type: 'button', class: 'hp-knopf', text: 'Abbrechen', onclick: () => m.close() }),
   ]);
@@ -316,7 +349,6 @@ function gesamtlisteAdresse(aktuelleId) {
   q.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter') {
       ev.preventDefault();
-      if (!timer) { oeffnen(); return; }
       clearTimeout(timer); timer = null;
       laden().then(() => oeffnen());
       return;
@@ -324,17 +356,18 @@ function gesamtlisteAdresse(aktuelleId) {
     if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp'].includes(ev.key)) { listenTaste(ev); liste.focus(); }
   });
   feldSel.addEventListener('change', () => { q.focus(); laden(); });
-  rolleSel.addEventListener('change', () => { q.focus(); laden(); });
+  rolleSel.addEventListener('change', () => laden());
 
   const inhalt = el('div', { class: 'hp-gesamtliste' }, [
     el('div', { class: 'hp-gl-haupt' }, [
-      el('div', { class: 'hp-gl-suche' }, [modusLabel, feldSel, rolleSel, q, anzahl]),
+      el('div', { class: 'hp-gl-suche' }, [modusLabel, feldSel, q, anzahl]),
       liste,
     ]),
     seite,
     filter,
   ]);
-  const m = modal({ titel: 'Gesamtliste Adresse', wide: true, inhalt });
+  const m = modal({ titel: 'Gesamtliste Adresse', wide: true, fenster: 'gesamtliste-adressen', inhalt,
+    onClose: () => { z.geschlossen = true; ++z.anfrage; clearTimeout(timer); } });
   m.box.classList.add('hp-gl-fenster');
   setzeModus('suche');
 }

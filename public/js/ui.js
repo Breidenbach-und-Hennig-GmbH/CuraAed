@@ -50,14 +50,18 @@ const UI = (() => {
   }
 
   // Modal mit beliebigem Inhalt. Gibt {close} zurück.
-  function modal({ titel, inhalt, footer, wide, onClose }) {
+  function modal({ titel, inhalt, footer, wide, onClose, fenster }) {
     const container = document.getElementById('modal-container');
     const box = el('div', { class: 'modal' + (wide ? ' wide' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': titel });
     const backdrop = el('div', { class: 'modal-backdrop' }, [box]);
     let zu = false;
+    let entfernung;
+    let fensterAufraeumen = () => {};
     const schliessen = () => {
       if (zu) return;
       zu = true;
+      entfernung?.disconnect();
+      fensterAufraeumen();
       backdrop.remove();
       document.removeEventListener('keydown', onKey);
       if (onClose) onClose();
@@ -78,7 +82,7 @@ const UI = (() => {
       } else schliessen();
     };
     document.addEventListener('keydown', onKey);
-    backdrop.addEventListener('mousedown', (ev) => { if (ev.target === backdrop) schliessen(); });
+    backdrop.addEventListener('mousedown', (ev) => { if (!fenster && ev.target === backdrop) schliessen(); });
 
     box.appendChild(el('header', {}, [
       el('h2', { text: titel }),
@@ -89,6 +93,9 @@ const UI = (() => {
     box.appendChild(body);
     if (footer) box.appendChild(el('footer', {}, footer(schliessen)));
     container.appendChild(backdrop);
+    entfernung = new MutationObserver(() => { if (!backdrop.isConnected) schliessen(); });
+    entfernung.observe(container, { childList: true });
+    if (fenster) fensterAufraeumen = listenFenster(box, fenster);
     // Für Edit → „Undo Editieren": Ausgangswerte aller Felder merken
     const feldWert = (f) => (f.type === 'checkbox' || f.type === 'radio' ? f.checked : f.value);
     const startWerte = new Map(
@@ -122,6 +129,75 @@ const UI = (() => {
     const erst = box.querySelector('.modal-body input, .modal-body select, .modal-body textarea') || box.querySelector('footer button');
     if (erst) erst.focus();
     return { close: schliessen, box };
+  }
+
+  // Optionales Arbeitsfenster: Position/Größe bleiben auf diesem Gerät erhalten.
+  function listenFenster(box, key) {
+    box.classList.add('cu-listenfenster');
+    const header = box.querySelector('header'), vorher = document.activeElement;
+    const storageKey = 'curaaed.fenster.' + key;
+    let rect, normal, maximiert = false, ziehen = null;
+    const grenzen = r => {
+      const vw = window.innerWidth, vh = window.innerHeight;
+      const width = Math.min(vw - 16, Math.max(Math.min(640, vw - 16), r.width));
+      const height = Math.min(vh - 16, Math.max(Math.min(360, vh - 16), r.height));
+      return { width, height, left: Math.max(8, Math.min(vw - width - 8, r.left)), top: Math.max(8, Math.min(vh - height - 8, r.top)) };
+    };
+    const setzen = r => {
+      rect = grenzen(r);
+      for (const k of ['width', 'height', 'left', 'top']) box.style[k] = rect[k] + 'px';
+    };
+    const speichern = () => { try { localStorage.setItem(storageKey, JSON.stringify(maximiert ? normal : rect)); } catch {} };
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem(storageKey)); } catch {}
+    const valid = saved && ['width', 'height', 'left', 'top'].every(k => Number.isFinite(saved[k]));
+    setzen(valid ? saved : { width: Math.min(1180, window.innerWidth - 48), height: Math.min(740, window.innerHeight - 64), left: 24, top: 32 });
+    const max = el('button', { type: 'button', class: 'modal-x', 'aria-label': 'Maximieren', title: 'Maximieren / Wiederherstellen', text: '□' });
+    header.insertBefore(max, header.querySelector('.modal-x'));
+    const umschalten = () => {
+      if (!maximiert) { normal = { ...rect }; maximiert = true; setzen({ width: window.innerWidth - 16, height: window.innerHeight - 16, left: 8, top: 8 }); }
+      else { maximiert = false; setzen(normal); }
+      max.setAttribute('aria-label', maximiert ? 'Wiederherstellen' : 'Maximieren');
+      max.textContent = maximiert ? '❐' : '□';
+      speichern();
+    };
+    max.addEventListener('click', umschalten);
+    header.addEventListener('dblclick', ev => { if (!ev.target.closest('button')) umschalten(); });
+    const griff = el('button', { type: 'button', class: 'cu-fenster-groesse', 'aria-label': 'Fenstergröße ändern', title: 'Ziehen oder mit den Pfeiltasten vergrößern/verkleinern', text: '◢' });
+    box.appendChild(griff);
+    const start = (ev, art) => {
+      if (ev.button !== 0 || maximiert || (art === 'bewegen' && ev.target.closest('button'))) return;
+      ev.preventDefault();
+      ziehen = { art, x: ev.clientX, y: ev.clientY, ...rect };
+    };
+    const bewegen = ev => {
+      if (!ziehen) return;
+      const dx = ev.clientX - ziehen.x, dy = ev.clientY - ziehen.y;
+      setzen(ziehen.art === 'bewegen' ? { ...ziehen, left: ziehen.left + dx, top: ziehen.top + dy } : { ...ziehen, width: ziehen.width + dx, height: ziehen.height + dy });
+    };
+    const ende = () => { if (ziehen) { ziehen = null; speichern(); } };
+    header.addEventListener('pointerdown', ev => start(ev, 'bewegen'));
+    griff.addEventListener('pointerdown', ev => start(ev, 'groesse'));
+    griff.addEventListener('keydown', ev => {
+      const delta = { ArrowRight: [24, 0], ArrowLeft: [-24, 0], ArrowDown: [0, 24], ArrowUp: [0, -24] }[ev.key];
+      if (!delta || maximiert) return;
+      ev.preventDefault(); setzen({ ...rect, width: rect.width + delta[0], height: rect.height + delta[1] }); speichern();
+    });
+    const resize = () => setzen(maximiert ? { width: window.innerWidth - 16, height: window.innerHeight - 16, left: 8, top: 8 } : rect);
+    document.addEventListener('pointermove', bewegen);
+    document.addEventListener('pointerup', ende);
+    document.addEventListener('pointercancel', ende);
+    window.addEventListener('resize', resize);
+    window.addEventListener('blur', ende);
+    return () => {
+      speichern();
+      document.removeEventListener('pointermove', bewegen);
+      document.removeEventListener('pointerup', ende);
+      document.removeEventListener('pointercancel', ende);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('blur', ende);
+      if (vorher?.isConnected) vorher.focus();
+    };
   }
 
   function bestaetigen(frage, { text = 'Bestätigen', danger = false } = {}) {
