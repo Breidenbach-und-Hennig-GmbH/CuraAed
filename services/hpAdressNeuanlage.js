@@ -64,8 +64,18 @@ function service(db){
     const number='HP-'+j.hp_nummer,other=await tx.get('SELECT id FROM adressen WHERE nummer=? AND id!=?',[number,j.adresse_id]);if(other)fail('HP-Adressnummer lokal bereits vergeben. Bitte Zuordnung prüfen.');
     await tx.run("UPDATE adressen SET nummer=?,geaendert_am=CURRENT_TIMESTAMP WHERE id=?",[number,j.adresse_id]);
     await kommunikationZuordnen(tx,j);
-   }else if(j.reservierung)await tx.run("UPDATE hp_adress_zuordnung SET status='unklar',meldung='HP-Neuanlage nicht vollständig bestätigt. Kein automatischer Neuversuch.' WHERE adresse_id=?",[j.adresse_id]);
-   const message=b.status==='erfolg'?null:b.status==='dublette'?'In HP wurde eine mögliche Dublette gefunden. Bitte bestehende Adresse prüfen.':'HP-Neuanlage nicht bestätigt. Kein automatischer Neuversuch; bitte prüfen.'+(b.diagnose?' Prüfschritt: '+b.diagnose:'');
+   }else if(j.reservierung){
+    if(b.status==='fehler'){
+     // Der native Connector meldet fehler nur nach bestätigtem Transaktions-Rollback.
+     // HP darf diese Nummer danach neu vergeben: keine dauerhafte Adressbindung behalten.
+     const m=await tx.get('SELECT * FROM hp_adress_zuordnung WHERE adresse_id=?',[j.adresse_id]);
+     if(!m||m.verbindung_id!==id||m.hp_nummer!==j.hp_nummer||m.status!=='neuanlage')fail('Vorläufige HP-Zuordnung hat sich geändert. Rücknahme bitte prüfen.');
+     if(await tx.get('SELECT 1 FROM hp_adress_detail_zuordnung WHERE verbindung_id=? AND hp_nummer=? LIMIT 1',[id,j.hp_nummer]))fail('Vorläufige Zuordnung enthält bereits Kontaktdaten. Rücknahme bitte prüfen.');
+     await tx.run("INSERT INTO aenderungen(adresse_id,bereich,datensatz_id,aktion,feld,alt,neu,benutzer_name,quelle) VALUES(?,'adresse',?,'geaendert','hp_neuanlage_ruecknahme',?,?,'HausPerfekt-Abgleich','intern')",[j.adresse_id,j.adresse_id,JSON.stringify({auftrag:j,vorlaeufige_zuordnung:m}),'HP-Transaktion bestätigt zurückgenommen; vorläufige Nummernzuordnung freigegeben. Kein automatischer Neuversuch.']);
+     await tx.run('DELETE FROM hp_adress_zuordnung WHERE adresse_id=?',[j.adresse_id]);
+    }else await tx.run("UPDATE hp_adress_zuordnung SET status='unklar',meldung='HP-Neuanlage nicht vollständig bestätigt. Kein automatischer Neuversuch.' WHERE adresse_id=?",[j.adresse_id]);
+   }
+   const message=b.status==='erfolg'?null:b.status==='dublette'?'In HP wurde eine mögliche Dublette gefunden. Bitte bestehende Adresse prüfen.':(b.status==='fehler'?'HP-Anlage vollständig zurückgenommen. Keine HP-Adresse zugeordnet. Kein automatischer Neuversuch.':'HP-Neuanlage nicht bestätigt. Kein automatischer Neuversuch; bitte prüfen.')+(b.diagnose?' Prüfschritt: '+b.diagnose:'');
    await tx.run('UPDATE hp_adress_neuanlagen SET status=?,meldung=?,result_hash=?,erledigt_am=CURRENT_TIMESTAMP WHERE id=?',[b.status==='erfolg'?'synchron':'pruefen',message,digest,j.id]);return{ok:true};
   });},
  };

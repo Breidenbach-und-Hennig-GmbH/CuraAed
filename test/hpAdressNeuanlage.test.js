@@ -9,6 +9,21 @@ test('HP-Neuanlage erhält begrenzte native Fehlernummer ohne Freitext und über
  await assert.rejects(f.svc.ergebnis(f.grant.id,f.grant.token,{...f.body,id:j.id,status:'fehler',diagnose:'email/HY000/private text'}),e=>e.status===400);
  await f.svc.ergebnis(f.grant.id,f.grant.token,{...f.body,id:j.id,status:'fehler',diagnose:'email/HY000/-4990/BTR84'});
  const saved=await A.holen(f.db,a.id);assert.equal(saved.nummer,a.nummer);assert.equal(saved.hp_neuanlage.status,'pruefen');assert.match(saved.hp_neuanlage.meldung,/email\/HY000\/-4990\/BTR84/);assert.deepEqual(await f.take(),{});
+ assert.equal(await f.db.get('SELECT * FROM hp_adress_zuordnung WHERE adresse_id=?',[a.id]),undefined);
+ const history=await f.db.get("SELECT alt FROM aenderungen WHERE adresse_id=? AND feld='hp_neuanlage_ruecknahme'",[a.id]);assert.equal(JSON.parse(history.alt).vorlaeufige_zuordnung.hp_nummer,100);
+ const other={...j.daten.record,nummer:100,name1:'Andere Verwaltung',vorname:''};await f.sync.scan(f.grant.id,f.grant.token,{...f.body,records:[other]});
+ const imported=await f.db.get('SELECT * FROM adressen WHERE nummer=?',['HP-100']);assert.notEqual(imported.id,a.id);assert.equal((await A.holen(f.db,a.id)).nachname,'Test');
+});
+
+test('Zusatzbereiche einer unbestätigten Neuanlage dürfen keine fremden Kontakte zuordnen',async t=>{
+ const f=await setup(t),a=await f.create(),j=(await f.take()).anlegen;await f.svc.reservieren(f.grant.id,f.grant.token,{...f.body,id:j.id,reservierung:reservation});
+ const B=require('../services/hpAdressBereiche'),svc=B.service(f.db),r=Object.fromEntries(B.spec.email.fields.map(x=>[x.name,x.typ===0?'':'0']));Object.assign(r,{Adress_Nr:'100',lfd__Nr:'1',LfdIDXMail:'1',eMail_Adresse___Webs:'fremd@example.test',eMail:'1'});
+ for(const status of ['reserviert','pruefen']){await f.db.run('UPDATE hp_adress_neuanlagen SET status=?',[status]);const result=await svc.speichern(f.grant.id,f.grant.token,{...f.body,nummer:100,bereich:'email',zeilen:[r]});assert.equal(result.gesperrt,true);}
+ assert.equal((await f.db.get('SELECT COUNT(*) n FROM adress_emails WHERE adresse_id=? AND adresse=?',[a.id,'fremd@example.test'])).n,0);
+ assert.equal((await f.db.get('SELECT COUNT(*) n FROM hp_adress_bereiche')).n,0);
+ await f.db.run("UPDATE hp_adress_zuordnung SET status='unklar',remote=?",[JSON.stringify({...j.daten.record,nummer:100,name1:'Fremd'})]);
+ const metadata=await H.metadata(f.db,await f.db.get('SELECT * FROM adressen WHERE id=?',[a.id]));
+ for(const uebernehmen of ['hp','curaaed'])await assert.rejects(f.sync.resolve(a.id,{uebernehmen,version:metadata.hp_sync.konflikt_version}),/Unbestätigte HP-Neuanlage/);
 });
 test('Neue Adressen werden atomar mit HP-Kürzel CA eingereiht; Feldgrenzen bleiben geschützt und bestehende lokale Adressen werden nicht nachträglich angelegt',async t=>{
  const f=await setup(t);assert.equal(f.grant.scope,'adressen-v3');await A.anlegen(f.db,{nachname:'Alt'});const a=await f.create();assert.equal(a.hp_neuanlage.status,'wartend');assert.equal((await f.db.all('SELECT * FROM hp_adress_neuanlagen')).length,1);
