@@ -88,7 +88,7 @@ test('ausstehende aktuelle HK0/HK1 bleiben gesichert, separat sichtbar und bis z
  const waiting=[sample('einheitsanteil',{Buchungsjahr:'2026',WhgNr:'1',VSchl:'HK0',WhgAnteile:'25.5'}),sample('kontenanteil',{BJ:'2026',PKtoNr:'10001',VSchl:'HK1',AntPers:'73.2'})];
  const real=[sample('einheitsanteil',{Buchungsjahr:'2025',WhgNr:'1',VSchl:'HK0',WhgAnteile:'1'}),sample('einheitsanteil',{Buchungsjahr:'2026',WhgNr:'1',VSchl:'083',WhgAnteile:'0'})];
  assert.equal((await x.scan([...waiting,...real])).fehler,4);
- let status=(await x.svc.list(1))[0];assert.deepEqual(status.pruefung,{offen:2,ausstehend:2,gesichert:2});assert.equal(status.fehler.length,2);
+ let status=(await x.svc.list(1))[0];assert.deepEqual(status.pruefung,{offen:2,ausstehend:2,historisch:0,gesichert:2});assert.equal(status.fehler.length,2);
  assert.equal((await x.svc.originals(1)).gesamt,2);let pending=await x.svc.originals(1,{status:'ausstehend'});assert.equal(pending.gesamt,2);assert.match(pending.faelle[0].grund,/steht noch aus/);
  assert.equal((await x.svc.originals(999,{status:'ausstehend'})).gesamt,0);
  assert.equal((await x.svc.retryPlan(x.p.id,x.p.token,{...x.input,art:'einheitsanteil',nach_objnr:0,nach_key:''})).keys.length,3);
@@ -103,6 +103,25 @@ test('ausstehende aktuelle HK0/HK1 bleiben gesichert, separat sichtbar und bis z
  await x.scan([sample('schluessel',{BJ:'2026',VerteilerSchl:'HK1',SchlTxt:'Heiz- und Warmwasserkosten / Wechsel',Typ_PW:'P'})]);
  waiting[1].werte.AntPers='NaN';await x.scan([waiting[1]]);assert.ok((await x.svc.originals(1)).faelle.some(r=>r.original.AntPers==='NaN'));
  assert.equal((await x.svc.list(1))[0].pruefung.ausstehend,0);
+ assert.deepEqual(await x.db.all('PRAGMA foreign_key_check'),[]);
+});
+
+test('bestätigte historische Quellversionen und abgeschlossene Jahre bleiben erhalten und erzeugen keine aktuellen Wohnungen',async t=>{
+ const x=await setup(t);await x.scan(records().slice(0,4));
+ const old=sample('einheitsanteil',{Buchungsjahr:'1996',WhgNr:'10',VSchl:'300',WhgAnteile:'74.02'});
+ const closed=sample('einheitsanteil',{Buchungsjahr:'2017',WhgNr:'1',VSchl:'SRW',WhgAnteile:'2'});
+ const current=sample('einheitsanteil',{Buchungsjahr:'2026',WhgNr:'1',VSchl:'SRW',WhgAnteile:'2'});
+ await x.scan([old,closed,current]);const r=F.record(old);
+ await x.db.run('INSERT INTO hp_import_historische_datensaetze VALUES(?,?,?,?,?,?,?)',[x.p.id,r.art,r.objnr,r.key,r.hash,'Bestätigter alter Wohnungsbezug',1]);
+ await x.db.run('INSERT INTO hp_import_historische_jahre VALUES(?,?,?,?)',[x.p.id,2017,'Abgeschlossen',1]);
+ const stand=(await x.svc.list(1))[0];assert.equal(stand.pruefung.offen,1);assert.equal(stand.pruefung.historisch,2);assert.equal(stand.fehler.length,1);
+ assert.equal((await x.svc.originals(1)).gesamt,1);assert.equal((await x.svc.originals(1,{status:'historisch'})).gesamt,2);assert.equal((await x.svc.originals(999,{status:'historisch'})).gesamt,0);
+ assert.equal((await x.db.get('SELECT COUNT(*) n FROM einheiten')).n,1);
+ // Identical rereads stay historical; a new source version of an individually
+ // approved record is a fresh case. The approved original remains accessible.
+ await x.scan([old,closed]);assert.equal((await x.svc.originals(1)).gesamt,1);
+ old.werte.WhgAnteile='75';await x.scan([old]);assert.equal((await x.svc.originals(1)).gesamt,2);assert.equal((await x.svc.originals(1,{status:'historisch'})).gesamt,2);
+ closed.werte.WhgAnteile='3';await x.scan([closed]);assert.equal((await x.svc.originals(1)).gesamt,2);assert.equal((await x.svc.originals(1,{status:'historisch'})).gesamt,3);
  assert.deepEqual(await x.db.all('PRAGMA foreign_key_check'),[]);
 });
 
