@@ -52,7 +52,7 @@ internal sealed class HPObjectImportClient
   string actual;using(var sha=SHA256.Create())actual=BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(identity))).Replace("-","").ToLowerInvariant();
   if(sourceFingerprint==null)sourceFingerprint=actual;else if(sourceFingerprint!=actual)throw new InvalidOperationException("HP-Quelle wurde während des Imports geändert.");return c;}catch{c.Dispose();throw;}}
  internal static string Part(string v){return v==null?"-1:":Encoding.UTF8.GetByteCount(v).ToString(CultureInfo.InvariantCulture)+":"+v;}
- internal static string Key(HPImportSpec s,Dictionary<string,object> values){var b=new StringBuilder();foreach(string k in s.Keys){if(values[k]==null||Convert.ToString(values[k]).Length==0)throw new InvalidOperationException();b.Append(Part(Convert.ToString(values[k])));}return b.ToString();}
+ internal static string Key(HPImportSpec s,Dictionary<string,object> values){var b=new StringBuilder();foreach(string k in s.Keys){if(values[k]==null||(Convert.ToString(values[k]).Length==0&&!TextKey(k)))throw new InvalidOperationException();b.Append(Part(Convert.ToString(values[k])));}return b.ToString();}
  internal static string Fingerprint(HPImportSpec s,int obj,Dictionary<string,object> values){var b=new StringBuilder(Part(s.Art));b.Append(Part(obj.ToString(CultureInfo.InvariantCulture)));foreach(string k in s.Fields)b.Append(Part(values[k]==null?null:Convert.ToString(values[k])));using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(b.ToString()))).Replace("-","").ToLowerInvariant();}
  internal static string ExpandDecimal(string v)
  {
@@ -76,7 +76,7 @@ internal sealed class HPObjectImportClient
    cmd.CommandTimeout=20;cmd.Parameters.Add("obj",OdbcType.Int).Value=obj;cmd.Parameters.Add("aktivesObjekt",OdbcType.Int).Value=obj;
    if(after!=null)for(int i=0;i<s.Keys.Length;i++)for(int j=0;j<=i;j++){string k=s.Keys[j];var p=cmd.Parameters.Add("cursor"+i+"_"+j,TextKey(k)?OdbcType.Char:OdbcType.Int);p.Value=TextKey(k)?after[k]:(object)Int32.Parse(Convert.ToString(after[k]),CultureInfo.InvariantCulture);}
    using(var r=cmd.ExecuteReader())while(rows.Count<51&&r.Read()){var values=new Dictionary<string,object>();foreach(string field in s.Fields)if(field!="ObjTypText")values.Add(field,Value(r[field]));if(s.Art=="objekt")values.Add("ObjTypText",null);if(rows.Count>0&&Key(s,rows[rows.Count-1])==Key(s,values))throw new InvalidOperationException("Doppelter HP-Quellschlüssel.");rows.Add(values);}
-   if(s.Art=="objekt"&&rows.Count==1){using(var lookup=new OdbcCommand("SELECT Bezeichnung FROM GD_ObjTyp WHERE KEY_ObjTyp=?",c)){lookup.CommandTimeout=10;lookup.Parameters.Add("typ",OdbcType.Char).Value=rows[0]["ObjTyp"]??"";using(var r=lookup.ExecuteReader()){if(r.Read()){var label=Value(r[0]);if(r.Read())throw new InvalidOperationException();rows[0]["ObjTypText"]=label;}}}}
+   if(s.Art=="objekt"&&rows.Count==1&&!String.IsNullOrEmpty(Convert.ToString(rows[0]["ObjTyp"]))){using(var lookup=new OdbcCommand("SELECT Bezeichnung FROM GD_ObjTyp WHERE KEY_ObjTyp=?",c)){lookup.CommandTimeout=10;lookup.Parameters.Add("typ",OdbcType.Char).Value=rows[0]["ObjTyp"]??"";using(var r=lookup.ExecuteReader()){if(r.Read()){var label=Value(r[0]);if(r.Read())throw new InvalidOperationException();rows[0]["ObjTypText"]=label;}}}}
   }if(rows.Count>50)rows.RemoveAt(50);return rows;
  }
  List<int> Objects(int cursor){var result=new List<int>();using(var c=Open())using(var cmd=new OdbcCommand("SELECT ObjNr FROM OB_Obj WHERE ObjNr>? ORDER BY ObjNr",c)){cmd.CommandTimeout=20;cmd.Parameters.Add("cursor",OdbcType.Int).Value=cursor;using(var r=cmd.ExecuteReader())while(result.Count<50&&r.Read()){int n=Convert.ToInt32(r[0]);if(result.Count>0&&result[result.Count-1]>=n)throw new InvalidOperationException();result.Add(n);}}return result;}
@@ -99,6 +99,48 @@ internal sealed class HPObjectImportClient
   if(changed.Count>0){if(!Active(obj))throw new HPInactiveException();var result=Post("abgleich",new{datenbank=database,objnr=obj,records=changed});if(s.Art=="objekt"&&Convert.ToInt32(result["fehler"])>0)throw new InvalidOperationException();log("HP "+obj+" / "+s.Art+": "+result["neu"]+" neu, "+result["geaendert"]+" geändert, "+result["konflikt"]+" Konflikte, "+result["fehler"]+" zurückgestellt.");}
  }
  void Report(int obj,string art,string code){Post("diagnose",new{datenbank=database,objnr=obj,art,code});}
+ internal static string[] DecodeKey(HPImportSpec spec,string key)
+ {
+  if(key==null||Encoding.UTF8.GetByteCount(key)>1024)throw new InvalidOperationException("Ungültiger Quellschlüssel.");
+  byte[] bytes=Encoding.UTF8.GetBytes(key);int offset=0;var values=new List<string>();var utf8=new UTF8Encoding(false,true);
+  foreach(string field in spec.Keys){int length=0,start=offset;while(offset<bytes.Length&&bytes[offset]>=48&&bytes[offset]<=57){length=checked(length*10+bytes[offset++]-48);if(length>800)throw new InvalidOperationException();}
+   if(start==offset||offset>=bytes.Length||bytes[offset++]!=58||offset+length>bytes.Length)throw new InvalidOperationException();
+   string value=utf8.GetString(bytes,offset,length);offset+=length;
+   if(TextKey(field)){if(value.Length>200)throw new InvalidOperationException();}else{int n;if(!Int32.TryParse(value,NumberStyles.AllowLeadingSign,CultureInfo.InvariantCulture,out n))throw new InvalidOperationException();}
+   values.Add(value);
+  }if(offset!=bytes.Length)throw new InvalidOperationException();return values.ToArray();
+ }
+ internal static string RetryQuery(HPImportSpec spec,int count)
+ {
+  if(count<1||count>20||spec.Art=="objekt")throw new ArgumentException();
+  var ors=new List<string>();for(int i=0;i<count;i++){var ands=new List<string>();foreach(string k in spec.Keys)ands.Add(k+"=?");ors.Add("("+String.Join(" AND ",ands)+")");}
+  return "SELECT DISTINCT "+String.Join(",",spec.Fields)+" FROM "+spec.Table+" WHERE "+spec.Scope+"=? AND EXISTS (SELECT 1 FROM FI_Obj WHERE FI_Obj=? AND FI_beendet=0) AND ("+String.Join(" OR ",ors)+") ORDER BY "+String.Join(",",spec.Keys);
+ }
+ List<Dictionary<string,object>> ReadExact(HPImportSpec spec,int obj,List<string> keys)
+ {
+  var decoded=new List<string[]>();foreach(string key in keys)decoded.Add(DecodeKey(spec,key));
+  var rows=new List<Dictionary<string,object>>();var seen=new HashSet<string>();
+  using(var c=Open())using(var cmd=new OdbcCommand(RetryQuery(spec,keys.Count),c)){cmd.CommandTimeout=30;cmd.Parameters.Add("obj",OdbcType.Int).Value=obj;cmd.Parameters.Add("aktiv",OdbcType.Int).Value=obj;
+   foreach(var values in decoded)for(int i=0;i<spec.Keys.Length;i++){bool text=TextKey(spec.Keys[i]);var p=cmd.Parameters.Add("k"+cmd.Parameters.Count,text?OdbcType.Char:OdbcType.Int);p.Value=text?(object)values[i]:Int32.Parse(values[i],CultureInfo.InvariantCulture);}
+   using(var r=cmd.ExecuteReader())while(r.Read()){var values=new Dictionary<string,object>();foreach(string f in spec.Fields)values[f]=Value(r[f]);if(!seen.Add(Key(spec,values)))throw new InvalidOperationException("Widersprüchliche doppelte HP-Quellschlüssel.");rows.Add(values);if(rows.Count>20)throw new InvalidOperationException();}
+  }return rows;
+ }
+ internal async Task RetryErrors(CancellationToken stop,Action<string> log)
+ {
+  foreach(var spec in Specs){int objCursor=0;string keyCursor="";
+   while(!stop.IsCancellationRequested){var result=Post("wiederholen",new{datenbank=database,art=spec.Art,nach_objnr=objCursor,nach_key=keyCursor});var rawKeys=(ArrayList)result["keys"];if(rawKeys.Count==0)break;
+    int obj=Convert.ToInt32(result["objnr"]);var keys=new List<string>();foreach(object key in rawKeys)keys.Add(Convert.ToString(key));
+    if(keys.Count>20||obj<objCursor||(obj==objCursor&&String.CompareOrdinal(keys[keys.Count-1],keyCursor)<=0))throw new InvalidOperationException();
+    objCursor=obj;keyCursor=keys[keys.Count-1];if(!Active(obj))continue;
+    try{
+     if(spec.Art=="objekt"||keys.Contains("!quelle")){Dictionary<string,object> after=null;while(!stop.IsCancellationRequested){var page=Page(spec,obj,after);if(page.Count==0)break;Send(spec,obj,page,log);after=page[page.Count-1];if(page.Count<50)break;await Task.Delay(100,stop);}Report(obj,spec.Art,null);}
+     else{var rows=ReadExact(spec,obj,keys);if(rows.Count>0)Send(spec,obj,rows,log);}
+    }catch(HPInactiveException){continue;}catch(OdbcException e){Report(obj,spec.Art,"ODBC_"+e.Errors[0].SQLState);log("HP "+obj+" / "+spec.Art+": erneute Leseprüfung zurückgestellt.");}
+     catch(InvalidOperationException){Report(obj,spec.Art,"QUELLE_UNKLAR");log("HP "+obj+" / "+spec.Art+": widersprüchlicher Quellstand, kein Wert ersetzt.");}
+    await Task.Delay(100,stop);
+   }
+  }if(!stop.IsCancellationRequested)log("Gezielte Wiederholung der offenen Datensätze beendet. Nicht zuordenbare Originale sind in CuraAed als Prüffälle gesichert.");
+ }
  // Make the complete current object list available before traversing historic
  // allocation rows. Each root still requires fresh HP status and source checks.
  internal void ImportRoots(CancellationToken stop,Action<string> log)
@@ -122,6 +164,7 @@ internal sealed class HPObjectImportClient
   catch{log("Start angehalten: Die tatsächliche ODBC-Quelle konnte nicht eindeutig bestätigt werden.");return;}
   while(!stop.IsCancellationRequested){int delay=60000;try{
    ImportRoots(stop,log);
+   await RetryErrors(stop,log);
    int cursor=0;while(!stop.IsCancellationRequested){var objects=Objects(cursor);if(objects.Count==0)break;
     foreach(int obj in objects){if(stop.IsCancellationRequested)return;cursor=obj;try{if(!Active(obj))continue;
      var root=Page(Specs[0],obj,null);if(root.Count!=1){log("HP "+obj+": Objektstamm nicht eindeutig; zurückgestellt.");continue;}if(Convert.ToString(root[0]["ObjTyp"])=="BKS")continue;

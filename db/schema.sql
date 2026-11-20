@@ -229,6 +229,18 @@ CREATE INDEX IF NOT EXISTS idx_ap_adresse ON adress_ansprechpartner(adresse_id);
 -- Eigentümer-/Mieterwechsel werden über gueltig_von/gueltig_bis abgebildet,
 -- ohne Historie zu löschen.
 -- ---------------------------------------------------------------------------
+-- Unveränderte HP-Originale mit noch nicht auflösbaren historischen Bezügen.
+-- Jede Quellversion bleibt erhalten; sie ersetzt keine gültige lokale Zuordnung.
+CREATE TABLE IF NOT EXISTS hp_import_originaldaten (
+  verbindung_id TEXT NOT NULL REFERENCES hp_objekt_importe(verbindung_id) ON DELETE RESTRICT,
+  art TEXT NOT NULL, hp_objnr INTEGER NOT NULL, quellschluessel TEXT NOT NULL,
+  hash TEXT NOT NULL, original TEXT NOT NULL, grund TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('pruefen','uebernommen')),
+  gelesen_ms INTEGER NOT NULL, erledigt_ms INTEGER,
+  PRIMARY KEY(verbindung_id,art,hp_objnr,quellschluessel,hash)
+);
+CREATE INDEX IF NOT EXISTS hp_original_fall ON hp_import_originaldaten(verbindung_id,art,hp_objnr,quellschluessel,gelesen_ms DESC);
+
 CREATE TABLE IF NOT EXISTS rollen_zuordnungen (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   adresse_id    INTEGER NOT NULL REFERENCES adressen(id) ON DELETE CASCADE,
