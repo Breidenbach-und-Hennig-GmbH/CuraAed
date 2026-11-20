@@ -92,7 +92,7 @@ function baueArchiv(db, directory, remote) {
     const refs = await db.all('SELECT * FROM hp_dms_bezuege WHERE quelle_id=? AND datei_id=?', [r.quelle_id, r.datei_id]), found = [];
     for (const b of refs) {
       let m, typ;
-      if (b.art === 'persons') { typ = 'adresse'; m = await db.get('SELECT adresse_id AS id FROM hp_adress_zuordnung WHERE verbindung_id=? AND hp_nummer=?', [s.direkt_id, b.hp_nummer]); }
+      if (b.art === 'persons') { typ = 'adresse'; m = await db.get('SELECT adresse_id AS id FROM hp_adress_ziele WHERE verbindung_id=? AND hp_nummer=?', [s.direkt_id, b.hp_nummer]); }
       if (b.art === 'buildings') { typ = 'objekt'; m = await db.get('SELECT objekt_id AS id FROM hp_objekt_zuordnung WHERE verbindung_id=? AND hp_objnr=?', [s.direkt_id, b.hp_nummer]); }
       if (b.art === 'units') { typ = 'einheit'; m = await db.get('SELECT einheit_id AS id FROM hp_einheit_zuordnung WHERE verbindung_id=? AND hp_objnr=? AND hp_whgnr=?', [s.direkt_id, b.objekt_nummer, b.hp_nummer]); }
       if (m && !found.some(x => x.typ === typ && x.ziel_id === m.id)) found.push({ typ, ziel_id: m.id, nummer: b.hp_nummer, label: b.name });
@@ -107,7 +107,7 @@ function baueArchiv(db, directory, remote) {
       filter += ` AND EXISTS(SELECT 1 FROM hp_dms_bezuege b JOIN ${mapping} m ON m.verbindung_id=s.direkt_id AND ${match} WHERE b.quelle_id=f.quelle_id AND b.datei_id=f.datei_id AND ${target})`;
       args.push(value);
     };
-    if (q.adresseId) relation('hp_adress_zuordnung', "b.art='persons' AND m.hp_nummer=b.hp_nummer", 'm.adresse_id=?', q.adresseId);
+    if (q.adresseId) relation('hp_adress_ziele', "b.art='persons' AND m.hp_nummer=b.hp_nummer", 'm.adresse_id=?', q.adresseId);
     if (q.einheitId) relation('hp_einheit_zuordnung', "b.art='units' AND m.hp_objnr=b.objekt_nummer AND m.hp_whgnr=b.hp_nummer", 'm.einheit_id=?', q.einheitId);
     if (q.objektId) {
       filter += ` AND EXISTS(SELECT 1 FROM hp_dms_bezuege b JOIN hp_objekt_zuordnung m ON m.verbindung_id=s.direkt_id AND m.hp_objnr=CASE WHEN b.art='units' THEN b.objekt_nummer ELSE b.hp_nummer END WHERE b.quelle_id=f.quelle_id AND b.datei_id=f.datei_id AND b.art IN ('units','buildings') AND m.objekt_id=?)`;

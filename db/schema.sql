@@ -932,3 +932,21 @@ CREATE INDEX IF NOT EXISTS hp_akten_datei_status ON hp_akten_dateien(verbindung_
 CREATE INDEX IF NOT EXISTS hp_akten_datei_warteschlange ON hp_akten_dateien(verbindung_id,generation,CASE WHEN status='ausstehend' THEN 0 ELSE 1 END,archiv_nr DESC,lfd);
 CREATE INDEX IF NOT EXISTS hp_akten_datei_name ON hp_akten_dateien(verbindung_id,lower(json_extract(daten,'$.AR_Dateiname')));
 CREATE INDEX IF NOT EXISTS hp_dms_dateiname ON hp_dms_dateien(quelle_id,dateiname COLLATE NOCASE);
+
+-- Reversible address consolidation: HP source identities stay distinct.
+CREATE TABLE IF NOT EXISTS hp_adress_zusammenfuehrungen (
+ verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),
+ quell_adresse_id INTEGER PRIMARY KEY REFERENCES adressen(id) ON DELETE RESTRICT,
+ ziel_adresse_id INTEGER NOT NULL REFERENCES adressen(id) ON DELETE RESTRICT,
+ original TEXT NOT NULL,erstellt_ms INTEGER NOT NULL,
+ CHECK(quell_adresse_id<>ziel_adresse_id)
+);
+CREATE VIEW IF NOT EXISTS hp_adress_ziele AS
+ SELECT m.verbindung_id,m.hp_nummer,COALESCE(z.ziel_adresse_id,m.adresse_id) AS adresse_id
+ FROM hp_adress_zuordnung m LEFT JOIN hp_adress_zusammenfuehrungen z
+ ON z.verbindung_id=m.verbindung_id AND z.quell_adresse_id=m.adresse_id;
+CREATE TABLE IF NOT EXISTS hp_import_leerstand_adressen (
+ verbindung_id TEXT PRIMARY KEY REFERENCES hp_adress_verbindungen(id),
+ hp_nummer INTEGER NOT NULL,gesetzt_ms INTEGER NOT NULL,
+ FOREIGN KEY(verbindung_id,hp_nummer) REFERENCES hp_adress_zuordnung(verbindung_id,hp_nummer) ON DELETE RESTRICT
+);

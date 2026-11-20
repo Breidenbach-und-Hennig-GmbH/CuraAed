@@ -88,7 +88,7 @@ function baueVorgaenge(db,{hp,archiv}={}){
    return {id};
   });
  }
- const joins=`LEFT JOIN hp_adress_zuordnung am ON am.verbindung_id=s.direkt_id AND b.typ='adresse' AND am.hp_nummer=b.hp_nummer
+ const joins=`LEFT JOIN hp_adress_ziele am ON am.verbindung_id=s.direkt_id AND b.typ='adresse' AND am.hp_nummer=b.hp_nummer
  LEFT JOIN hp_objekt_zuordnung om ON om.verbindung_id=s.direkt_id AND b.typ='objekt' AND om.hp_objnr=b.hp_nummer
  LEFT JOIN hp_einheit_zuordnung em ON em.verbindung_id=s.direkt_id AND b.typ='einheit' AND em.hp_objnr=b.objekt_nummer AND em.hp_whgnr=b.hp_nummer`;
  async function list(owner,q={}){
@@ -116,7 +116,7 @@ function baueVorgaenge(db,{hp,archiv}={}){
   const refs=await db.all('SELECT * FROM fach_bezuege WHERE vorgang_id=?',[id]);
   for(const b of refs){
    let m;if(!b.ziel_id&&s?.direkt_id){
-    if(b.typ==='adresse')m=await db.get('SELECT adresse_id AS id FROM hp_adress_zuordnung WHERE verbindung_id=? AND hp_nummer=?',[s.direkt_id,b.hp_nummer]);
+    if(b.typ==='adresse')m=await db.get('SELECT adresse_id AS id FROM hp_adress_ziele WHERE verbindung_id=? AND hp_nummer=?',[s.direkt_id,b.hp_nummer]);
     if(b.typ==='objekt')m=await db.get('SELECT objekt_id AS id FROM hp_objekt_zuordnung WHERE verbindung_id=? AND hp_objnr=?',[s.direkt_id,b.hp_nummer]);
     if(b.typ==='einheit')m=await db.get('SELECT einheit_id AS id FROM hp_einheit_zuordnung WHERE verbindung_id=? AND hp_objnr=? AND hp_whgnr=?',[s.direkt_id,b.objekt_nummer,b.hp_nummer]);
    }
