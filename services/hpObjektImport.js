@@ -46,7 +46,7 @@ async function project(tx,id,r){
  if(r.art==='funktion'){
   const number=integer(w.lfdNrDatensatz,1),an=integer(w.AdrNr||'0'),wn=integer(w.WhgNr||'0');
   let a=an&&await tx.get('SELECT adresse_id FROM hp_adress_ziele WHERE verbindung_id=? AND hp_nummer=?',[id,an]);
-  if(!an&&w.PFKt==='014')a=await tx.get('SELECT m.adresse_id FROM hp_import_leerstand_adressen c JOIN hp_adress_ziele m ON m.verbindung_id=c.verbindung_id AND m.hp_nummer=c.hp_nummer JOIN adressen a ON a.id=m.adresse_id WHERE c.verbindung_id=? AND a.archiviert=0',[id]);
+  if(!an&&w.PFKt==='014'&&integer(w.WhgNr||'0')>0)a=await tx.get('SELECT m.adresse_id FROM hp_import_leerstand_adressen c JOIN hp_adress_ziele m ON m.verbindung_id=c.verbindung_id AND m.hp_nummer=c.hp_nummer JOIN adressen a ON a.id=m.adresse_id WHERE c.verbindung_id=? AND a.archiviert=0',[id]);
   if(!a)fail('Personenfunktion ohne zugeordnete HP-Adresse; Adressabgleich prüfen.');
   const eid=wn?(await mapping(tx,'hp_einheit_zuordnung',id,n,'hp_whgnr',wn)).einheit_id:null;
   const code=await tx.get('SELECT rolle FROM pfkt_codes WHERE code=?',[w.PFKt]);if(!code||!code.rolle)fail('HP-Personenfunktionscode ist noch nicht zugeordnet.');

@@ -235,6 +235,8 @@ test('bestätigte Leerstandsadresse und zusammengeführte HP-Adressen bleiben be
  assert.equal((await x.db.get('SELECT adresse_id FROM rollen_zuordnungen')).adresse_id,m.adresse_id);
  assert.equal(JSON.parse((await x.db.get("SELECT remote FROM hp_import_datensaetze WHERE art='funktion'")).remote).AdrNr,'0');
  assert.equal((await x.scan([vacant])).unveraendert,1);
+ const unassigned=sample('funktion',{lfdNrDatensatz:'127',PFKt:'014',WhgNr:'0',AdrNr:'0',DatVon:'738100',DatBis:'0'});assert.equal((await x.scan([unassigned])).fehler,1);
+ assert.equal((await x.db.get('SELECT COUNT(*) AS n FROM rollen_zuordnungen')).n,1);
  const tenant=sample('funktion',{lfdNrDatensatz:'124',PFKt:'006',WhgNr:'1',AdrNr:'123',DatVon:'738100',DatBis:'0'});
  assert.equal((await x.scan([tenant])).fehler,0);
  assert.equal((await x.db.get("SELECT z.adresse_id FROM rollen_zuordnungen z JOIN hp_personenfunktion_zuordnung m ON m.zuordnung_id=z.id WHERE m.hp_lfdnr=124")).adresse_id,m.adresse_id);
