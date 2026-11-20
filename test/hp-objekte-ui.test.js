@@ -20,3 +20,10 @@ test('Prüffälle zeigen unveränderte Originalfelder als Text und lassen sich s
  await w.hpImportOriginaldaten();assert.ok(w.document.body.textContent.includes('739230'));assert.ok(w.document.body.textContent.includes('<img src=x onerror=alert(1)>'));assert.equal(w.document.querySelector('img'),null);
  const next=[...w.document.querySelectorAll('button')].find(b=>b.textContent==='Weitere Prüffälle');next.click();await tick();assert.ok(urls[1].endsWith('seite=2'));assert.equal(next.disabled,true);
 });
+
+test('Messdienstabrechnungen haben eine getrennte Ansicht ohne Heizkosten-/Warmwasser-Aufteilung',async t=>{
+ const dom=new JSDOM('<div id="modal-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example/'});t.after(()=>dom.window.close());const w=dom.window,urls=[];
+ w.API={get:async url=>{urls.push(url);return {gesamt:1,seite:1,weitere:false,faelle:[{hp_objnr:4010,art:'kontenanteil',quellschluessel:'test',grund:'Messdienstabrechnung HK0/HK1 steht noch aus.',gelesen_ms:1,original:{BJ:'2026',VSchl:'HK1',AntPers:'12.5'}}]};}};
+ for(const file of ['ui','kern','shell','hp-objekte'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());
+ await w.hpImportOriginaldaten(true);assert.equal(urls[0],'/hp-objekte/originaldaten?status=ausstehend&seite=1');assert.match(w.document.body.textContent,/unterjährige Nutzerwechsel/);assert.match(w.document.body.textContent,/1 ausstehende Messdienstabrechnungen/);assert.match(w.document.body.textContent,/12.5/);
+});
