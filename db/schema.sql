@@ -250,6 +250,22 @@ CREATE TABLE IF NOT EXISTS hp_import_ausstehend (
   PRIMARY KEY(verbindung_id,art,hp_objnr,quellschluessel)
 );
 
+-- Vom Verwalter ausdrücklich abgeschlossene Jahre bzw. bestätigte einzelne
+-- historische Quellversionen. Kein Löschen oder Umhängen alter Zuordnungen.
+CREATE TABLE IF NOT EXISTS hp_import_historische_jahre (
+  verbindung_id TEXT NOT NULL REFERENCES hp_objekt_importe(verbindung_id) ON DELETE RESTRICT,
+  jahr INTEGER NOT NULL CHECK(jahr BETWEEN 1 AND 9999),
+  grund TEXT NOT NULL, gesetzt_ms INTEGER NOT NULL,
+  PRIMARY KEY(verbindung_id,jahr)
+);
+CREATE TABLE IF NOT EXISTS hp_import_historische_datensaetze (
+  verbindung_id TEXT NOT NULL, art TEXT NOT NULL, hp_objnr INTEGER NOT NULL,
+  quellschluessel TEXT NOT NULL, hash TEXT NOT NULL, grund TEXT NOT NULL, gesetzt_ms INTEGER NOT NULL,
+  PRIMARY KEY(verbindung_id,art,hp_objnr,quellschluessel,hash),
+  FOREIGN KEY(verbindung_id,art,hp_objnr,quellschluessel,hash)
+    REFERENCES hp_import_originaldaten(verbindung_id,art,hp_objnr,quellschluessel,hash) ON DELETE RESTRICT
+);
+
 CREATE TABLE IF NOT EXISTS rollen_zuordnungen (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   adresse_id    INTEGER NOT NULL REFERENCES adressen(id) ON DELETE CASCADE,
