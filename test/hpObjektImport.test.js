@@ -57,6 +57,41 @@ test('einbuchstabige HP-Funktions- und Anteilsschlüssel bleiben erhalten',async
  assert.equal((await x.db.get('SELECT hp_pfkt_art FROM rollen_zuordnungen')).hp_pfkt_art,'E');
 });
 
+test('widersprüchliche Originale bleiben versioniert erhalten, ohne Rollen zu erfinden; spätere HP-Korrektur löst den Fall',async t=>{
+ const x=await setup(t);await x.address();await x.scan(records().slice(0,4));
+ const f=sample('funktion',{lfdNrDatensatz:'70',PFKt:'001',WhgNr:'1',AdrNr:'65937',DatVon:'739230',DatBis:'739067',Info:'Original'});
+ assert.equal((await x.scan([f])).fehler,1);assert.equal((await x.db.get('SELECT COUNT(*) n FROM rollen_zuordnungen')).n,0);
+ let list=await x.svc.originals(1);assert.equal(list.gesamt,1);assert.equal(list.faelle[0].original.DatVon,'739230');assert.equal(list.faelle[0].original.DatBis,'739067');
+ assert.equal((await x.svc.originals(999)).gesamt,0);await x.scan([f]);assert.equal((await x.db.get('SELECT COUNT(*) n FROM hp_import_originaldaten')).n,1);
+ f.werte.Info='Neue Quellversion';await x.scan([f]);assert.equal((await x.db.get('SELECT COUNT(*) n FROM hp_import_originaldaten')).n,2);assert.equal((await x.svc.originals(1)).gesamt,1);
+ f.werte.DatBis='0';assert.equal((await x.scan([f])).fehler,0);assert.equal((await x.svc.originals(1)).gesamt,0);
+ assert.equal((await x.db.get("SELECT COUNT(*) n FROM hp_import_originaldaten WHERE status='uebernommen'")).n,2);
+ assert.equal((await x.db.get('SELECT COUNT(*) n FROM rollen_zuordnungen')).n,1);
+});
+
+test('gezielter Wiederholungsplan ist kunden- und quellgebunden und verliert bei gelösten Fehlern keine nächste Seite',async t=>{
+ const x=await setup(t);await x.address();await x.scan(records().slice(0,4));
+ const bad=Array.from({length:25},(_,i)=>sample('funktion',{lfdNrDatensatz:String(100+i),PFKt:'ZZZ',WhgNr:'1',AdrNr:'65937'}));
+ assert.equal((await x.scan(bad)).fehler,25);
+ const input={...x.input,art:'funktion',nach_objnr:0,nach_key:''};
+ const a=await x.svc.retryPlan(x.p.id,x.p.token,input);assert.equal(a.keys.length,20);assert.equal(a.objnr,4010);
+ await assert.rejects(x.svc.retryPlan(x.c.id,x.c.token,input),e=>e.status===401);
+ await assert.rejects(x.svc.retryPlan(x.p.id,x.p.token,{...input,quelle:'b'.repeat(64)}),/Quelle/);
+ await assert.rejects(x.svc.retryPlan(x.p.id,x.p.token,{...input,art:'__proto__'}),e=>e.status===400);
+ for(const r of bad.slice(0,20))r.werte.PFKt='001';await x.scan(bad.slice(0,20));
+ const b=await x.svc.retryPlan(x.p.id,x.p.token,{...input,nach_objnr:a.objnr,nach_key:a.keys.at(-1)});assert.equal(b.keys.length,5);
+ assert.equal((await x.svc.originals(1)).gesamt,5);
+});
+
+test('negative native Tageswerte bleiben exakt erhalten und leere historische Schlüssel werden als Original gesichert',async t=>{
+ const x=await setup(t);await x.address();const rs=records();rs[8].werte.AnzTag='-91';
+ assert.equal((await x.scan(rs)).fehler,0);assert.equal((await x.db.get('SELECT anzahl_tage FROM personenkonto_verteilung_zeitwerte')).anzahl_tage,-91);
+ const share=sample('einheitsanteil',{Buchungsjahr:'2025',WhgNr:'1',VSchl:'',WhgAnteile:'12.5'});
+ assert.ok(F.record(share).key.endsWith('0:'));assert.equal((await x.scan([share])).fehler,1);
+ assert.equal((await x.svc.originals(1)).faelle[0].original.VSchl,'');
+ assert.deepEqual(await x.db.all('PRAGMA foreign_key_check'),[]);
+});
+
 test('beendete, fehlende und veraltete Statuswerte erlauben weder Objektanlage noch Kinderimport',async t=>{
  const x=await setup(t);const ended={...x.input,objnr:4020,fi_beendet:737424};assert.equal((await x.svc.status(x.p.id,x.p.token,ended)).erlaubt,false);
  await assert.rejects(x.svc.scan(x.p.id,x.p.token,{...ended,records:[sample('objekt',{ObjNr:'4020'})]}),/Verwaltungsstatus/);
