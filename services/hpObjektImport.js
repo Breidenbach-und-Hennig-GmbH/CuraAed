@@ -45,7 +45,9 @@ async function project(tx,id,r){
  }
  if(r.art==='funktion'){
   const number=integer(w.lfdNrDatensatz,1),an=integer(w.AdrNr||'0'),wn=integer(w.WhgNr||'0');
-  const a=an&&await tx.get('SELECT adresse_id FROM hp_adress_zuordnung WHERE verbindung_id=? AND hp_nummer=?',[id,an]);if(!a)fail('Personenfunktion ohne zugeordnete HP-Adresse; Adressabgleich prüfen.');
+  let a=an&&await tx.get('SELECT adresse_id FROM hp_adress_ziele WHERE verbindung_id=? AND hp_nummer=?',[id,an]);
+  if(!an&&w.PFKt==='014')a=await tx.get('SELECT m.adresse_id FROM hp_import_leerstand_adressen c JOIN hp_adress_ziele m ON m.verbindung_id=c.verbindung_id AND m.hp_nummer=c.hp_nummer JOIN adressen a ON a.id=m.adresse_id WHERE c.verbindung_id=? AND a.archiviert=0',[id]);
+  if(!a)fail('Personenfunktion ohne zugeordnete HP-Adresse; Adressabgleich prüfen.');
   const eid=wn?(await mapping(tx,'hp_einheit_zuordnung',id,n,'hp_whgnr',wn)).einheit_id:null;
   const code=await tx.get('SELECT rolle FROM pfkt_codes WHERE code=?',[w.PFKt]);if(!code||!code.rolle)fail('HP-Personenfunktionscode ist noch nicht zugeordnet.');
   const von=date(w.DatVon,'DatVon'),bis=date(w.DatBis,'DatBis');if(von&&bis&&bis<von)fail('HP-Enddatum liegt vor dem Beginndatum; Original zur Prüfung gesichert.');
@@ -56,7 +58,7 @@ async function project(tx,id,r){
  if(r.art==='konto'){
   const number=integer(w.PKtoNr,1),wn=integer(w.WhgNr||'0'),an=integer(w.AdrNr||'0');let eid=null,aid=null;
   if(wn){eid=(await mapping(tx,'hp_einheit_zuordnung',id,n,'hp_whgnr',wn)).einheit_id;}
-  if(an){const a=await tx.get('SELECT adresse_id FROM hp_adress_zuordnung WHERE verbindung_id=? AND hp_nummer=?',[id,an]);if(!a)fail('HP-Adresse '+an+' fehlt noch. Adressabgleich abwarten.');aid=a.adresse_id;}
+  if(an){const a=await tx.get('SELECT adresse_id FROM hp_adress_ziele WHERE verbindung_id=? AND hp_nummer=?',[id,an]);if(!a)fail('HP-Adresse '+an+' fehlt noch. Adressabgleich abwarten.');aid=a.adresse_id;}
   let m=await tx.get('SELECT * FROM hp_personenkonto_zuordnung WHERE verbindung_id=? AND hp_objnr=? AND hp_pktonr=?',[id,n,number]);
   if(!m){if(await tx.get('SELECT 1 FROM personenkonten WHERE objekt_id=? AND nummer=?',[oid,String(number)]))fail('Lokale Kontonummer bereits belegt; keine automatische Zusammenführung.');const a=await tx.run('INSERT INTO personenkonten(objekt_id,nummer) VALUES(?,?)',[oid,String(number)]);await tx.run('INSERT INTO hp_personenkonto_zuordnung(verbindung_id,hp_objnr,objekt_id,hp_pktonr,hp_adrnr,hp_whgnr,personenkonto_id) VALUES(?,?,?,?,?,?,?)',[id,n,oid,number,an,wn,a.lastID]);m={personenkonto_id:a.lastID};}
   return {table:'personenkonten',keys:{id:m.personenkonto_id},values:{adresse_id:aid,einheit_id:eid,kontoname:w.PKtoName,aktenzeichen:w.AK_Aktenzeichen,ref_nr:decimal(w.RefKtoNr,'RefKtoNr')}};
@@ -100,8 +102,8 @@ function service(db,{now=()=>Date.now()}={}){
  const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date(now()));
  async function auth(tx,id,token,data,sourceRequired=true){const v=await tx.get("SELECT v.*,i.token_hash AS import_hash FROM hp_objekt_importe i JOIN hp_adress_verbindungen v ON v.id=i.verbindung_id JOIN benutzer b ON b.id=v.benutzer_id WHERE v.id=? AND i.aktiv=1 AND v.aktiv=1 AND b.aktiv=1 AND b.rolle='admin'",[id]);if(!v||typeof token!=='string'||!(/^[A-Za-z0-9_-]{43}$/).test(token)||!crypto.timingSafeEqual(Buffer.from(hash(token)),Buffer.from(v.import_hash)))fail('Objektimport-Freigabe ungültig oder beendet.',401);if(data?.datenbank!==v.datenbank)fail('HP-Datenbank gehört nicht zu dieser Kopplung.');if(sourceRequired){const source=await tx.get('SELECT fingerprint FROM hp_import_quellen WHERE verbindung_id=?',[id]);if(!source||data.quelle!==source.fingerprint)fail('HP-Quelle stimmt nicht mit der festen Kundenkopplung überein.');}return v;}
  async function active(tx,id,n){const s=await tx.get('SELECT * FROM hp_import_objektstatus WHERE verbindung_id=? AND hp_objnr=?',[id,n]);if(!s||s.status!=='aktiv'||now()<s.geprueft_ms||now()-s.geprueft_ms>60000)fail('Aktueller HP-Verwaltungsstatus muss erneut gelesen werden.');}
- async function apply(tx,id,r){
-  await active(tx,id,r.objnr);
+ async function apply(tx,id,r,saved=false){
+  if(saved){if(!await tx.get("SELECT 1 FROM hp_import_objektstatus WHERE verbindung_id=? AND hp_objnr=? AND status='aktiv'",[id,r.objnr]))fail('Gespeichertes Objekt ist nicht aktiv.');}else await active(tx,id,r.objnr);
   const old=await tx.get('SELECT * FROM hp_import_datensaetze WHERE verbindung_id=? AND art=? AND hp_objnr=? AND quellschluessel=?',[id,r.art,r.objnr,r.key]);
   const p=await project(tx,id,r);for(const k of Object.keys(p.values))if(p.values[k]==='')p.values[k]=null;let current=await row(tx,p.table,p.keys),created=!old;
   if(!current&&p.create){await ensure(tx,p.table,p.keys,p.values);current=await row(tx,p.table,p.keys);}
@@ -151,6 +153,20 @@ function service(db,{now=()=>Date.now()}={}){
    });
   },
   async retryPlan(id,token,input){return db.transaktion(async tx=>{await auth(tx,id,token,input);return P.plan(tx,id,input);});},
+  async repairVacancies(owner,id,expected){
+   if(!Array.isArray(expected)||expected.length>100||!expected.length)fail('Ungültige Leerstandsauswahl.');
+   return db.transaktion(async tx=>{
+    if(!await tx.get("SELECT 1 FROM hp_adress_verbindungen v JOIN benutzer b ON b.id=v.benutzer_id WHERE v.id=? AND v.benutzer_id=? AND v.aktiv=1 AND b.aktiv=1 AND b.rolle='admin'",[id,owner]))fail('Eigene aktive Administratorkopplung fehlt.');
+    let repaired=0;for(const e of expected){
+     if(!Number.isSafeInteger(e.objnr)||typeof e.key!=='string'||typeof e.hash!=='string')fail('Ungültige Quellversion.');
+     const o=await tx.get("SELECT * FROM hp_import_originaldaten WHERE verbindung_id=? AND art='funktion' AND hp_objnr=? AND quellschluessel=? ORDER BY gelesen_ms DESC,hash LIMIT 1",[id,e.objnr,e.key]);
+     if(!o||o.hash!==e.hash)fail('Leerstandsquelle wurde geändert.');
+     const r=F.record({art:'funktion',objnr:e.objnr,werte:JSON.parse(o.original)}),w=r.werte;
+     if(w.PFKt!=='014'||w.AdrNr!=='0'||integer(w.WhgNr)<1||!date(w.DatVon,'DatVon')||(date(w.DatBis,'DatBis')&&date(w.DatBis,'DatBis')<date(w.DatVon,'DatVon')))fail('Kein eindeutig gültiger Wohnungsleerstand.');
+     await apply(tx,id,r,true);await P.erledigen(tx,id,r,now());await tx.run("DELETE FROM hp_import_fehler WHERE verbindung_id=? AND art='funktion' AND hp_objnr=? AND quellschluessel=?",[id,e.objnr,e.key]);repaired++;
+    }return {repaired};
+   });
+  },
   async originals(owner,input){return P.liste(db,owner,input,now());},
   async compare(id,token,input){if(!Array.isArray(input.fingerprints)||input.fingerprints.length>50)fail('Höchstens 50 HP-Fingerabdrücke.',400);return db.transaktion(async tx=>{await auth(tx,id,token,input);await active(tx,id,input.objnr);const needed=[];for(const f of input.fingerprints){if(!f||typeof f.art!=='string'||!F.datasets[f.art]||typeof f.key!=='string'||f.key.length>256||typeof f.hash!=='string'||!(/^[a-f0-9]{64}$/).test(f.hash))fail('Ungültiger HP-Fingerabdruck.',400);const old=await tx.get('SELECT * FROM hp_import_datensaetze WHERE verbindung_id=? AND art=? AND hp_objnr=? AND quellschluessel=?',[id,f.art,input.objnr,f.key]);const error=await tx.get('SELECT 1 FROM hp_import_fehler WHERE verbindung_id=? AND art=? AND hp_objnr=? AND quellschluessel=?',[id,f.art,input.objnr,f.key]);if(old&&old.hash===f.hash)await tx.run('UPDATE hp_import_datensaetze SET bestaetigt_ms=? WHERE verbindung_id=? AND art=? AND hp_objnr=? AND quellschluessel=?',[now(),id,f.art,input.objnr,f.key]);if(!old||old.hash!==f.hash||error)needed.push({art:f.art,key:f.key});else if(old.status!=='konflikt'){const basis=JSON.parse(old.basis),current=await row(tx,old.tabelle,JSON.parse(old.lokal_schluessel));const status=!current?'fehler':Object.keys(basis).some(k=>(current[k]??null)!==basis[k])?'lokal_geaendert':'synchron';if(status==='fehler')needed.push({art:f.art,key:f.key});if(status!==old.status)await tx.run('UPDATE hp_import_datensaetze SET status=? WHERE verbindung_id=? AND art=? AND hp_objnr=? AND quellschluessel=?',[status,id,f.art,input.objnr,f.key]);}}return {protokoll:'objekt-import-delta-v1',benoetigt:needed};});},
   async scan(id,token,input){if(!Array.isArray(input.records)||input.records.length>50)fail('Höchstens 50 HP-Datensätze je Anfrage.',400);return db.transaktion(async tx=>{await auth(tx,id,token,input);await active(tx,id,input.objnr);const result={neu:0,geaendert:0,unveraendert:0,konflikt:0,fehler:0};for(const raw of input.records){await tx.run('SAVEPOINT hp_import_row');let r;try{r=F.record(raw);if(r.objnr!==input.objnr)fail('Fremdes Elternobjekt im Import.');result[await apply(tx,id,r)]++;await P.erledigen(tx,id,r,now());await tx.run('DELETE FROM hp_import_fehler WHERE verbindung_id=? AND art=? AND hp_objnr=? AND quellschluessel=?',[id,r.art,r.objnr,r.key]);await tx.run('RELEASE hp_import_row');}catch(e){await tx.run('ROLLBACK TO hp_import_row');await tx.run('RELEASE hp_import_row');if(!(e instanceof ValidationError)&&!['SQLITE_CONSTRAINT'].includes(e.code))throw e;result.fehler++;const grund=e instanceof ValidationError?e.message:'HP-Zuordnung oder Werte verletzen die Datenprüfung.';if(r&&r.objnr===input.objnr)await P.sichern(tx,id,r,grund,now());const art=typeof raw?.art==='string'&&F.datasets[raw.art]?raw.art:'datensatz',key=r?.key||'';await tx.run('INSERT INTO hp_import_fehler VALUES(?,?,?,?,?,?) ON CONFLICT(verbindung_id,art,hp_objnr,quellschluessel) DO UPDATE SET meldung=excluded.meldung,gesehen_am=excluded.gesehen_am',[id,art,input.objnr,key,e instanceof ValidationError?e.message:'HP-Zuordnung oder Werte verletzen die Datenprüfung.',iso()]);}}await tx.run('UPDATE hp_objekt_importe SET zuletzt_gesehen=?,letzter_lauf=? WHERE verbindung_id=?',[now(),iso(),id]);return result;});}
