@@ -222,3 +222,32 @@ test('Quellbindung bleibt bei Tokenrotation bestehen und Trennen der Kundenverbi
  await x.svc.bindSource(p.id,p.token,x.input);assert.equal((await x.db.get('SELECT COUNT(*) AS n FROM objekte')).n,1);
 });
 module.exports={sample,records};
+
+test('bestätigte Leerstandsadresse und zusammengeführte HP-Adressen bleiben bei Wiederholungen stabil',async t=>{
+ const x=await setup(t);await x.address();assert.equal((await x.scan(records())).fehler,0);
+ const m=await x.db.get('SELECT adresse_id FROM hp_adress_zuordnung WHERE verbindung_id=? AND hp_nummer=65937',[x.c.id]);
+ const alias=await x.db.run("INSERT INTO adressen(nummer,nachname,archiviert) VALUES('HP-123','Leerstand',1)");
+ await x.db.run("INSERT INTO hp_adress_zuordnung(verbindung_id,hp_nummer,adresse_id,basis,status) VALUES(?,123,?,'{}','synchron')",[x.c.id,alias.lastID]);
+ await x.db.run('INSERT INTO hp_adress_zusammenfuehrungen VALUES(?,?,?,?,?)',[x.c.id,alias.lastID,m.adresse_id,'{}',1]);
+ await x.db.run('INSERT INTO hp_import_leerstand_adressen VALUES(?,?,?)',[x.c.id,65937,1]);
+ const vacant=sample('funktion',{lfdNrDatensatz:'123',PFKt:'014',WhgNr:'1',AdrNr:'0',DatVon:'738100',DatBis:'738200'});
+ assert.equal((await x.scan([vacant])).fehler,0);
+ assert.equal((await x.db.get('SELECT adresse_id FROM rollen_zuordnungen')).adresse_id,m.adresse_id);
+ assert.equal(JSON.parse((await x.db.get("SELECT remote FROM hp_import_datensaetze WHERE art='funktion'")).remote).AdrNr,'0');
+ assert.equal((await x.scan([vacant])).unveraendert,1);
+ const tenant=sample('funktion',{lfdNrDatensatz:'124',PFKt:'006',WhgNr:'1',AdrNr:'123',DatVon:'738100',DatBis:'0'});
+ assert.equal((await x.scan([tenant])).fehler,0);
+ assert.equal((await x.db.get("SELECT z.adresse_id FROM rollen_zuordnungen z JOIN hp_personenfunktion_zuordnung m ON m.zuordnung_id=z.id WHERE m.hp_lfdnr=124")).adresse_id,m.adresse_id);
+ const noAddress=sample('funktion',{lfdNrDatensatz:'125',PFKt:'006',WhgNr:'1',AdrNr:'0',DatVon:'738100',DatBis:'0'});
+ assert.equal((await x.scan([noAddress])).fehler,1);
+ await x.db.run('DELETE FROM hp_import_leerstand_adressen');
+ const saved=sample('funktion',{lfdNrDatensatz:'126',PFKt:'014',WhgNr:'1',AdrNr:'0',DatVon:'738100',DatBis:'738200'});
+ assert.equal((await x.scan([saved])).fehler,1);const original=await x.db.get("SELECT * FROM hp_import_originaldaten WHERE quellschluessel=?",[F.record(saved).key]);
+ await x.db.run('INSERT INTO hp_import_leerstand_adressen VALUES(?,?,?)',[x.c.id,65937,1]);
+ await assert.rejects(x.svc.repairVacancies(999,x.c.id,[{objnr:4010,key:original.quellschluessel,hash:original.hash}]));
+ await assert.rejects(x.svc.repairVacancies(1,x.c.id,[{objnr:4010,key:original.quellschluessel,hash:'0'.repeat(64)}]));
+ assert.deepEqual(await x.svc.repairVacancies(1,x.c.id,[{objnr:4010,key:original.quellschluessel,hash:original.hash}]),{repaired:1});
+ assert.equal((await x.db.get('SELECT status FROM hp_import_originaldaten WHERE quellschluessel=?',[original.quellschluessel])).status,'uebernommen');
+ assert.equal((await x.db.get("SELECT archiviert FROM adressen WHERE id=?",[alias.lastID])).archiviert,1);
+ assert.deepEqual(await x.db.all('PRAGMA foreign_key_check'),[]);
+});
