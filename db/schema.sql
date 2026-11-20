@@ -241,6 +241,15 @@ CREATE TABLE IF NOT EXISTS hp_import_originaldaten (
 );
 CREATE INDEX IF NOT EXISTS hp_original_fall ON hp_import_originaldaten(verbindung_id,art,hp_objnr,quellschluessel,gelesen_ms DESC);
 
+-- Noch nicht erstellte Messdienstabrechnungen bleiben erneut lesbar, sind
+-- aber keine Importfehler. Die Einstufung überlebt den Jahreswechsel.
+CREATE TABLE IF NOT EXISTS hp_import_ausstehend (
+  verbindung_id TEXT NOT NULL REFERENCES hp_objekt_importe(verbindung_id) ON DELETE RESTRICT,
+  art TEXT NOT NULL, hp_objnr INTEGER NOT NULL, quellschluessel TEXT NOT NULL,
+  jahr INTEGER NOT NULL, erstellt_ms INTEGER NOT NULL,
+  PRIMARY KEY(verbindung_id,art,hp_objnr,quellschluessel)
+);
+
 CREATE TABLE IF NOT EXISTS rollen_zuordnungen (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   adresse_id    INTEGER NOT NULL REFERENCES adressen(id) ON DELETE CASCADE,

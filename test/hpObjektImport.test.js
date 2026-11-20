@@ -83,6 +83,29 @@ test('gezielter Wiederholungsplan ist kunden- und quellgebunden und verliert bei
  assert.equal((await x.svc.originals(1)).gesamt,5);
 });
 
+test('ausstehende aktuelle HK0/HK1 bleiben gesichert, separat sichtbar und bis zum Messdienstimport erneut lesbar',async t=>{
+ const x=await setup(t);await x.address();await x.scan(records());
+ const waiting=[sample('einheitsanteil',{Buchungsjahr:'2026',WhgNr:'1',VSchl:'HK0',WhgAnteile:'25.5'}),sample('kontenanteil',{BJ:'2026',PKtoNr:'10001',VSchl:'HK1',AntPers:'73.2'})];
+ const real=[sample('einheitsanteil',{Buchungsjahr:'2025',WhgNr:'1',VSchl:'HK0',WhgAnteile:'1'}),sample('einheitsanteil',{Buchungsjahr:'2026',WhgNr:'1',VSchl:'083',WhgAnteile:'0'})];
+ assert.equal((await x.scan([...waiting,...real])).fehler,4);
+ let status=(await x.svc.list(1))[0];assert.deepEqual(status.pruefung,{offen:2,ausstehend:2,gesichert:2});assert.equal(status.fehler.length,2);
+ assert.equal((await x.svc.originals(1)).gesamt,2);let pending=await x.svc.originals(1,{status:'ausstehend'});assert.equal(pending.gesamt,2);assert.match(pending.faelle[0].grund,/steht noch aus/);
+ assert.equal((await x.svc.originals(999,{status:'ausstehend'})).gesamt,0);
+ assert.equal((await x.svc.retryPlan(x.p.id,x.p.token,{...x.input,art:'einheitsanteil',nach_objnr:0,nach_key:''})).keys.length,3);
+ // Existing pre-deployment records are reclassified without another HP read.
+ await x.db.run('DELETE FROM hp_import_ausstehend');assert.equal((await x.svc.originals(1,{status:'ausstehend'})).gesamt,2);
+ // The new calendar year does not turn an acknowledged pending bill into an error.
+ x.advance(70*86400000);await x.svc.status(x.p.id,x.p.token,{...x.input,fi_beendet:0});
+ assert.equal((await x.svc.originals(1,{status:'ausstehend'})).gesamt,2);
+ assert.equal((await x.scan([sample('jahr',{FIBJ_BJ:'2026'}),sample('schluessel',{BJ:'2026',VerteilerSchl:'HK0',SchlTxt:'Heiz- und Warmwasserkosten',Typ_PW:'W'}),waiting[0]])).fehler,0);
+ status=(await x.svc.list(1))[0];assert.equal(status.pruefung.ausstehend,1);assert.equal((await x.db.get('SELECT anteil_dezimal FROM einheit_verteilung_jahre WHERE jahr=2026')).anteil_dezimal,'25.5');
+ // A different actual data error must not remain hidden behind the pending label.
+ await x.scan([sample('schluessel',{BJ:'2026',VerteilerSchl:'HK1',SchlTxt:'Heiz- und Warmwasserkosten / Wechsel',Typ_PW:'P'})]);
+ waiting[1].werte.AntPers='NaN';await x.scan([waiting[1]]);assert.ok((await x.svc.originals(1)).faelle.some(r=>r.original.AntPers==='NaN'));
+ assert.equal((await x.svc.list(1))[0].pruefung.ausstehend,0);
+ assert.deepEqual(await x.db.all('PRAGMA foreign_key_check'),[]);
+});
+
 test('negative native Tageswerte bleiben exakt erhalten und leere historische Schlüssel werden als Original gesichert',async t=>{
  const x=await setup(t);await x.address();const rs=records();rs[8].werte.AnzTag='-91';
  assert.equal((await x.scan(rs)).fehler,0);assert.equal((await x.db.get('SELECT anzahl_tage FROM personenkonto_verteilung_zeitwerte')).anzahl_tage,-91);
