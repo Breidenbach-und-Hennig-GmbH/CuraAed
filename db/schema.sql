@@ -6,6 +6,67 @@
 
 PRAGMA foreign_keys = ON;
 
+-- Eigene CuraAed-Zählerdaten; die MaLo gehört zum Zählpunkt, nicht zum Wechselgerät.
+CREATE TABLE IF NOT EXISTS zaehlpunkte (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  objekt_id INTEGER NOT NULL REFERENCES objekte(id) ON DELETE RESTRICT,
+  einheit_id INTEGER REFERENCES einheiten(id) ON DELETE RESTRICT,
+  bezeichnung TEXT NOT NULL,
+  medium TEXT NOT NULL CHECK(medium IN ('strom','gas','kaltwasser','warmwasser','waerme','heizkostenverteiler')),
+  art TEXT NOT NULL CHECK(art IN ('haupt','wohnung','unter')),
+  marktlokation TEXT,
+  revision INTEGER NOT NULL DEFAULT 1,
+  erstellt_von INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  CHECK(marktlokation IS NULL OR (length(marktlokation)=11 AND marktlokation NOT GLOB '*[^0-9]*' AND medium IN ('strom','gas')))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_zaehlpunkt_malo ON zaehlpunkte(marktlokation) WHERE marktlokation IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_zaehlpunkt_objekt ON zaehlpunkte(objekt_id);
+CREATE TABLE IF NOT EXISTS zaehler (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  zaehlpunkt_id INTEGER NOT NULL REFERENCES zaehlpunkte(id) ON DELETE RESTRICT,
+  nummer TEXT NOT NULL,
+  einheit TEXT NOT NULL CHECK(einheit IN ('kWh','MWh','m3','GJ','HKV')),
+  eingebaut_am TEXT NOT NULL,
+  ausgebaut_am TEXT,
+  lobaro_geraet TEXT,
+  wert_pfad TEXT,
+  zeit_pfad TEXT NOT NULL DEFAULT 'time',
+  kennung_pfad TEXT,
+  kennung_wert TEXT,
+  einheit_pfad TEXT,
+  revision INTEGER NOT NULL DEFAULT 1,
+  CHECK(ausgebaut_am IS NULL OR ausgebaut_am>=eingebaut_am)
+);
+CREATE INDEX IF NOT EXISTS idx_zaehler_punkt ON zaehler(zaehlpunkt_id);
+CREATE TABLE IF NOT EXISTS zaehler_messwerte (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  zaehler_id INTEGER NOT NULL REFERENCES zaehler(id) ON DELETE RESTRICT,
+  zeitpunkt TEXT NOT NULL,
+  wert TEXT NOT NULL,
+  einheit TEXT NOT NULL,
+  quelle TEXT NOT NULL CHECK(quelle IN ('manuell','lobaro')),
+  quell_id TEXT,
+  quell_original TEXT,
+  erstellt_von INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+  erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(zaehler_id,zeitpunkt),
+  UNIQUE(zaehler_id,quelle,quell_id)
+);
+CREATE TABLE IF NOT EXISTS lobaro_verbindungen (
+  objekt_id INTEGER PRIMARY KEY REFERENCES objekte(id) ON DELETE RESTRICT,
+  token TEXT NOT NULL,
+  revision INTEGER NOT NULL DEFAULT 1,
+  geaendert_von INTEGER REFERENCES benutzer(id) ON DELETE SET NULL
+);
+CREATE TABLE IF NOT EXISTS lobaro_vorschauen (
+  id TEXT PRIMARY KEY,
+  objekt_id INTEGER NOT NULL REFERENCES objekte(id) ON DELETE CASCADE,
+  benutzer_id INTEGER NOT NULL REFERENCES benutzer(id) ON DELETE CASCADE,
+  verbindung_revision INTEGER NOT NULL,
+  ablauf INTEGER NOT NULL,
+  daten TEXT NOT NULL
+);
+
 -- ---------------------------------------------------------------------------
 -- Benutzer (interne Mitarbeiter). Kundenzugänge werden in einer späteren
 -- Ausbaustufe ergänzt; das Rollenmodell ist bereits darauf vorbereitet.
