@@ -474,7 +474,7 @@ async function objektMaske(id, params) {
     { text: 'Bild zum Objekt', titel: 'Foto ins Archiv laden (Kategorie „Foto/Bild")', onclick: () => archivUpload(fotoKtx, neuLaden), gesperrt: !schreiben },
     { text: 'Neues Objekt', titel: 'Neues Objekt anlegen (F4)', onclick: () => objektFormular(), gesperrt: !schreiben },
     { text: o.archiviert ? 'Reaktivieren' : 'Deaktivieren', titel: 'Objekt deaktivieren/reaktivieren (F3)', onclick: () => aktivUmschalten('Objekt', '/objekte/' + o.id, o), gesperrt: !schreiben },
-    { text: 'Zähler', schnell: true, gesperrt: true, grund: 'Zähler/Zählerstände – ' + SPAETER_KNOPF },
+    { text: 'Zähler', schnell: true, titel: 'Zählpunkte, Marktlokationsnummer, Geräte und Messwerte', onclick: () => geheZu('#/zaehler/' + o.id) },
     { text: 'Verwaltervertrag', schnell: true, gesperrt: true, grund: 'Verwaltervertrag/Verwaltervergütung – folgt mit der Finanzbuchhaltung (FIBU).' },
     { text: 'Heizkosten', schnell: true, gesperrt: true, grund: 'Heizkosten – ' + SPAETER_KNOPF },
   ], { zusatz: symbole });
