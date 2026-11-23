@@ -122,6 +122,7 @@ function baueApi(db, uploadDir, options = {}) {
 
   // Alle folgenden Routen erfordern eine Anmeldung.
   router.use(auth.erfordereLogin);
+  router.use('/objekte/:objektId/zaehler',require('./zaehler')(db,{...options.lobaro,publicUrl:options.hausperfekt?.publicUrl}));
   router.use('/mitarbeiterprofile',require('./mitarbeiterprofile')(db,options.hausperfekt?.publicUrl));
   const m365=require('../services/m365').baue(db,{...options.m365,publicUrl:options.m365?.publicUrl||options.hausperfekt?.publicUrl});
   router.use('/m365',require('./m365')(db,m365));
