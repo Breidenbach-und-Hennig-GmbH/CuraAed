@@ -6,6 +6,7 @@ module.exports=(db,m365)=>{
  r.use(auth.erfordereLogin,auth.erfordereSchreibrecht,(req,res,next)=>{res.set({'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'});next();});
  const same=(req,res,next)=>req.get('origin')===m365.origin&&req.is('application/json')?next():next(new ValidationError('Bitte den Posteingang in CuraAed verwenden.',403));
  const source=req=>req.query.quelle||req.body?.quelle;
+ r.post('/senden',same,h(async(req,res)=>res.json(await s.senden(req.benutzer,source(req),req.body||{}))));
  r.get('/quellen',h(async(req,res)=>res.json(await z.quellen(req.benutzer))));
  r.post('/verbinden',same,h(async(req,res)=>{if(req.body?.zustimmung!==true)throw new ValidationError('Bitte die Microsoft-Freigabe bestätigen.');res.json(await z.verbinden(req.benutzer,req.sessionToken));}));
  r.post('/trennen',same,h(async(req,res)=>res.json(await z.trennen(req.benutzer.id))));

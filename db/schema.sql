@@ -1033,3 +1033,5 @@ CREATE TABLE IF NOT EXISTS hp_import_leerstand_adressen (
  hp_nummer INTEGER NOT NULL,gesetzt_ms INTEGER NOT NULL,
  FOREIGN KEY(verbindung_id,hp_nummer) REFERENCES hp_adress_zuordnung(verbindung_id,hp_nummer) ON DELETE RESTRICT
 );
+
+CREATE TABLE IF NOT EXISTS email_sendungen(auftrag_id TEXT PRIMARY KEY,benutzer_id INTEGER NOT NULL REFERENCES benutzer(id),zugang TEXT NOT NULL,postfach TEXT NOT NULL,empfaenger TEXT NOT NULL,betreff TEXT NOT NULL,text TEXT NOT NULL,anfrage_hash TEXT NOT NULL,status TEXT NOT NULL,erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
