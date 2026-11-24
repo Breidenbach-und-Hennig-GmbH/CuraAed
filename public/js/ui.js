@@ -139,7 +139,13 @@ const UI = (() => {
       });
       return n;
     };
-    const erst = box.querySelector('.modal-body input, .modal-body select, .modal-body textarea') || box.querySelector('footer button');
+    const nutzbar = f => {
+      if (f.matches(':disabled') || f.readOnly || f.type === 'hidden' || f.closest('[hidden]')) return false;
+      for (let p=f; p && p!==box; p=p.parentElement) if (getComputedStyle(p).display === 'none') return false;
+      return true;
+    };
+    const erst = [...box.querySelectorAll('.modal-body input, .modal-body select, .modal-body textarea')].find(nutzbar)
+      || [...box.querySelectorAll('footer button')].find(nutzbar);
     if (erst) erst.focus();
     else { box.tabIndex = -1; box.focus(); }
     return { close: schliessen, box };
