@@ -73,7 +73,7 @@ function objektSuche() {
     ],
     abrufen: (w) => API.get('/objekte' + API.qs(w)),
     spalten: [
-      { label: 'Nr.', class: 'nowrap', render: (o) => o.nummer },
+      { label: 'Nr.', class: 'nowrap', render: (o) => o.anzeigenummer || o.nummer },
       { label: 'Bezeichnung', render: (o) => el('strong', { text: o.bezeichnung }) },
       { label: 'Typ', render: (o) => (o.objekttyp === 'HP' ? 'HP-Typ' : o.objekttyp === 'WEG' ? 'WEG' : 'Miete') },
       { label: 'Strasse', render: (o) => o.strasse },
