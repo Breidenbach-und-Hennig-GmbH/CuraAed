@@ -19,7 +19,7 @@ public sealed class CuraAedTelefonie:Form {
  readonly string file=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"CuraAed","Telefonie.dat");
  readonly HttpClient client=new HttpClient(new HttpClientHandler{AllowAutoRedirect=false}){Timeout=TimeSpan.FromSeconds(8)};
  CancellationTokenSource cancel;Task monitor;bool sending;string sent="",endpoint,token;volatile string state="unbekannt";DateTime last=DateTime.MinValue;
- [STAThread]public static void Main(){bool first;using(var mutex=new Mutex(true,"Local\\CuraAedTelefonie-"+System.Security.Principal.WindowsIdentity.GetCurrent().User.Value,out first)){if(!first){MessageBox.Show("Der CuraAed-Telefonstatus läuft bereits im Infobereich.");return;}Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);Application.Run(new CuraAedTelefonie());}}
+ [STAThread]public static void Main(){ServicePointManager.SecurityProtocol=SecurityProtocolType.Tls12;bool first;using(var mutex=new Mutex(true,"Local\\CuraAedTelefonie-"+System.Security.Principal.WindowsIdentity.GetCurrent().User.Value,out first)){if(!first){MessageBox.Show("Der CuraAed-Telefonstatus läuft bereits im Infobereich.");return;}Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);Application.Run(new CuraAedTelefonie());}}
  public CuraAedTelefonie(){
   Text="CuraAed – persönlicher Telefonstatus";ClientSize=new Size(470,250);MinimumSize=MaximumSize=Size;Font=new Font("Segoe UI",9);StartPosition=FormStartPosition.CenterScreen;
   var label=new Label{Text="CuraAed-Adresse",Left=12,Top=14,Width=135};url.SetBounds(150,12,305,24);
