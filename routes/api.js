@@ -31,6 +31,7 @@ const historieSvc = require('../services/historie');
 const fibuSvc = require('../services/fibu');
 const pktoSvc = require('../services/personenkonten');
 const kontenImportSvc = require('../services/kontenImport');
+const buchungsImportSvc = require('../services/buchungsImport');
 const pfktCodesSvc = require('../services/pfktCodes');
 const N = require('../lib/nummern');
 const benutzerSvc = require('../services/benutzer');
@@ -355,6 +356,17 @@ function baueApi(db, uploadDir, options = {}) {
     h(async (req, res) => res.status(201).json(await fibuSvc.kontoAnlegen(db, req.params.id, req.body || {}))));
   // Kontenrahmen aus HausPerfekt-Export (Excel/CSV) – ?pruefen=1 nur auswerten, sonst importieren
   const tabellenUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
+  router.get('/objekte/:id/buchungen', h(async (req, res) => {
+    res.set('Cache-Control', 'no-store').json(await buchungsImportSvc.journal(db, req.params.id, req.query.jahr));
+  }));
+  router.post('/objekte/:id/buchungen/import', auth.erfordereSchreibrecht, tabellenUpload.single('datei'),
+    h(async (req, res) => {
+      if (!req.file || !/\.csv$/i.test(req.file.originalname || '')) throw new ValidationError('Bitte eine CSV-Datei wählen.');
+      res.set('Cache-Control', 'no-store').json(await buchungsImportSvc.importieren(db, req.params.id, req.file.buffer, {
+        ausfuehren: req.query.pruefen === '0', pruefhash: req.body.pruefhash,
+        konten_anlegen: req.body.konten_anlegen === '1', benutzer_id: req.benutzer.id, dateiname: req.file.originalname,
+      }));
+    }));
   router.post('/objekte/:id/sachkonten/import', auth.erfordereSchreibrecht, tabellenUpload.single('datei'),
     h(async (req, res) => {
       if (!req.file) throw new ValidationError('Keine Datei übermittelt.');
