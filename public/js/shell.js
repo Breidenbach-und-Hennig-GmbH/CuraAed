@@ -112,7 +112,7 @@ const BEFEHLE = [
   { taste: 'k', icon: 'mail', text: 'Korrespondenz', aktion: (k) =>
       geheZu(kontextRoute(k) ? kontextRoute(k) + '?tab=archiv&kategorie=korrespondenz' : '#/archiv?kategorie=korrespondenz') },
   { taste: 'l', icon: 'building', text: 'Lieferant', nur: ['adresse'], folgt: FIBU },
-  { taste: 'm', icon: 'mail', text: 'E-Mail zur Akte', folgt: STUFE3 },
+  { taste: 'm', icon: 'mail', text: 'E-Mail', aktion: () => { const k=S.kontext||{};geheZu('#/posteingang'+(['adresse','objekt','akte'].includes(k.typ)&&k.id?'?typ='+k.typ+'&ziel='+k.id:'')); } },
   { taste: 'o', icon: 'building', text: 'Objekt', aktion: (k) =>
       (k.typ === 'adresse' ? pfktSprung(k, 'objekt') : geheZu(k.typ === 'einheit' || k.typ === 'pkto' ? '#/objekte/' + k.objekt.id : k.typ === 'objekt' ? kontextRoute(k) : '#/objekte')) },
   { taste: 'p', icon: 'user', text: 'Personenkonto', aktion: (k) => pktoSprung(k) },
@@ -593,6 +593,7 @@ function MENUE() {
     { titel: 'FIBU', eintraege: fibuMenue() },
     { titel: 'System', eintraege: [
       ...(darfSchreiben()?[{text:'Mein Profil',aktion:()=>meinProfil().catch(fehler)}]:[]),
+    {text:'Meine Microsoft-Anmeldung',aktion:()=>microsoftAnmeldeProfil()},
       { text: 'Benutzerverwaltung', nurAdmin: true, aktion: () => geheZu('#/benutzer') },
       {text:'HP-Verbindungen',nurAdmin:true,aktion:()=>geheZu('#/hausperfekt')},
       {text:'HP-Aktenübernahme',nurAdmin:true,aktion:()=>geheZu('#/hp-akten')},
@@ -837,6 +838,7 @@ const NAV = [
   { text: 'E-Banking', icon: 'bank', folgt: STUFE4 },
   { text: 'Vorgänge', icon: 'folder', hash: '#/vorgaenge', aktiv: (h) => /^#\/(vorgaenge|tickets)\b/.test(h) },
   { text: 'ETV', icon: 'users', hash: '#/etv', titel: 'Eigentümerversammlungen (ETV)', aktiv: (h) => /^#\/etv\b/.test(h) },
+  { text: 'E-Mail', icon: 'mail', hash: '#/posteingang', aktiv: h => /^#\/posteingang\b/.test(h) },
   { text: 'Dokumente', icon: 'file', hash: '#/dms', aktiv: (h) => /^#\/(archiv|dms|dms-uebernahme)\b/.test(h) },
   { text: 'Auswertungen', icon: 'chart', menue: 'Auswertungen / Listen', aktiv: (h) => /liste\b/.test(h) },
   { text: 'Einstellungen', icon: 'settings', menue: 'System', aktiv: (h) => /^#\/(benutzer|verwaltungen|hausperfekt|m365)\b/.test(h) },
