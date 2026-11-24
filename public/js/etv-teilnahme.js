@@ -32,7 +32,7 @@
       catch(e){last='';msg.textContent=e.message;}finally{busy=false;await poll();}
      }}));row.append(buttons);box.append(row);
     }
-   }else{box.append(el('p',{text:'Die Abstimmung ist geschlossen.'}));if(round.ergebnis){const z=round.ergebnis;box.append(el('p',{text:'Ja: '+z.summen.ja+' · Nein: '+z.summen.nein+' · Enthaltungen: '+z.summen.enthaltung}),el('p',{text:'Rechnerisch: '+({angenommen:'angenommen',abgelehnt:'abgelehnt',keine_gueltige_stimme:'keine gültige Ja-/Nein-Stimme'}[z.status]||z.status)}));}}
+   }else{box.append(el('p',{text:'Die Abstimmung ist geschlossen.'}));if(round.ergebnis){const z=round.ergebnis,counts=z.summen_anzeige||z.summen;box.append(el('p',{text:'Ja: '+counts.ja+' · Nein: '+counts.nein+' · Enthaltungen: '+counts.enthaltung}),el('p',{text:'Rechnerisch: '+({angenommen:'angenommen',abgelehnt:'abgelehnt',keine_gueltige_stimme:'keine gültige Ja-/Nein-Stimme'}[z.status]||z.status)}));}}
    agenda.append(box);
   }
   if(s.teams_url)side.append(el('section',{},[el('h2',{text:'Bild und Ton über Teams'}),el('p',{text:'Teams in einem zweiten Fenster öffnen. Hier bleiben Tagesordnung und Abstimmung sichtbar.'}),el('a',{href:s.teams_url,target:'_blank',rel:'noopener noreferrer',class:'button',text:'Teams-Besprechung öffnen'})]));
