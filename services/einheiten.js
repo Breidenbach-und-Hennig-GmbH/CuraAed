@@ -12,11 +12,11 @@ async function listeNachObjekt(db, objektId, opts = {}) {
     where.push('(e.bezeichnung LIKE ? OR e.lage LIKE ? OR e.nummer LIKE ?)');
     params.push(`%${suche}%`, `%${suche}%`, `%${suche}%`);
   }
-  return db.all(
+  return require('../lib/meaAnzeige').ergaenzen(db,await db.all(
     `SELECT e.* FROM einheiten e WHERE ${where.join(' AND ')}
      ORDER BY e.nummer COLLATE NOCASE, e.bezeichnung COLLATE NOCASE`,
     params
-  );
+  ));
 }
 
 /** Globale Suche über alle Einheiten (für „Wohnung"-Suche). */
@@ -34,17 +34,18 @@ async function suche(db, opts = {}) {
     where.push('e.einheitstyp = ?');
     params.push(V.oneOf(opts.einheitstyp, V.EINHEITSTYPEN, 'Einheitstyp'));
   }
-  return db.all(
+  return require('../lib/meaAnzeige').ergaenzen(db,await db.all(
     `SELECT e.*, o.nummer AS objekt_nummer, o.bezeichnung AS objekt_bezeichnung, o.ort AS objekt_ort
      FROM einheiten e JOIN objekte o ON o.id = e.objekt_id
      WHERE ${where.join(' AND ')}
      ORDER BY e.nummer COLLATE NOCASE LIMIT 500`,
     params
-  );
+  ));
 }
 
 async function holen(db, id) {
-  return db.get('SELECT * FROM einheiten WHERE id = ?', [id]);
+  const row=await db.get('SELECT * FROM einheiten WHERE id = ?', [id]);
+  return row?(await require('../lib/meaAnzeige').ergaenzen(db,[row]))[0]:row;
 }
 
 async function anlegen(db, objektId, data) {
