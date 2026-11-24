@@ -27,14 +27,3 @@
 .cu-team-fenster>p{font-size:10px;margin:4px 6px;color:#62586e}
 .cu-team-fenster footer{display:flex;justify-content:flex-end;gap:5px;padding:4px 6px 14px}
 .cu-team-fenster :focus-visible{outline:2px solid #7653c7;outline-offset:1px}
-.cu-profilbild{display:block;width:36px;height:36px;object-fit:cover;border-radius:50%;background:#f5f3fa;border:1px solid #e5dfef;flex-shrink:0}
-.cu-team{display:flex;align-items:center;gap:5px}
-.cu-team-symbol{padding:0;border:0;background:transparent;border-radius:50%;cursor:pointer}
-.cu-team-symbol:hover{outline:2px solid #8655dc;outline-offset:2px}
-.cu-team-symbol .cu-profilbild{width:30px;height:30px}
-.cu-team-liste{display:grid;gap:12px;max-height:60vh;overflow:auto}
-.cu-team-person{display:flex;gap:12px;align-items:center}.cu-team-person span{flex:1}
-.cu-profil-form{display:grid;gap:12px}.cu-profil-form label{font-weight:600}
-.cu-profil-vorschau .cu-profilbild{width:88px;height:88px}
-.cu-avatar .cu-profilbild{width:100%;height:100%}
-@media(max-width:900px){.cu-team-symbol{display:none}}
