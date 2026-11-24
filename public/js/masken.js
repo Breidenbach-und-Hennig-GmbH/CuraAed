@@ -73,7 +73,7 @@ function objektSuche() {
     ],
     abrufen: (w) => API.get('/objekte' + API.qs(w)),
     spalten: [
-      { label: 'Nr.', class: 'nowrap', render: (o) => o.nummer },
+      { label: 'Nr.', class: 'nowrap', render: (o) => o.anzeigenummer || o.nummer },
       { label: 'Bezeichnung', render: (o) => el('strong', { text: o.bezeichnung }) },
       { label: 'Typ', render: (o) => (o.objekttyp === 'HP' ? 'HP-Typ' : o.objekttyp === 'WEG' ? 'WEG' : 'Miete') },
       { label: 'Strasse', render: (o) => o.strasse },
@@ -474,7 +474,7 @@ async function objektMaske(id, params) {
     { text: 'Bild zum Objekt', titel: 'Foto ins Archiv laden (Kategorie „Foto/Bild")', onclick: () => archivUpload(fotoKtx, neuLaden), gesperrt: !schreiben },
     { text: 'Neues Objekt', titel: 'Neues Objekt anlegen (F4)', onclick: () => objektFormular(), gesperrt: !schreiben },
     { text: o.archiviert ? 'Reaktivieren' : 'Deaktivieren', titel: 'Objekt deaktivieren/reaktivieren (F3)', onclick: () => aktivUmschalten('Objekt', '/objekte/' + o.id, o), gesperrt: !schreiben },
-    { text: 'Zähler', schnell: true, gesperrt: true, grund: 'Zähler/Zählerstände – ' + SPAETER_KNOPF },
+    { text: 'Zähler', schnell: true, titel: 'Zählpunkte, Marktlokationsnummer, Geräte und Messwerte', onclick: () => geheZu('#/zaehler/' + o.id) },
     { text: 'Verwaltervertrag', schnell: true, gesperrt: true, grund: 'Verwaltervertrag/Verwaltervergütung – folgt mit der Finanzbuchhaltung (FIBU).' },
     { text: 'Heizkosten', schnell: true, gesperrt: true, grund: 'Heizkosten – ' + SPAETER_KNOPF },
   ], { zusatz: symbole });
@@ -626,6 +626,7 @@ async function einheitMaske(id, params) {
   ];
   const seite = seitenleiste([
     { text: 'Bearbeiten', onclick: () => einheitFormular(e.objekt_id, e), gesperrt: schreibSperre() },
+    { text: 'Zähler', schnell: true, titel: 'Zählerverwaltung dieser Wohnung', onclick: () => geheZu('#/zaehler/' + o.id + '?einheit=' + e.id) },
     { text: 'W.Soll', schnell: true, titel: 'Sollwerte (Hausgeld/Miete) des Personenkontos', onclick: () => wSollWohnung(pktos) },
     { text: 'Vschl.', titel: 'Verteilerschlüssel des Objekts', onclick: () => verteilerDialog(o) },
     { text: 'Zuordnung', schnell: true, titel: 'Eigentümer/Mieter zuordnen', onclick: () => zuordnungFormular({ einheit_id: e.id }, neuLaden), gesperrt: schreibSperre() },
@@ -1190,6 +1191,7 @@ async function adresseMaske(id, params) {
     { text: 'E-Mail', schnell: true, titel: 'E-Mail-Adressen (Versand laut Portooptimierung, Info für den Sachbearbeiter)', onclick: () => emailListeDialog(a) },
     { text: 'Wählen', schnell: true, titel: ersteNummer ? `${ersteNummer.nummer} anrufen` : 'Keine Telefonnummer hinterlegt', href: ersteNummer ? telHref(ersteNummer.nummer) : null, gesperrt: !ersteNummer, grund: 'Keine Telefonnummer hinterlegt.' },
     { text: 'Pers.-Kto', titel: 'Personenkonto(en) dieser Adresse (Strg+P)', onclick: () => pktoSprung(S.kontext) },
+    { text: 'Zähler', schnell: true, titel: 'Zählerverwaltung der zugeordneten Objekte und Wohnungen', onclick: () => zaehlerAdresse(a,zuord) },
     { abstand: true },
     { text: 'Änderungshistorie', titel: 'Wer hat wann was an dieser Adresse geändert?', onclick: () => geheZu(basis + '?tab=historie') },
     { text: 'Export', titel: 'Adresse als vCard (Outlook/Handy) exportieren', href: `/api/adressen/${a.id}/vcard` },
