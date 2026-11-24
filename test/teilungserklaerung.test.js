@@ -81,3 +81,26 @@ test('Sonderregeln werden nicht als allgemeines Stimmprinzip gesetzt; fehlende M
   await assert.rejects(te.uebernehmen(a,job2,{daten:next.ergebnis,geprueft:true}),e=>e.status===409);
   assert.equal((await db.get('SELECT COUNT(*) n FROM objekte')).n,1);assert.ok(saved.objekt_id);
 });
+
+function vorbereitung(){const r=result();return{format:'curaaed-teilung-vorbereitung-v1',quelle:{sha256:require('node:crypto').createHash('sha256').update('%PDF-Test').digest('hex'),pdf_seiten:1},ergebnis:{...r,objekt_belege:[r.objekt.beleg],wohnungen:r.wohnungen.map(w=>({...w,mea_original:w.mea}))}};}
+test('Manuelle Vorbereitung prüft Original, Eigentümer und Fundstellen ohne Modellaufruf',async t=>{
+ const {db,a,b,te}=await setup(t,{complete:async()=>{throw Error('Kein Modellaufruf erlaubt');}}),job=await lesen(te,a),data=vorbereitung();
+ await assert.rejects(te.vorbereiten(b,job,data),e=>e.status===404);
+ const wrong=structuredClone(data);wrong.quelle.sha256='0'.repeat(64);await assert.rejects(te.vorbereiten(a,job,wrong),/Original/);
+ wrong.quelle.sha256=data.quelle.sha256;wrong.ergebnis.wohnungen[0].beleg.zitat='Frei erfundene Fundstelle';await assert.rejects(te.vorbereiten(a,job,wrong),/Fundstelle/);
+ await te.vorbereiten(a,job,data);const r=await te.stand(a,job);assert.equal(r.status,'analysiert');assert.equal(r.ergebnis.vorlaeufig,true);assert.equal(r.ergebnis.herkunft,'manuelle_vorbereitung');
+ assert.equal((await db.get('SELECT COUNT(*) n FROM objekte')).n,0);
+});
+test('Vorläufige Übernahme bleibt lokal, archiviert das Original und verhindert Wiederholung und Dubletten',async t=>{
+ const {db,a,te}=await setup(t),job=await lesen(te,a);await te.vorbereiten(a,job,vorbereitung());const r=await te.stand(a,job);
+ await assert.rejects(te.uebernehmen(a,job,{daten:r.ergebnis,geprueft:true,objektnummer:'4236'}),/VORL-/);
+ const request={daten:r.ergebnis,geprueft:true,objektnummer:'VORL-TEST'};const saved=await te.uebernehmen(a,job,request);
+ assert.equal((await te.uebernehmen(a,job,request)).objekt_id,saved.objekt_id);
+ const object=await db.get('SELECT * FROM objekte WHERE id=?',[saved.objekt_id]);assert.match(object.bezeichnung,/^VORLÄUFIG/);assert.match(object.notizen,/nicht mit HausPerfekt gekoppelt/);
+ for(const table of ['hp_objekt_zuordnung','hp_einheit_zuordnung'])assert.equal((await db.get('SELECT COUNT(*) n FROM '+table)).n,0);
+ const config=await require('../services/abstimmungen').config(db,saved.objekt_id);assert.equal(config.daten.prinzip,'mea');assert.equal(config.daten.geprueft,false);
+ assert.equal((await db.get('SELECT COUNT(*) n FROM archiv_verknuepfungen')).n,3);
+ await assert.rejects(te.vorbereiten(a,job,vorbereitung()),e=>e.status===409);
+ const other=await lesen(te,a);await te.vorbereiten(a,other,vorbereitung());const next=await te.stand(a,other);await assert.rejects(te.uebernehmen(a,other,{daten:next.ergebnis,geprueft:true}),e=>e.status===409);
+ assert.equal((await db.get('SELECT COUNT(*) n FROM objekte')).n,1);
+});

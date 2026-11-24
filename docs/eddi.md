@@ -30,4 +30,6 @@ Das Original-PDF wird am neuen Objekt und seinen Einheiten archiviert. Ein ausdr
 
 ## Validierungsgrenzen
 
+Manuell vorbereitete Daten lassen sich über „Vorbereitete Daten laden“ ohne KI-Aufruf als prüfbarer Entwurf übernehmen. Die Vorbereitung muss zum SHA-256 des vollständig gelesenen Original-PDFs gehören; alle Einheiten- und Stimmregel-Fundstellen werden erneut gegen dessen Seiten geprüft. Dieser Weg erstellt ausschließlich einen vorläufigen lokalen Bestand: Nummer `VORL-…`, sichtbarer Hinweis im Objektnamen und in den Stammdaten, keine HP-Objekt-/Wohnungszuordnung und kein Connectorauftrag. Original und Stimmregeln werden wie beim KI-Entwurf archiviert. Eine erneute bestätigte Anlage ist idempotent; eine bereits vorhandene Objektanschrift verhindert eine neue Anlage. Die fachliche ETV-Freigabe wird dadurch nicht erteilt.
+
 Die automatisierten Tests verwenden einen austauschbaren Modelladapter und synthetische Dokumente. Sie belegen Rechteprüfung, bestätigte Änderungen, Wiederholungsschutz, exakte MEA, Fundstellenprüfung und Rücknahme bei Fehlern. Eine echte OpenAI-Auswertung benötigt einen vom Administrator eingerichteten API-Zugang und ist gesondert zu prüfen. Ein erfolgreicher lokaler OCR-Lauf allein belegt keine richtige KI-Auswertung.
