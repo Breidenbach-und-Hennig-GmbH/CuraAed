@@ -889,8 +889,13 @@ CREATE TABLE IF NOT EXISTS ticket_status_migrationen (version INTEGER PRIMARY KE
 CREATE TABLE IF NOT EXISTS mitarbeiterprofile (
  benutzer_id INTEGER PRIMARY KEY REFERENCES benutzer(id) ON DELETE CASCADE,
  starface_login_id TEXT,
+ rufnummer TEXT,
  bild BLOB,
  revision INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS mitarbeiter_aktivitaet (
+ sitzung_token TEXT PRIMARY KEY REFERENCES sitzungen(token) ON DELETE CASCADE,
+ gesehen_ms INTEGER NOT NULL
 );
 
 -- Persönliche ETV-Einladungen: unveränderliche PDF und getrennte Versandnachweise.

@@ -152,15 +152,15 @@ const UI = (() => {
   }
 
   // Optionales Arbeitsfenster: Position/Größe bleiben auf diesem Gerät erhalten.
-  function listenFenster(box, key) {
+  function listenFenster(box, key, groesse = {}) {
     box.classList.add('cu-listenfenster');
     const header = box.querySelector('header'), vorher = document.activeElement;
     const storageKey = 'curaaed.fenster.' + key;
     let rect, normal, maximiert = false, ziehen = null;
     const grenzen = r => {
       const vw = window.innerWidth, vh = window.innerHeight;
-      const width = Math.min(vw - 16, Math.max(Math.min(640, vw - 16), r.width));
-      const height = Math.min(vh - 16, Math.max(Math.min(360, vh - 16), r.height));
+      const width = Math.min(vw - 16, Math.max(Math.min(groesse.minBreite||640, vw - 16), r.width));
+      const height = Math.min(vh - 16, Math.max(Math.min(groesse.minHoehe||360, vh - 16), r.height));
       return { width, height, left: Math.max(8, Math.min(vw - width - 8, r.left)), top: Math.max(8, Math.min(vh - height - 8, r.top)) };
     };
     const setzen = r => {
@@ -171,7 +171,7 @@ const UI = (() => {
     let saved;
     try { saved = JSON.parse(localStorage.getItem(storageKey)); } catch {}
     const valid = saved && ['width', 'height', 'left', 'top'].every(k => Number.isFinite(saved[k]));
-    setzen(valid ? saved : { width: Math.min(1180, window.innerWidth - 48), height: Math.min(740, window.innerHeight - 64), left: 24, top: 32 });
+    setzen(valid ? saved : { width: Math.min(groesse.breite||1180, window.innerWidth - 48), height: Math.min(groesse.hoehe||740, window.innerHeight - 64), left: groesse.links??24, top: groesse.oben??32 });
     const max = el('button', { type: 'button', class: 'modal-x', 'aria-label': 'Maximieren', title: 'Maximieren / Wiederherstellen', text: '□' });
     header.insertBefore(max, header.querySelector('.modal-x'));
     const umschalten = () => {
@@ -197,6 +197,12 @@ const UI = (() => {
     };
     const ende = () => { if (ziehen) { ziehen = null; speichern(); } };
     header.addEventListener('pointerdown', ev => start(ev, 'bewegen'));
+    const tastenBewegen=ev=>{
+      if(ev.target!==header||maximiert)return;
+      const delta={ArrowRight:[12,0],ArrowLeft:[-12,0],ArrowDown:[0,12],ArrowUp:[0,-12]}[ev.key];
+      if(delta){ev.preventDefault();setzen({...rect,left:rect.left+delta[0],top:rect.top+delta[1]});speichern();}
+    };
+    if(groesse.tastatur){header.tabIndex=0;header.setAttribute('aria-label','Fenster verschieben (Pfeiltasten)');header.addEventListener('keydown',tastenBewegen);}
     griff.addEventListener('pointerdown', ev => start(ev, 'groesse'));
     griff.addEventListener('keydown', ev => {
       const delta = { ArrowRight: [24, 0], ArrowLeft: [-24, 0], ArrowDown: [0, 24], ArrowUp: [0, -24] }[ev.key];
@@ -216,6 +222,7 @@ const UI = (() => {
       document.removeEventListener('pointercancel', ende);
       window.removeEventListener('resize', resize);
       window.removeEventListener('blur', ende);
+      header.removeEventListener('keydown',tastenBewegen);
       if (vorher?.isConnected) vorher.focus();
     };
   }
@@ -350,5 +357,5 @@ const UI = (() => {
     const nummer = String(typeof objekt === 'object' && objekt !== null ? objekt.anzeigenummer || objekt.nummer || '' : objekt || '');
     return /^HP-[0-9a-f]{1,32}-(\d+)$/i.exec(nummer)?.[1] || nummer;
   }
-  return { esc, el, toast, fehler, modal, bestaetigen, feld, formular, badgeObjekttyp, datum, dateiGroesse, objektNummer };
+  return { esc, el, toast, fehler, modal, bestaetigen, feld, formular, badgeObjekttyp, datum, dateiGroesse, objektNummer, arbeitsfenster:listenFenster };
 })();

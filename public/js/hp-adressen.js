@@ -5,6 +5,7 @@ function hpAdressStatus(a) {
  return 'HP '+s.nummer+' · '+(names[s.status]||s.status)+(s.aktiv?(s.online?'':' · Connector offline'):(s.abgelaufen?' · Freigabe abgelaufen – kein Abgleich':' · Freigabe beendet'))+(s.zuletzt_gesehen?' · Letzter Kontakt: '+new Date(s.zuletzt_gesehen).toLocaleString('de-DE'):'')+(s.meldung?' · '+s.meldung:'')+(a.hp_neuanlage?.status==='pruefen'&&a.hp_neuanlage.meldung?' · '+a.hp_neuanlage.meldung:'');
 }
 function hpAdressInfo(a) {
+ if(!istAdmin())return el('span',{hidden:true});
  const text=el('p',{role:'status',text:hpAdressStatus(a)}),box=el('div',{class:'hp-panel'},[text]);
  if(a.hp_sync||a.hp_neuanlage) {
   if(a.hp_sync&&![a.vorname,a.nachname,a.firmenname].some(v=>v?.trim()))box.append(el('p',{role:'status',class:'small',text:a.zusatz?'In HP sind Vorname und Name1 leer. Die Anzeige verwendet die originale Zusatzzeile (Name2). Die HP-Felder wurden nicht verändert.':'In HP fehlen die Namensfelder. Bitte den Quelldatensatz unter HP-Adressnummer '+a.hp_sync.nummer+' prüfen.'}));
