@@ -15,4 +15,8 @@ test('Objektliste zeigt HP-Nummern ohne Präfix und sortiert numerisch, ohne Zuo
   assert.deepEqual(await db.all('SELECT id, nummer FROM objekte ORDER BY id'), vorher);
   assert.equal(liste.find(o => o.anzeigenummer === '10009').nummer, 'HP-a75beb7-10009');
   assert.equal((await objekte.liste(db, { suche: '10017' }))[0].anzeigenummer, '10017');
+  const id = liste.find(o => o.anzeigenummer === '10009').id;
+  const detail = await objekte.holen(db, id);
+  assert.equal(detail.anzeigenummer, '10009');
+  assert.equal(detail.nummer, 'HP-a75beb7-10009', 'Detail behält die interne Importkennung für Bearbeitung und Zuordnungen');
 });
