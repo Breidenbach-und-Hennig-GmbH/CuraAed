@@ -110,6 +110,36 @@ function einheitFormular(objektId, einheit) {
   form.addEventListener('submit', (ev) => ev.preventDefault());
 }
 
+/** Vorhandene Anschrift wählen; F5 startet beim zuletzt angelegten Datensatz. */
+async function anschriftKopierenDialog(uebernehmen,aktiv=()=>true) {
+  let letzte;
+  try { letzte=await API.get('/adressen/letzte'); } catch(e) { fehler(e); return; }
+  if(!aktiv())return;
+  const {form,werte}=formular([{felder:[{name:'quelle_id',label:'Adresse suchen',type:'suche',required:true,
+    value:letzte?.id,auswahlText:letzte?`${letzte.nummer} · ${letzte.anzeigename}`:'',
+    suchen:async q=>(await API.get('/adressen'+API.qs({suche:q}))).map(x=>({value:x.id,label:`${x.nummer} · ${x.anzeigename} · ${x.strasse||''} ${x.ort||''}`}))}]}]);
+  form.append(el('p',{class:'small muted',text:'Übernommen werden nur Straße, PLZ, Ort, Land und Anschriftzusatz. Name, Kontakte und Zuordnungen bleiben unverändert.'}));
+  let laeuft=false;
+  const m=modal({titel:'Anschrift kopieren',inhalt:form,footer:close=>[
+    el('button',{text:'Abbrechen',onclick:close}),el('button',{class:'btn-primary',text:'Übernehmen',onclick:async()=>{
+      if(laeuft||!form.reportValidity())return;laeuft=true;
+      try {const quelle=await API.get('/adressen/'+encodeURIComponent(werte().quelle_id));if(!m.box.isConnected)return;close();uebernehmen(quelle);}
+      catch(e){fehler(e);}finally{laeuft=false;}
+    }})]});
+  form.addEventListener('submit',ev=>{ev.preventDefault();m.box.querySelector('footer .btn-primary').click();});
+}
+
+async function anredeAuswahl(input) {
+  let daten;
+  try{daten=await API.get('/adressen/anreden');}catch(e){fehler(e);return;}
+  if(!input.isConnected)return;
+  const suche=el('input',{type:'search','aria-label':'Anrede filtern',placeholder:'Anrede tippen …'}),liste=el('div');let m;
+  const zeichnen=()=>liste.replaceChildren(raster([{label:'Anrede',render:x=>x}],daten.filter(x=>x.toLocaleLowerCase('de').includes(suche.value.toLocaleLowerCase('de'))),{
+    onOpen:x=>{input.value=x;input.dispatchEvent(new Event('change',{bubbles:true}));m.close();input.focus();},leer:'Keine passende Anrede. Sie können eine eigene Anrede direkt eingeben.'}));
+  suche.addEventListener('input',zeichnen);suche.addEventListener('keydown',ev=>{if(ev.key==='ArrowDown'){ev.preventDefault();liste.querySelector('tr.klick')?.focus();}});
+  m=modal({titel:'Anrede auswählen',inhalt:el('div',{},[suche,liste]),footer:close=>[el('button',{text:'Abbrechen',onclick:close})]});zeichnen();suche.focus();
+}
+
 function adresseFormular(a) {
   const bearb = !!a;
   const typInit = a?.adresstyp || 'person';
@@ -117,7 +147,7 @@ function adresseFormular(a) {
     { grid: 2, felder: [
       { name: 'nummer', label: bearb ? 'Adress-Nr.' : 'Adress-Nr. (leer = automatisch)', value: a?.nummer, placeholder: 'z. B. 10001' },
       { name: 'adresstyp', label: 'Typ', type: 'select', options: opt(L.adresstyp), value: typInit },
-      { name: 'anrede', label: 'Anrede', type: 'text', value: a?.anrede },
+      { name: 'anrede', label: 'Anrede', type: 'text', value: a?.anrede, vorschlaege: ['Herr','Frau','Firma','Eheleute'] },
     ] },
     { grid: 2, felder: [
       { name: 'vorname', label: 'Vorname', value: a?.vorname },
@@ -148,12 +178,23 @@ function adresseFormular(a) {
   ]);
   if (bearb) form.appendChild(el('p', { class: 'small muted', text: 'Telefonnummern, E-Mail-Adressen und Ansprechpartner pflegen Sie in der Adressmaske über die Pfeile ➠ bzw. die Knöpfe rechts.' }));
   if(a?.hp_sync){inputs.nummer.readOnly=true;form.append(el('p',{role:'status',text:hpAdressStatus(a)}));}
+  form.classList.add('cu-adressformular');
+  inputs.anrede.closest('.field').append(el('button',{type:'button',class:'hp-mini',text:'…',title:'Anrede auswählen (F5 im Feld Anrede)','aria-label':'Anrede auswählen',onclick:()=>anredeAuswahl(inputs.anrede)}));
+  const kopieren=()=>anschriftKopierenDialog(quelle=>{
+    if(!form.isConnected)return;
+    for(const key of ['strasse','plz','ort','land','zusatz'])inputs[key].value=quelle[key]||'';
+    inputs.strasse.focus();
+  },()=>form.isConnected);
+  form.addEventListener('keydown',ev=>{if(ev.key==='F5'&&!ev.ctrlKey&&!ev.altKey&&!ev.shiftKey&&!ev.metaKey){
+    if(ev.target===inputs.anrede||!bearb){ev.preventDefault();ev.stopPropagation();ev.target===inputs.anrede?anredeAuswahl(inputs.anrede):kopieren();}
+  }});
 
   // Sichtbarkeit Person/Firma umschalten
   const anpassen = () => {
     const firma = inputs.adresstyp.value === 'firma';
-    [inputs.vorname, inputs.nachname, inputs.anrede].forEach((i) => i.closest('.field').style.display = firma ? 'none' : '');
+    [inputs.vorname, inputs.nachname].forEach((i) => i.closest('.field').style.display = firma ? 'none' : '');
     [inputs.firmenname, inputs.ansprechpartner].forEach((i) => i.closest('.field').style.display = firma ? '' : 'none');
+    inputs.firmenname.required=firma;inputs.nachname.required=!firma;
   };
   inputs.adresstyp.addEventListener('change', anpassen);
   anpassen();
@@ -163,10 +204,12 @@ function adresseFormular(a) {
     wide: true,
     inhalt: form,
     footer: (close) => [
+      ...(!bearb?[el('button',{type:'button',text:'Anschrift kopieren',title:'Vorhandene Anschrift übernehmen (F5)',onclick:kopieren})]:[]),
       el('button', { text: 'Abbrechen', onclick: close }),
       el('button', { class: 'btn-primary', text: 'Speichern', onclick: async () => {
         try {
           const v = werte();
+          if (!form.reportValidity()) return;
           if (bearb) { await API.put('/adressen/' + a.id, {...v,hp_version:a.hp_sync?.version}); toast(a.hp_sync?'Gespeichert; HP-Übertragung folgt automatisch.':'Gespeichert', 'success'); close(); neuLaden(); }
           else { const dub=await API.post('/adressen/dubletten',v);if(dub.treffer?.length){const text='Diese Adresse könnte bereits vorhanden sein:\n\n'+dub.treffer.map(d=>d.nummer+' · '+d.name+' · '+d.anschrift+(d.archiviert?' (archiviert)':'')).join('\n')+'\n\nTrotzdem eine zusätzliche Adresse anlegen?';if(!await bestaetigen(text,{text:'Zusätzlich anlegen'}))return;v.dubletten_bestaetigung=dub.bestaetigung;}const neu = await API.post('/adressen', v); toast('Adresse angelegt', 'success'); close(); geheZu('#/adressen/' + neu.id); }
         } catch (e) { fehler(e); }
