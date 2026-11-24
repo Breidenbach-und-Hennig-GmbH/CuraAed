@@ -34,6 +34,10 @@
     "node": ">=22.19.0"
   },
   "overrides": {
-    "wasm-feature-detect": "1.8.0"
+    "wasm-feature-detect": "1.8.0",
+    "tar": "^7.4.3"
+  },
+  "allowScripts": {
+    "sqlite3@5.1.7": true
   }
 }
