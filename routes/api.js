@@ -5,7 +5,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const rateLimit = require('express-rate-limit');
 
 const auth = require('../lib/auth');
 const { ValidationError } = require('../lib/validation');
@@ -38,13 +37,7 @@ const benutzerSvc = require('../services/benutzer');
 
 // Kleiner Async-Wrapper, der Fehler an den Error-Handler weiterreicht.
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 Minuten
-  max: 10,                  // max. 10 Versuche pro IP in diesem Zeitfenster
-  message: { fehler: 'Zu viele Login-Versuche. Bitte in 15 Minuten erneut versuchen.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+
 function baueApi(db, uploadDir, options = {}) {
   const router = express.Router();
 
@@ -87,7 +80,6 @@ function baueApi(db, uploadDir, options = {}) {
   // ===================== Authentifizierung ==============================
   router.post(
     '/auth/login',
-    loginLimiter,
     h(async (req, res) => {
       const { benutzername, passwort } = req.body || {};
       const b = await benutzerSvc.pruefeAnmeldung(db, benutzername, passwort);
@@ -462,6 +454,9 @@ function baueApi(db, uploadDir, options = {}) {
       res.json(await gesamtlisteSvc.liste(db, Object.fromEntries(keys.map(key => [key,t(req.query[key])]))));
     })
   );
+  router.get('/adressen/navigation',h(async(req,res)=>res.json(await require('../services/adressBedienung').navigation(db,req.query))));
+  router.get('/adressen/anreden',h(async(req,res)=>res.json(await require('../services/adressBedienung').anreden(db))));
+  router.get('/adressen/letzte',h(async(req,res)=>res.json(await require('../services/adressBedienung').letzte(db))));
   router.post('/adressen/dubletten',auth.erfordereSchreibrecht,h(async(req,res)=>res.set('Cache-Control','no-store').json(await require('../services/adressDubletten').pruefen(db,req.body||{}))));
   router.post(
     '/adressen',

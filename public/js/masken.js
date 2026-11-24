@@ -250,6 +250,7 @@ function gesamtlisteAdresse(aktuelleId) {
     if (z.laden || z.geschlossen) return;
     const d = z.daten[i];
     if (!d) return;
+    S.trefferliste={basis:'#/adressen/',ids:z.daten.map(x=>x.id)};
     m.close();
     geheZu('#/adressen/' + d.id);
   }
@@ -366,6 +367,12 @@ function gesamtlisteAdresse(aktuelleId) {
     seite,
     filter,
   ]);
+  inhalt.addEventListener('keydown',ev=>{
+    if((ev.ctrlKey||ev.metaKey)&&!ev.altKey&&!ev.shiftKey&&ev.key==='F7'){
+      ev.preventDefault();ev.stopPropagation();
+      adressSortierDialog({sort:z.sort,richtung:z.richtung,anwenden:v=>{z.sort=v.sort;z.richtung=v.richtung;laden();}});
+    }
+  });
   const m = modal({ titel: 'Gesamtliste Adresse', wide: true, fenster: 'gesamtliste-adressen', inhalt,
     onClose: () => { z.geschlossen = true; ++z.anfrage; clearTimeout(timer); } });
   m.box.classList.add('hp-gl-fenster');
@@ -974,7 +981,7 @@ function anschriftZeilen(a) {
   const ort = [a.plz, a.ort].filter(Boolean).join(' ');
   if (ort) z.push(kz ? `${kz}-${ort}` : ort);
   if (!kz && a.land) z.push(String(a.land).toUpperCase());
-  return z.filter(Boolean);
+  return z.filter(Boolean).filter((text,i,alle)=>!i||String(text).trim().toLocaleLowerCase('de')!==String(alle[i-1]).trim().toLocaleLowerCase('de'));
 }
 
 function suchname(a) {
@@ -1140,6 +1147,43 @@ function versandSymbol(a, v) {
     [el('span', { class: 'hp-post-icon', 'aria-hidden': 'true', text: v.standard === 'post' ? '✉' : v.standard === 'email' ? '@' : '✉@' })]);
 }
 
+const ADRESS_SORTIERUNG={nummer:'Adressnummer',name:'Name / Firma',plz:'PLZ',ort:'Ort',strasse:'Straße'};
+function adressSortierung() {
+  try{const s=JSON.parse(localStorage.getItem('hp.adressSortierung.'+S.benutzer?.id));if(s&&Object.hasOwn(ADRESS_SORTIERUNG,s.sort)&&['asc','desc'].includes(s.richtung))return s;}catch{}
+  return {sort:'nummer',richtung:'asc'};
+}
+async function adressBlaettern(richtung) {
+  const k=S.kontext,lauf=S.lauf;if(k.typ!=='adresse'||k.blaettert)return;
+  const t=S.trefferliste;
+  if(t?.basis==='#/adressen/'&&t.ids?.some(id=>String(id)===String(k.adresse.id))){
+    const i=t.ids.findIndex(id=>String(id)===String(k.adresse.id));
+    const n={erster:0,letzter:t.ids.length-1,vorheriger:i-1,naechster:i+1}[richtung];
+    if(n<0||n>=t.ids.length){toast('Rand der Adressauswahl erreicht.');return;}
+    geheZu(t.basis+t.ids[n]);return;
+  }
+  k.blaettert=true;
+  try{const n=await API.get('/adressen/navigation'+API.qs({id:k.adresse.id,...adressSortierung()}));
+    if(S.kontext!==k||S.lauf!==lauf)return;
+    if(n?.[richtung]&&String(n[richtung])!==String(k.adresse.id))geheZu('#/adressen/'+n[richtung]);
+    else toast('Rand des Adressbestands erreicht.');
+  }catch(e){if(S.kontext===k)fehler(e);}finally{k.blaettert=false;}
+}
+function adressSortierDialog(auswahl) {
+  const lokal=typeof auswahl?.anwenden==='function';
+  const s=lokal?auswahl:adressSortierung(),{form,werte}=formular([{grid:2,felder:[
+    {name:'sort',label:'Sortierschlüssel',type:'select',value:s.sort,options:Object.entries(ADRESS_SORTIERUNG).map(([value,label])=>({value,label}))},
+    {name:'richtung',label:'Reihenfolge',type:'select',value:s.richtung,options:[{value:'asc',label:'Aufsteigend'},{value:'desc',label:'Absteigend'}]},
+  ]}]);
+  form.append(el('p',{class:'small muted',text:lokal?'Sortiert die gefilterte Adressauswahl.':'Gilt für das Blättern durch den gesamten Adressbestand. Eine bisherige Suchauswahl wird aufgehoben.'}));
+  modal({titel:'Sortierschlüssel – Adressen',inhalt:form,footer:close=>[
+    el('button',{text:'Abbrechen',onclick:close}),el('button',{class:'btn-primary',text:'Übernehmen',onclick:()=>{
+      const v=werte();if(lokal){close();auswahl.anwenden(v);return;}
+      try{localStorage.setItem('hp.adressSortierung.'+S.benutzer?.id,JSON.stringify(v));}catch{}
+      S.trefferliste=null;close();status('Adressen sortiert nach '+ADRESS_SORTIERUNG[v.sort]);
+    }}),
+  ]});form.addEventListener('submit',ev=>ev.preventDefault());
+}
+
 async function adresseMaske(id, params) {
   const lauf = S.lauf;
   status('Lädt Adresse …');
@@ -1159,6 +1203,7 @@ async function adresseMaske(id, params) {
   S.kontext = {
     typ: 'adresse', adresse: a, archivKtx: { typ: 'adresse', id: a.id, nummer: a.nummer },
     bearbeiten: () => adresseFormular(a), erstellen: () => adresseFormular(), suchen: () => gesamtlisteAdresse(a.id), pfkt: zuord,
+    blaettern: adressBlaettern, sortieren: adressSortierDialog,
     loeschen: () => aktivUmschalten('Adresse', '/adressen/' + a.id, a),
   };
   merke('adresse', a.id);
@@ -1173,7 +1218,7 @@ async function adresseMaske(id, params) {
     ]),
     el('div', { class: 'hp-panel hp-geburtstag' }, [
       el('div', { class: 'hp-blau', text: 'Geburtstage' }),
-      el('div', { text: a.geburtstag ? datumKurz(a.geburtstag) : '' }),
+      ...(a.geburtstage||(a.geburtstag?[{datum:a.geburtstag,label:'Geburtstag'}]:[])).map(g=>el('div',{text:(g.label==='Geburtstag 2'?'2: ':'')+datum(g.datum)})),
     ]),
     el('div', { class: 'hp-lkto' }, [el('span', { class: 'hp-blau', text: 'LKto-Nr....:' }), el('span', { text: a.lkto_nr || '' })]),
   ];
@@ -1189,6 +1234,7 @@ async function adresseMaske(id, params) {
   }, [el('span', { class: 'hp-ds-icon', 'aria-hidden': 'true', text: dsJa ? '✔' : '✖' }), document.createTextNode('Datenschutz')]);
   const seite = seitenleiste([
     { text: 'Suchen', titel: 'Gesamtliste Adresse (Taste s)', onclick: () => gesamtlisteAdresse(a.id) },
+    { text: 'Sortierschlüssel', titel: 'Adressbestand sortieren (Strg+F7)', onclick: adressSortierDialog },
     { text: 'Z.I.S', schnell: true, titel: 'Zentrales Informationssystem: alle Eintragungen zu dieser Adresse', onclick: () => geheZu(basis + '?zis=1') },
     { text: 'Drucken', titel: 'Adressmaske drucken', onclick: () => window.print() },
     { text: 'Bank', schnell: true, titel: 'Bankverbindungen und SEPA-Lastschriftmandat', onclick: () => bankDialog(a) },
@@ -1208,6 +1254,10 @@ async function adresseMaske(id, params) {
     { text: a.archiviert ? 'Reaktivieren' : 'Deaktivieren', titel: 'Adresse deaktivieren/reaktivieren (F3)', onclick: () => aktivUmschalten('Adresse', '/adressen/' + a.id, a), gesperrt: !schreiben },
     { text: 'Rechn.Ausg.', gesperrt: true, grund: 'Rechnung zur Adresse schreiben – folgt in einer späteren Ausbaustufe.' },
   ], { zusatz: el('div', { class: 'hp-symbole' }, [...adressSymbole(a, akte), versandSymbol(a, versand), datenschutz]) });
+  seite.prepend(el('nav',{class:'cu-adress-blaettern','aria-label':'Adressen durchblättern'},[
+    ['erster','⏮','Erste Adresse (Strg+Pos1)'],['vorheriger','◀','Vorherige Adresse (Strg+Bild auf)'],
+    ['naechster','▶','Nächste Adresse (Strg+Bild ab)'],['letzter','⏭','Letzte Adresse (Strg+Ende)'],
+  ].map(([richtung,text,titel])=>el('button',{type:'button',text,title:titel,'aria-label':titel,onclick:()=>adressBlaettern(richtung)}))));
 
   // ---- Reiter-Inhalte
   const inhalt = el('div');

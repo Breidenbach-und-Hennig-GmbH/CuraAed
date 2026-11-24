@@ -318,6 +318,7 @@ function breiterUmschalten() { S.breit = !S.breit; localStorage.setItem('hp_brei
 const KONTEXT_BASIS = { objekt: '#/objekte/', einheit: '#/einheiten/', adresse: '#/adressen/' };
 function vcr(richtung) {
   const k = S.kontext || {};
+  if(k.blaettern){k.blaettern(richtung);return;}
   const t = S.trefferliste;
   const basis = KONTEXT_BASIS[k.typ];
   if (!t || !t.ids.length) { toast('Keine Trefferliste – bitte zuerst über eine Suche öffnen.'); return; }
@@ -407,6 +408,7 @@ function sortiereTabelle(t, spalte, absteigend) {
 }
 
 function sortierschluessel() {
+  if(S.kontext.sortieren){S.kontext.sortieren();return;}
   const t = aktuelleTabelle();
   if (!t) { toast('Keine Liste geöffnet.'); return; }
   const spalten = spaltenVon(t);
@@ -432,6 +434,7 @@ function sortierschluessel() {
 }
 
 function sortieren() {
+  if(S.kontext.sortieren){S.kontext.sortieren();return;}
   const t = aktuelleTabelle();
   if (!t) { toast('Keine Liste geöffnet.'); return; }
   const s = S.sortierung && spaltenVon(t).find((x) => x.name === S.sortierung.name);
@@ -1121,6 +1124,7 @@ function sprungUebersicht() {
  blocks.push(el('section',{class:'hp-sprung-block'},[el('h3',{text:'Allgemeine Bedienung'}),table([['F1','Sprungübersicht'],['F2','Ändern'],['F3','Löschen / Deaktivieren'],['F4','Neuanlage'],['Tab / Umschalt+Tab','Nächstes / vorheriges Feld'],['s','Suchen'],['Esc','Fenster verlassen; geänderte Eingabe speichern'],['Strg Esc','Fenster ohne Speichern schließen']])]));
  blocks.push(el('section',{class:'hp-sprung-block'},[el('h3',{text:'Programmteile · Alt S + Buchstabe'}),table(SPRUENGE.map(b=>['Alt S, '+b.taste.toUpperCase(),b.text+(b.folgt?' · noch nicht verfügbar':'')]))]));
  blocks.push(el('p',{class:'small',text:'Im Browser reservierte Kombinationen (z. B. Strg+W und Strg+T): den Buchstaben im Feld „Befehl“ eingeben und Enter drücken. Die Originalhinweise F5=Aufruf/Übersicht sind zur Orientierung übernommen; in CuraAed wählen Sie die betreffende Zeile und öffnen sie mit Enter oder Doppelklick. Grau dargestellte Funktionen sind noch nicht verfügbar.'}));
+ if(typ==='adresse')blocks.push(el('p',{class:'small',text:'Adressen: Strg+F7 = Sortierschlüssel. Strg+Pos1/Ende = erste/letzte Adresse; Strg+Bild auf/ab = vorherige/nächste. Bei Neuanlage F5 = Anschrift kopieren; im Anredefeld F5 = Anrede auswählen. Tab / Umschalt+Tab wechseln die Felder.'}));
  modal({titel:'Sprungübersicht – '+name,wide:true,fenster:'hp-sprunguebersicht',inhalt:el('div',{class:'hp-sprung cu-hp-sprung-original'},blocks),footer:close=>[el('button',{text:'Schließen',onclick:close})]});
 }
 
@@ -1405,6 +1409,10 @@ document.addEventListener('keydown', (ev) => {
   }
   const dialogOffen = !!document.querySelector('.modal-backdrop');
   const ohneMod = !ev.ctrlKey && !ev.altKey && !ev.metaKey && !ev.shiftKey;
+  if((ev.ctrlKey||ev.metaKey)&&!ev.altKey&&!ev.shiftKey&&!dialogOffen&&!offenesMenue&&!istEingabe(ev.target)&&S.kontext.blaettern){
+    const richtung={Home:'erster',End:'letzter',PageUp:'vorheriger',PageDown:'naechster'}[ev.key];
+    if(richtung){ev.preventDefault();S.kontext.blaettern(richtung);return;}
+  }
   // Edit: Zoom (F5) / Breiter (F6) – Strg+F5 bleibt „neu laden"
   if (ohneMod && (ev.key === 'F5' || ev.key === 'F6')) {
     ev.preventDefault();
