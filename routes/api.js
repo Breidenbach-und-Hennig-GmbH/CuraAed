@@ -125,6 +125,7 @@ function baueApi(db, uploadDir, options = {}) {
   router.use('/hp-objekte', require('./hpObjektImport')(db, options.hpDirekt));
 
   // Alle folgenden Routen erfordern eine Anmeldung.
+  router.use('/telefonie',require('./telefonie')(db,options.hausperfekt?.publicUrl));
   router.use(auth.erfordereLogin);
   router.use('/objekte/:objektId/zaehler',require('./zaehler')(db,{...options.lobaro,publicUrl:options.hausperfekt?.publicUrl}));
   router.use('/mitarbeiterprofile',require('./mitarbeiterprofile')(db,options.hausperfekt?.publicUrl));
