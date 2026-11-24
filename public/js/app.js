@@ -66,6 +66,7 @@ function route() {
 }
 
 function renderLogin() {
+  if(typeof mitarbeiterBeenden==='function')mitarbeiterBeenden();
   document.getElementById('modal-container').innerHTML = '';
   const { form, werte } = formular([[
     { name: 'benutzername', label: 'Benutzername', required: true },
