@@ -144,7 +144,7 @@ module.exports = { liste, holen, anlegen, aktualisieren, setzeArchiviert };
 async function kennzahlen(db, id) {
   if (!(await holen(db, id))) throw new V.ValidationError('Objekt nicht gefunden.', 404);
   const heute = new Date().toISOString().slice(0, 10);
-  const einheiten = await db.all('SELECT einheitstyp, flaeche_qm, mea, zimmer FROM einheiten WHERE objekt_id = ? AND archiviert = 0', [id]);
+  const einheiten = await require('../lib/meaAnzeige').ergaenzen(db,await db.all('SELECT objekt_id,nummer,einheitstyp, flaeche_qm, mea, zimmer FROM einheiten WHERE objekt_id = ? AND archiviert = 0', [id]));
   // MEA wird oft als „125/1000" erfasst → Zähler zählt
   const zahl = (v) => { const n = Number(String(v ?? '').split('/')[0].trim().replace(',', '.')); return Number.isFinite(n) ? n : 0; };
   const jeTyp = {};
@@ -169,11 +169,13 @@ async function kennzahlen(db, id) {
     [id, id]
   );
   const r3 = (n) => Math.round(n * 1000) / 1000;
+  const meaAnzeige=require('../lib/meaAnzeige').summe(einheiten);
   return {
     einheiten: einheiten.length,
     einheiten_je_typ: jeTyp,
     flaeche_qm: r3(einheiten.reduce((s, e) => s + zahl(e.flaeche_qm), 0)),
-    mea_summe: r3(einheiten.reduce((s, e) => s + zahl(e.mea), 0)),
+    mea_summe: meaAnzeige?zahl(meaAnzeige.replace(/\./g,'')):r3(einheiten.reduce((s, e) => s + zahl(e.mea), 0)),
+    mea_summe_anzeige: meaAnzeige,
     personen_je_rolle: Object.fromEntries(rollen.map((r) => [r.rolle, r.anzahl])),
     ohne_mieter: leer.n,
     dokumente: dok.n,

@@ -552,7 +552,7 @@ async function objektMaske(id, params) {
       inhalt.appendChild(panel([
         ['Einheiten', String(kz.einheiten), typen],
         ['Fläche gesamt', `${zahlDe(kz.flaeche_qm, 2)} m²`],
-        ['MEA-Summe', zahlDe(kz.mea_summe)],
+        ['MEA-Summe', kz.mea_summe_anzeige || zahlDe(kz.mea_summe)],
         ['Personen aktuell', rollen || '–'],
         ['ohne Mieter', `${kz.ohne_mieter} Wohnung/Gewerbe`],
         ['Archiv-Einträge', String(kz.dokumente)],
@@ -563,7 +563,7 @@ async function objektMaske(id, params) {
         { label: 'Typ', render: (e) => L.einheitstyp[e.einheitstyp] || e.einheitstyp },
         { label: 'Lage', render: (e) => e.lage },
         { label: 'Fläche', class: 'zahl nowrap', render: (e) => (e.flaeche_qm != null ? `${zahlDe(e.flaeche_qm, 2)} m²` : '') },
-        { label: 'MEA', render: (e) => e.mea },
+        { label: 'MEA', render: (e) => e.mea_anzeige || e.mea },
         { label: 'Status', render: (e) => (e.archiviert ? badge('deaktiviert', 'badge-inaktiv') : '') },
       ], einheiten, { onOpen: (e) => geheZu('#/einheiten/' + e.id), leer: 'Noch keine Einheiten angelegt.' }),
       [schreiben ? { text: 'Neu', titel: 'Neue Einheit anlegen', onclick: () => einheitFormular(o.id) } : null]));
@@ -630,7 +630,7 @@ async function einheitMaske(id, params) {
       ['Ort', o.plz, o.ort],
       ['VE / Lage', e.lage],
       ['Fläche', e.flaeche_qm != null ? `${String(e.flaeche_qm).replace('.', ',')} m²` : '', e.zimmer != null ? `${String(e.zimmer).replace('.', ',')} Zimmer` : ''],
-      ['MEA', e.mea],
+      ['MEA', e.mea_anzeige || e.mea],
     ], 'hp-kopf-panel'),
     panel([
       ['angelegt', datumKurz(e.erstellt_am)],
