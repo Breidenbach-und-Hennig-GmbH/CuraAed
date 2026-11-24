@@ -462,6 +462,7 @@ async function objektMaske(id, params) {
   const seite = seitenleiste([
     { text: 'Suche', titel: 'Anderes Objekt suchen (Taste s)', onclick: () => geheZu('#/objektliste') },
     { text: 'Z.I.S.', titel: 'Zentrales Informationssystem: Kontakte und Dokumente zum Objekt', onclick: () => geheZu(basis + '?zis=1') },
+    { text: 'Drucke', titel: 'Objekt drucken', onclick: () => window.print() },
     { text: 'Bank', schnell: true, titel: 'Bankkonten des Objekts (Hausgeld-, Rücklagenkonto …)', onclick: () => objektBankDialog(o) },
     { text: 'PFkt.', titel: 'Allgemeine Personenfunktionen (Beirat, Hausmeister, Handwerker …)', onclick: () => objektPfktDialog(o) },
     { text: 'AbrArt', gesperrt: true, grund: 'Abrechnungsarten – folgen mit der Finanzbuchhaltung (FIBU).' },
@@ -469,14 +470,15 @@ async function objektMaske(id, params) {
     { text: 'Vschl.', titel: 'Verteilerschlüssel mit Anteilen je Einheit', onclick: () => verteilerDialog(o) },
     { text: 'Info', titel: 'Info / wichtige Hinweise zum Objekt', onclick: () => (schreiben ? objektInfoDialog(o) : toast(o.notizen || 'Keine Info hinterlegt.')) },
     { text: 'SEV', gesperrt: true, grund: 'Sondereigentumsverwaltung – ' + SPAETER_KNOPF },
+    { text: 'Heizkosten', gesperrt: true, grund: 'Heizkosten – ' + SPAETER_KNOPF },
+    { text: 'Verw. Verg.', gesperrt: true, grund: 'Verwaltervertrag/Verwaltervergütung – folgt mit der Finanzbuchhaltung (FIBU).' },
     { text: 'Folgeblatt', gesperrt: true, grund: 'Folgeblatt – ' + SPAETER_KNOPF },
+    { abstand: true },
     { text: 'E-Mail-Gr', gesperrt: true, grund: 'E-Mail an Gruppen (z. B. alle Eigentümer) – folgt mit Microsoft 365 (Stufe 3).' },
     { text: 'Bild zum Objekt', titel: 'Foto ins Archiv laden (Kategorie „Foto/Bild")', onclick: () => archivUpload(fotoKtx, neuLaden), gesperrt: !schreiben },
     { text: 'Neues Objekt', titel: 'Neues Objekt anlegen (F4)', onclick: () => objektFormular(), gesperrt: !schreiben },
     { text: o.archiviert ? 'Reaktivieren' : 'Deaktivieren', titel: 'Objekt deaktivieren/reaktivieren (F3)', onclick: () => aktivUmschalten('Objekt', '/objekte/' + o.id, o), gesperrt: !schreiben },
     { text: 'Zähler', schnell: true, titel: 'Zählpunkte, Marktlokationsnummer, Geräte und Messwerte', onclick: () => geheZu('#/zaehler/' + o.id) },
-    { text: 'Verwaltervertrag', schnell: true, gesperrt: true, grund: 'Verwaltervertrag/Verwaltervergütung – folgt mit der Finanzbuchhaltung (FIBU).' },
-    { text: 'Heizkosten', schnell: true, gesperrt: true, grund: 'Heizkosten – ' + SPAETER_KNOPF },
   ], { zusatz: symbole });
 
   // ---- Reiter-Inhalte
@@ -570,7 +572,7 @@ async function objektMaske(id, params) {
       ueberschrift: o.bezeichnung,
       badge: o.objekttyp === 'HP' ? 'HP-Typ noch nicht zugeordnet' : o.objekttyp === 'WEG' ? 'WEG-Verwaltung' : 'Mietverwaltung', badgeKlasse: o.objekttyp === 'WEG' ? 'cu-badge-weg' : 'cu-badge-miete',
       unterzeile: [`Objekt ${UI.objektNummer(o)}`, [o.plz, o.ort].filter(Boolean).join(' ')].filter(Boolean).join('  •  ') + (o.archiviert ? '  •  deaktiviert' : ''),
-      buchungsjahr: true,
+      buchungsjahr: true, drucken: false,
     },
     inhalt: maskenRaster({
       oben, seite,
