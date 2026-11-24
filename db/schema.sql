@@ -38,6 +38,19 @@ CREATE TABLE IF NOT EXISTS zaehler (
   CHECK(ausgebaut_am IS NULL OR ausgebaut_am>=eingebaut_am)
 );
 CREATE INDEX IF NOT EXISTS idx_zaehler_punkt ON zaehler(zaehlpunkt_id);
+-- HP-Originale bleiben getrennt von manuellen und Lobaro-Messungen erhalten.
+CREATE TABLE IF NOT EXISTS hp_zaehler_quellen (
+ objekt_id INTEGER NOT NULL REFERENCES objekte(id),
+ hp_id TEXT NOT NULL, zaehler_id INTEGER NOT NULL UNIQUE REFERENCES zaehler(id),
+ original TEXT NOT NULL, PRIMARY KEY(objekt_id,hp_id)
+);
+CREATE TABLE IF NOT EXISTS hp_zaehler_ablesungen (
+ objekt_id INTEGER NOT NULL REFERENCES objekte(id), hp_id TEXT NOT NULL,
+ zaehler_id INTEGER NOT NULL REFERENCES zaehler(id),
+ datum TEXT NOT NULL, uhrzeit TEXT, wert TEXT NOT NULL, original TEXT NOT NULL,
+ PRIMARY KEY(objekt_id,hp_id)
+);
+CREATE INDEX IF NOT EXISTS idx_hp_zaehler_ablesungen ON hp_zaehler_ablesungen(zaehler_id,datum);
 CREATE TABLE IF NOT EXISTS zaehler_messwerte (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   zaehler_id INTEGER NOT NULL REFERENCES zaehler(id) ON DELETE RESTRICT,
