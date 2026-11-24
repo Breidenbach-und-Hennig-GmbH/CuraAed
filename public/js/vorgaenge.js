@@ -49,6 +49,7 @@ async function vorgangDetail(id,params=new URLSearchParams()){
   const r=await API.get('/vorgaenge/'+encodeURIComponent(id));if(lauf!==S.lauf)return;
   if(r.art==='handwerker')return handwerkerMaske(r,params);
   if(r.art==='akte')return aktenMaske(r,params);
+  S.kontext={typ:'vorgang',id:r.id,bearbeiten:()=>vorgangForm(r),erstellen:()=>vorgangForm({art:r.art}),suchen:()=>geheZu('#/vorgaenge?art='+r.art),spruenge:Object.fromEntries([['a','adresse'],['o','objekt'],['w','einheit'],['v','akte'],['h','handwerker']].map(([taste,typ])=>[taste,()=>zuordnungsSprung(typ,r.bezuege.filter(b=>b.typ===typ).map(b=>({...b,id:b.fach_id||b.ziel_id})))]))};
   root.cuTitelSetzen(r.titel);
   root.append(el('p',{},[el('a',{href:'#/vorgaenge?art='+r.art,text:'← '+VORGANG_ART[r.art]})]),
    panel([['Vorgangsnummer','CA-'+r.id],['Bereich',VORGANG_ART[r.art]],['Status',VORGANG_STATUS[r.status]],['Fällig',datum(r.faellig_am)+(r.uhrzeit?' '+r.uhrzeit:'')],['HP-Nummer',r.hp_nummer||'–'],['Datenhaltung','In CuraAed gespeichert'],['Herkunft',r.subdomain||'In CuraAed angelegt'],['HP-Status',r.remote_snapshot?.status?.name||r.remote_snapshot?.status?.description||'–']]),
@@ -91,6 +92,7 @@ async function vorgaengeMaske(params=new URLSearchParams()){
  const lauf=S.lauf,root=el('section');if(!arbeitsMaske(lauf,root,{titel:'Akten / Vorgänge',aktionen:Object.entries(VORGANG_ART).map(([art,text])=>({text,onclick:()=>geheZu('#/vorgaenge?art='+art)}))}))return;
  if(!darfSchreiben()){root.append(el('p',{text:'Akten und Vorgänge sind für Mitarbeiter und Administratoren verfügbar.'}));return;}
  const art=Object.hasOwn(VORGANG_ART,params.get('art'))?params.get('art'):'';
+ S.kontext={typ:'vorgangsliste',erstellen:()=>vorgangForm({art:art||'akte'},context),suchen:()=>root.querySelector('input[type="search"]')?.focus(),bearbeiten:()=>{const row=document.activeElement?.closest('tr')?.hpDaten;if(row)API.get('/vorgaenge/'+row.id).then(vorgangForm).catch(fehler);else toast('Bitte zuerst eine Zeile mit Tab auswählen.');}};
  root.cuTitelSetzen(art?VORGANG_ART[art]:'Akten / Vorgänge');
  root.append(el('p',{text:'Akten, Aufträge, Wiedervorlagen, ZIS und Notizen werden in CuraAed geführt.'}),
   el('nav',{class:'tel-plaud-knoepfe'},[el('a',{href:'#/vorgaenge',text:'Alle Bereiche'}),...Object.entries(VORGANG_ART).map(([key,text])=>el('a',{href:'#/vorgaenge?art='+key,text}))]));
