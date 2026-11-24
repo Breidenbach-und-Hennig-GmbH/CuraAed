@@ -1081,3 +1081,33 @@ CREATE TABLE IF NOT EXISTS objekt_teilungserklaerung (
  job_id TEXT NOT NULL UNIQUE REFERENCES eddi_teilungen(id),stimmregeln TEXT NOT NULL,hinweise TEXT NOT NULL,
  geprueft_von INTEGER NOT NULL REFERENCES benutzer(id),erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Originalgetreuer HP-Journalimport: eine Zeile je bebuchtem Konto.
+-- Gegenkonto ist ein Quellbezug, keine zusätzliche automatische Gegenbuchung.
+CREATE TABLE IF NOT EXISTS fibu_buchungsimporte (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ objekt_id INTEGER NOT NULL REFERENCES objekte(id) ON DELETE RESTRICT,
+ dateiname TEXT NOT NULL,datei_hash TEXT NOT NULL,
+ benutzer_id INTEGER REFERENCES benutzer(id) ON DELETE SET NULL,
+ erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS fibu_buchungen (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ objekt_id INTEGER NOT NULL REFERENCES objekte(id) ON DELETE RESTRICT,
+ import_id INTEGER NOT NULL REFERENCES fibu_buchungsimporte(id) ON DELETE RESTRICT,
+ jahr INTEGER NOT NULL,pn TEXT NOT NULL,journal TEXT NOT NULL,
+ konto TEXT NOT NULL,gegenkonto TEXT NOT NULL,datum TEXT NOT NULL,
+ beleg TEXT NOT NULL,buchtext TEXT NOT NULL,
+ soll_cents INTEGER NOT NULL CHECK(typeof(soll_cents)='integer'),
+ haben_cents INTEGER NOT NULL CHECK(typeof(haben_cents)='integer'),
+ storno INTEGER NOT NULL CHECK(storno IN (0,1)),fingerprint TEXT NOT NULL,
+ original TEXT NOT NULL,quellzeile INTEGER NOT NULL,
+ UNIQUE(objekt_id,jahr,pn,journal)
+);
+CREATE INDEX IF NOT EXISTS fibu_buchungen_konto ON fibu_buchungen(objekt_id,jahr,konto);
+CREATE TRIGGER IF NOT EXISTS fibu_bebuchtes_konto_loeschen BEFORE DELETE ON sachkonten
+ WHEN EXISTS(SELECT 1 FROM fibu_buchungen WHERE objekt_id=OLD.objekt_id AND (konto=CAST(OLD.nummer AS TEXT) OR gegenkonto=CAST(OLD.nummer AS TEXT)))
+ BEGIN SELECT RAISE(ABORT,'Bebuchtes Konto darf nicht geloescht werden'); END;
+CREATE TRIGGER IF NOT EXISTS fibu_bebuchtes_konto_aendern BEFORE UPDATE OF nummer,art ON sachkonten
+ WHEN (NEW.nummer<>OLD.nummer OR NEW.art<>OLD.art) AND EXISTS(SELECT 1 FROM fibu_buchungen WHERE objekt_id=OLD.objekt_id AND (konto=CAST(OLD.nummer AS TEXT) OR gegenkonto=CAST(OLD.nummer AS TEXT)))
+ BEGIN SELECT RAISE(ABORT,'Nummer und Art eines bebuchten Kontos sind geschuetzt'); END;

@@ -26,7 +26,8 @@ const jahrPruefen = (v, feld) => {
 async function grundwerte(db, objektId) {
   const o = await objekt(db, objektId);
   const g = await db.get('SELECT * FROM fibu_objekt WHERE objekt_id = ?', [objektId]);
-  const jahre = g ? Array.from({ length: g.aktuelles_bj - g.erstes_bj + 1 }, (_, i) => g.erstes_bj + i) : [];
+  const importierte = await db.all('SELECT DISTINCT jahr FROM fibu_buchungen WHERE objekt_id=? ORDER BY jahr', [objektId]);
+  const jahre = [...new Set([...(g ? Array.from({ length: g.aktuelles_bj - g.erstes_bj + 1 }, (_, i) => g.erstes_bj + i) : []), ...importierte.map((r) => r.jahr)])].sort((a,b) => a-b);
   return { objekt: o, grundwerte: g || null, jahre };
 }
 
@@ -98,8 +99,10 @@ async function konten(db, objektId, jahr) {
      WHERE k.objekt_id = ? ORDER BY k.nummer`,
     [j, objektId]
   );
-  // Saldo/Buchungen folgen mit „Buchung erfassen" – bis dahin „kB" (keine Buchungen)
-  return rows.map((r) => ({ ...r, saldo: null, buchungen: 0 }));
+  const summen = await db.all(`SELECT konto,COUNT(*) AS anzahl,SUM(soll_cents-haben_cents) AS cents FROM fibu_buchungen
+    WHERE objekt_id=? AND (? IS NULL OR jahr=?) GROUP BY konto`, [objektId, j, j]);
+  const jeKonto = new Map(summen.map((r) => [Number(r.konto), r]));
+  return rows.map((r) => { const s = jeKonto.get(r.nummer); return { ...r, saldo: s ? s.cents / 100 : null, buchungen: s ? s.anzahl : 0 }; });
 }
 
 async function wpSpeichern(tx, kontoId, jahr, wp) {
@@ -131,6 +134,7 @@ async function kontoAendern(db, id, data) {
   const w = kontoWerte(data);
   const wp = betrag(data.wp_ansatz);
   await db.transaktion(async (tx) => {
+    if ((w.nummer !== k.nummer || w.art !== k.art) && await tx.get('SELECT 1 FROM fibu_buchungen WHERE objekt_id=? AND (konto=? OR gegenkonto=?) LIMIT 1', [k.objekt_id, String(k.nummer), String(k.nummer)])) throw new V.ValidationError('Kontonummer und Kontoart eines bebuchten Kontos dürfen nicht geändert werden.', 409);
     await tx.run('UPDATE sachkonten SET nummer=?, art=?, bezeichnung=?, referenz_konto=?, aktiv=?, notiz=? WHERE id=?',
       [w.nummer, w.art, w.bezeichnung, w.referenz_konto, w.aktiv, w.notiz, id]).catch(eindeutig);
     await wpSpeichern(tx, id, data.jahr, wp);
@@ -139,9 +143,12 @@ async function kontoAendern(db, id, data) {
 }
 
 async function kontoLoeschen(db, id) {
-  // Sobald Buchungen existieren, wird hier geprüft (Konten mit Buchungen nur deaktivieren).
-  const r = await db.run('DELETE FROM sachkonten WHERE id = ?', [id]);
-  if (!r.changes) throw new V.ValidationError('Konto nicht gefunden.', 404);
+  await db.transaktion(async (tx) => {
+    const k = await tx.get('SELECT objekt_id,nummer FROM sachkonten WHERE id=?', [id]);
+    if (!k) throw new V.ValidationError('Konto nicht gefunden.', 404);
+    if (await tx.get('SELECT 1 FROM fibu_buchungen WHERE objekt_id=? AND (konto=? OR gegenkonto=?) LIMIT 1', [k.objekt_id, String(k.nummer), String(k.nummer)])) throw new V.ValidationError('Konto hat Buchungen und kann nur deaktiviert werden.', 409);
+    await tx.run('DELETE FROM sachkonten WHERE id=?', [id]);
+  });
 }
 
 /** Kontenrahmen eines anderen Objekts übernehmen (nur fehlende Konto-Nr.). */
