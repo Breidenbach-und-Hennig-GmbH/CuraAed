@@ -12,6 +12,10 @@ Der gesicherte HP-Objektbestand `HP-Pruefobjekte.json` enthält **4236 – DAMIA
 
 Im Objekt auf **Zähler** klicken. Die Maske verwendet den gemeinsamen CuraAed-Rahmen. F4 öffnet die Zählpunktanlage. Suchfeld, Tab-Reihenfolge und normale Formulareingabe sind vorhanden. Lobaro-Feldzuordnungen sind im Geräteformular eingeklappt.
 
+Nach dem HP-Muster wurde die Oberfläche verdichtet: eine gemeinsame Geräte-/Zählerliste oben, die Ablesungen des markierten Geräts unmittelbar darunter. Auf dem Bürobildschirm gelten 12-Pixel-Tabellenschrift, etwa 25-Pixel-Zeilen und 26-Pixel-Eingabefelder; die beiden Listen lassen sich vertikal vergrößern. Ausgebaute Geräte werden bei Bedarf eingeblendet. Pfeiltasten wechseln den Zähler, F2 öffnet die Bearbeitung, „Daten erfassen“ die Ableseeingabe. Zusätzliche Funktionen sind eingeklappt.
+
+Der Knopf **Zähler** ist auch in der Wohnung und der Adresse vorhanden. Alle Einstiege führen zu derselben Maske. Die Wohnung wird dabei vorausgewählt; bei einer Adresse mit mehreren Objekt-/Wohnungszuordnungen erscheint zuerst eine Auswahl. Es wird keine beliebige erste Zuordnung ungefragt verwendet. Der HP-Screenshot bestätigt Objekt4236, Wohnung1 und die vier dargestellten Geräte als Referenz. Diese Bildschirmangaben wurden nicht als vermeintlich vollständig importierte Produktivdaten angelegt.
+
 - Zählpunkt: Objekt, optionale Wohnung, Bezeichnung, Medium, Haupt-/Wohnungs-/Unterzähler und optionale MaLo-ID.
 - Die MaLo-ID wird als elfstellige Zeichenfolge gespeichert, einschließlich führender Nullen. Die Prüfung umfasst Format und Dubletten, keine Prüfzifferprüfung. Sie ist für Strom/Gas vorgesehen; Wasser-/Wärmezähler erhalten keine erfundene MaLo-ID.
 - Geräte: Zählernummer, Einheit, Einbau-/Ausbaudatum. Zählpunkt und MaLo bleiben beim Gerätewechsel erhalten. Alte Geräte und Messwerte werden nicht gelöscht.
