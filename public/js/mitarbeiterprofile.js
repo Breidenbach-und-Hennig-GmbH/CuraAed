@@ -5,7 +5,7 @@ function profilBild(src,name,cls=''){
  img.addEventListener('error',()=>{if(img.getAttribute('src')!==PROFIL_PLATZHALTER)img.src=PROFIL_PLATZHALTER;});
  return img;
 }
-const TEAM={user:null,timer:null,fenster:null,zeichnen:null,daten:[],anfrage:0};
+const TEAM={user:null,timer:null,fensterTimer:null,fenster:null,zeichnen:null,daten:[],anfrage:0};
 function mitarbeiterStatus(r){
  if(r.veraltet)return {farbe:'unbekannt',text:'Status nicht abrufbar'};
  if(r.cura_online===false)return {farbe:'rot',text:'In CuraAed abgemeldet / nicht erreichbar'};
@@ -56,10 +56,10 @@ function mitarbeiterFenster(){
    el('span',{class:'cu-team-rufnummer',text:r.rufnummer||'–'}),
   ]);}));
   if(!rows.length)liste.append(el('p',{text:'Keine Mitarbeiter gefunden.'}));
-  meldung.textContent=fehlerhaft?'Status konnte nicht aktualisiert werden. Erneut versuchen.':'Aktualisierung alle 30 Sekunden · Grau = Telefonstatus unbekannt oder Verbindung veraltet.';
+  meldung.textContent=fehlerhaft?'Status konnte nicht aktualisiert werden. Erneut versuchen.':'Aktualisierung alle 3 Sekunden · Grau = Telefonstatus unbekannt oder Verbindung veraltet.';
  };
  let aufraeumen=()=>{};
- const close=(fokus=true)=>{if(!TEAM.fenster||TEAM.fenster.box!==box)return;TEAM.fenster=null;TEAM.zeichnen=null;aufraeumen();box.remove();if(fokus)document.querySelector('#cu-team button')?.focus();};
+ const close=(fokus=true)=>{if(!TEAM.fenster||TEAM.fenster.box!==box)return;clearInterval(TEAM.fensterTimer);TEAM.fensterTimer=null;TEAM.fenster=null;TEAM.zeichnen=null;aufraeumen();box.remove();if(fokus)document.querySelector('#cu-team button')?.focus();};
  const box=el('aside',{class:'cu-team-fenster',role:'region','aria-label':'Mitarbeiterstatus'},[
   el('header',{},[el('h2',{text:'Mitarbeiterstatus'}),el('button',{type:'button',class:'modal-x','aria-label':'Mitarbeiterfenster schließen',text:'✕',onclick:()=>close()})]),
   el('div',{class:'cu-team-filter'},[q,auswahl]),liste,meldung,
@@ -75,7 +75,7 @@ function mitarbeiterFenster(){
   }
  });
  q.addEventListener('input',()=>zeichnen());auswahl.addEventListener('change',()=>{try{localStorage.setItem(key,auswahl.value);}catch{}zeichnen();});
- zeichnen();mitarbeiterLaden();q.focus();
+ zeichnen();mitarbeiterLaden();TEAM.fensterTimer=setInterval(mitarbeiterLaden,3000);q.focus();
 }
 async function mitarbeiterSymbole(){
  const target=document.getElementById('cu-team'),own=document.getElementById('cu-eigenes-bild'),user=S.benutzer?.id;
@@ -137,7 +137,7 @@ async function meineTelefonie(){
   el('a',{href:'/downloads/CuraAed-Telefonie.exe',download:'CuraAed-Telefonie.exe',text:'Lokalen Telefonie-Helfer herunterladen'}),err,
  ]),footer:close=>[
   el('button',{type:'button',text:'Schließen',onclick:close}),
-  el('button',{type:'button',text:'Kopplung widerrufen',disabled:!p.gekoppelt,onclick:async()=>{if(busy)return;busy=true;try{await API.post('/telefonie/ich/trennen',{});code.value='';info.textContent='Kopplung widerrufen.';await mitarbeiterLaden();}catch(e){err.textContent=e.message;}finally{busy=false;}}}),
+  el('button',{type:'button',text:'Kopplung widerrufen',onclick:async()=>{if(busy)return;busy=true;try{await API.post('/telefonie/ich/trennen',{});code.value='';p.gekoppelt=false;info.textContent='Kopplung widerrufen.';await mitarbeiterLaden();}catch(e){err.textContent=e.message;}finally{busy=false;}}}),
   el('button',{type:'button',class:'btn-primary',text:p.gekoppelt?'Schlüssel ersetzen':'Persönlichen Schlüssel erzeugen',onclick:async()=>{if(busy)return;if(p.gekoppelt&&!await bestaetigen('Der bisherige lokale Helfer wird dadurch getrennt. Neuen persönlichen Schlüssel erzeugen?',{text:'Ersetzen'}))return;busy=true;err.textContent='';try{const r=await API.post('/telefonie/ich/koppeln',{});if(user!==S.benutzer?.id)return;code.value=r.token;p.gekoppelt=true;info.textContent='Schlüssel erstellt. Bitte jetzt in den lokalen Helfer übernehmen.';}catch(e){err.textContent=e.message;}finally{busy=false;}}}),
  ]});
 }
