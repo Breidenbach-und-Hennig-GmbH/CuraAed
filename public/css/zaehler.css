@@ -43,6 +43,8 @@
 @media(pointer:fine){
  .cu-zaehler button:not(.cu-zaehler-nummer),.cu-zaehler input:not([type=checkbox]),.cu-zaehler select,.cu-zaehler-dialog-inhalt input,.cu-zaehler-dialog-inhalt select{min-height:26px;padding:3px 7px;font-size:12px}
  .cu-zaehler-fenster .cu-knopf{min-height:26px;padding:3px 7px;font-size:12px}
+ .cu-zaehler-dialog-inhalt .cu-formular .field input:not([type=checkbox]):not([type=radio]),.cu-zaehler-dialog-inhalt .cu-formular .field select{min-height:26px;padding:3px 7px;font-size:12px}
+ .modal:has(.cu-zaehler-dialog-inhalt) footer button{min-height:26px;padding:3px 8px;font-size:12px}
 }
 @media(max-width:650px){
  .cu-zaehler-fenster .cu-h1-zeile h1{font-size:17px}
