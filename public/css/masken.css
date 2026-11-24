@@ -1,4 +1,34 @@
 /* Einheitlicher Rahmen und kompakte Eingabe für alle Verwaltungsbereiche. */
+/* Objektanzeige: feste, dichte Bürogrößen auch auf Touchscreen-Laptops. */
+@media screen {
+ .hp-maske:has(.hp-objekt-kopf) { font-size:13px; }
+ .hp-maske:has(.hp-objekt-kopf) .cu-seitenkopf { margin-bottom:8px; padding:0; }
+ .hp-maske:has(.hp-objekt-kopf) .cu-seitenkopf-oben { min-height:24px; }
+ .hp-maske:has(.hp-objekt-kopf) .cu-brot { font-size:12px; gap:6px; }
+ .hp-maske:has(.hp-objekt-kopf) .cu-h1-zeile { gap:8px; }
+ .hp-maske:has(.hp-objekt-kopf) .cu-h1-zeile h1 { font-family:inherit; font-size:20px; line-height:1.25; margin:0; }
+ .hp-maske:has(.hp-objekt-kopf) .cu-unterzeile { font-size:13px; margin-top:3px; }
+ .hp-maske:has(.hp-objekt-kopf) .cu-badge { font-size:11px; padding:2px 7px; }
+ .hp-maske:has(.hp-objekt-kopf) .cu-knopf { min-height:30px; font-size:12px; padding:4px 9px; }
+ .hp-maske:has(.hp-objekt-kopf) .hp-symbol { width:30px; min-height:28px; padding:3px; }
+ .hp-maske:has(.hp-objekt-kopf) .cu-symbolzeile { margin-top:5px; }
+ .hp-objekt-kopf.cu-karte { display:block; padding:8px 10px; border-radius:5px; }
+ .hp-objekt-kopf>.cu-karten-titel { font-size:13px; margin:0 0 5px; gap:5px; }
+ .hp-objekt-kopf>.cu-karten-titel .cu-icon { width:20px; height:20px; padding:2px; }
+ .hp-objekt-kopf .cu-spalten { grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 14px; }
+ .hp-objekt-kopf .cu-spalte+.cu-spalte { padding-left:14px; }
+ .hp-objekt-kopf .cu-gruppe { padding:0 0 3px; }
+ .hp-objekt-kopf .cu-gruppe+.cu-gruppe { padding-top:3px; }
+ .hp-objekt-kopf .cu-kv { grid-template-columns:125px minmax(0,1fr); gap:6px; font-size:13px; line-height:1.35; padding:2px 0; }
+ .hp-objekt-kopf .cu-pillen { gap:6px; margin:2px 0 0; }
+ .hp-objekt-kopf .cu-pille { font-size:11px; padding:2px 6px; border-radius:3px; }
+ .hp-objekt-kopf .hp-objekt-bild { grid-column:1/-1; width:140px; max-width:100%; min-height:0; margin-top:6px; }
+ .hp-objekt-kopf .hp-objekt-bild img { max-height:90px; }
+}
+@container (max-width:650px) {
+ .hp-objekt-kopf .cu-spalten { grid-template-columns:minmax(0,1fr); }
+ .hp-objekt-kopf .cu-spalte+.cu-spalte { border-left:0; padding-left:0; }
+}
 @media screen{
  .hp-maske-inhalt,.hp-unten,.cu-frame-inhalt,.cu-etv-inhalt{min-width:0}
  .cu-frame-inhalt{background:var(--cu-weiss,#fff);border:1px solid var(--cu-rand,#e5e0ec);border-radius:7px;padding:12px;box-shadow:0 1px 4px #24113908}
