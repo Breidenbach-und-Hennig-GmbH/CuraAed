@@ -54,7 +54,7 @@ async function objektFormular(objekt) {
     { felder: [{ name: 'notizen', label: 'Info', type: 'textarea', value: o.notizen }] },
   ]);
   modal({
-    titel: bearb ? `Objekt ändern – ${o.nummer} ${o.bezeichnung}` : 'Neues Objekt',
+    titel: bearb ? `Objekt ändern – ${UI.objektNummer(o)} ${o.bezeichnung}` : 'Neues Objekt',
     wide: true,
     inhalt: form,
     footer: (close) => [
@@ -246,7 +246,7 @@ async function zuordnungFormular(kontext, reload) {
   let objektOptionen = [];
   if (kontext.adresse_id && !bearb) {
     const objekte = await API.get('/objekte' + API.qs({}));
-    objektOptionen = [{ value: '', label: '– Objekt wählen –' }].concat(objekte.map((o) => ({ value: o.id, label: `${o.nummer} · ${o.bezeichnung}` })));
+    objektOptionen = [{ value: '', label: '– Objekt wählen –' }].concat(objekte.map((o) => ({ value: o.id, label: `${UI.objektNummer(o)} · ${o.bezeichnung}` })));
   }
 
   const felder1 = [];
@@ -1120,7 +1120,7 @@ function zahlAusDe(t) {
 
 function objektBankForm(o, b, danach) {
   formFenster({
-    titel: b ? 'Bankkonto des Objekts bearbeiten' : `Neues Bankkonto – ${o.nummer} ${o.bezeichnung}`,
+    titel: b ? 'Bankkonto des Objekts bearbeiten' : `Neues Bankkonto – ${UI.objektNummer(o)} ${o.bezeichnung}`,
     felder: [
       { grid: 2, felder: [
         { name: 'kontoart', label: 'Kontoart', type: 'select', options: opt(KONTOART), value: b ? b.kontoart : 'hausgeld' },
@@ -1146,7 +1146,7 @@ function objektBankForm(o, b, danach) {
 
 function objektBankDialog(o) {
   listenFenster({
-    titel: `Bankkonten – Objekt ${o.nummer} ${o.bezeichnung}`,
+    titel: `Bankkonten – Objekt ${UI.objektNummer(o)} ${o.bezeichnung}`,
     neuText: 'Neues Bankkonto',
     neu: (zeichnen) => objektBankForm(o, null, zeichnen),
     laden: async (zeichnen) => raster([
@@ -1205,7 +1205,7 @@ async function verteilerForm(o, s, danach) {
     summeEl,
   ]));
   modal({
-    titel: s ? `Verteilerschlüssel ${daten.kuerzel} – ${o.nummer} ${o.bezeichnung}` : `Neuer Verteilerschlüssel – ${o.nummer} ${o.bezeichnung}`,
+    titel: s ? `Verteilerschlüssel ${daten.kuerzel} – ${UI.objektNummer(o)} ${o.bezeichnung}` : `Neuer Verteilerschlüssel – ${UI.objektNummer(o)} ${o.bezeichnung}`,
     wide: true,
     inhalt: form,
     footer: (close) => [
@@ -1239,10 +1239,10 @@ async function verteilerDialog(o) {
   try{const years=await API.get(`/objekte/${o.id}/verteiler-jahre`);if(years.length){
     const choice=el('select',{'aria-label':'Buchungsjahr'},[...years.map(y=>el('option',{value:String(y),text:String(y)})),el('option',{value:'undatiert',text:'Undatierte lokale Werte'})]),list=el('div'),info=el('p',{role:'status'});
     const draw=async()=>{try{const rows=await API.get(`/objekte/${o.id}/verteiler?jahr=`+choice.value);list.replaceChildren(raster([...verteilerSpalten,{label:'Einheiten',render:s=>s.einheiten_anzahl}],rows,{onOpen:s=>verteilerForm(o,s,draw),leer:'Keine Schlüssel für dieses Jahr.'}));}catch(e){info.textContent=e.message;}};
-    choice.addEventListener('change',draw);modal({titel:`Verteilerschlüssel – ${o.nummer}`,wide:true,inhalt:el('div',{},[el('label',{},['Buchungsjahr ',choice]),list,info]),footer:close=>[el('button',{text:'Schließen',onclick:close})]});await draw();return;
+    choice.addEventListener('change',draw);modal({titel:`Verteilerschlüssel – ${UI.objektNummer(o)}`,wide:true,inhalt:el('div',{},[el('label',{},['Buchungsjahr ',choice]),list,info]),footer:close=>[el('button',{text:'Schließen',onclick:close})]});await draw();return;
   }}catch(e){fehler(e);return;}
   listenFenster({
-    titel: `Verteilerschlüssel – Objekt ${o.nummer} ${o.bezeichnung}`,
+    titel: `Verteilerschlüssel – Objekt ${UI.objektNummer(o)} ${o.bezeichnung}`,
     neuText: 'Neuer Verteilerschlüssel',
     neu: (zeichnen) => verteilerForm(o, null, zeichnen),
     laden: async (zeichnen) => raster([...verteilerSpalten, { label: 'Einheiten', class: 'zahl', render: (s) => s.einheiten_anzahl }],
@@ -1287,7 +1287,7 @@ function pfktCodesDialog() {
 
 function objektPfktDialog(o) {
   listenFenster({
-    titel: `Allgemeine Personenfunktionen – Objekt ${o.nummer} ${o.bezeichnung}`,
+    titel: `Allgemeine Personenfunktionen – Objekt ${UI.objektNummer(o)} ${o.bezeichnung}`,
     neuText: 'Neue Personenfunktion',
     neu: (zeichnen) => zuordnungFormular({ objekt_id: o.id }, zeichnen),
     laden: async (zeichnen) => {
@@ -1308,7 +1308,7 @@ function objektPfktDialog(o) {
 
 function objektInfoDialog(o) {
   formFenster({
-    titel: `Info – Objekt ${o.nummer} ${o.bezeichnung}`,
+    titel: `Info – Objekt ${UI.objektNummer(o)} ${o.bezeichnung}`,
     felder: [{ felder: [{ name: 'notizen', label: 'Info / wichtige Hinweise zum Objekt', type: 'textarea', value: o.notizen }] }],
     speichern: (v) => API.put('/objekte/' + o.id, { ...o, nummer: '', notizen: v.notizen }),
     danach: neuLaden,
@@ -1332,7 +1332,7 @@ async function einheitWahl(o) {
     { label: 'Lage', render: (e) => e.lage },
   ], liste, { onOpen: (e) => { m.close(); geheZu('#/einheiten/' + e.id); } });
   m = modal({
-    titel: `Wohnung wählen – Objekt ${o.nummer} ${o.bezeichnung}`, wide: true, inhalt: r,
+    titel: `Wohnung wählen – Objekt ${UI.objektNummer(o)} ${o.bezeichnung}`, wide: true, inhalt: r,
     footer: (close) => [
       darfSchreiben() ? el('button', { text: 'Neue Einheit (F4)', onclick: () => { close(); einheitFormular(o.id); } }) : null,
       el('button', { text: 'Abbrechen', onclick: close }),
@@ -1353,7 +1353,7 @@ async function adresseWahl(o) {
     { label: 'Nr.', class: 'nowrap', render: (z) => z.adresse_nummer },
     { label: 'Name', render: (z) => z.anzeigename || nameAusZuord(z) },
   ], zuord, { onOpen: (z) => { m.close(); geheZu('#/adressen/' + z.adresse_id); } });
-  m = modal({ titel: `Adresse wählen – Objekt ${o.nummer} ${o.bezeichnung}`, wide: true, inhalt: r, footer: (close) => [el('button', { text: 'Abbrechen', onclick: close })] });
+  m = modal({ titel: `Adresse wählen – Objekt ${UI.objektNummer(o)} ${o.bezeichnung}`, wide: true, inhalt: r, footer: (close) => [el('button', { text: 'Abbrechen', onclick: close })] });
   r.querySelector('tr.klick')?.focus();
 }
 
