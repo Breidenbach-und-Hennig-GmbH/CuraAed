@@ -7,8 +7,8 @@ test('Mitarbeiter-Symbole und Profil: eigene Login-ID speichern, Formular erneut
  w.eval('S.benutzer={id:1,name:"Test",rolle:"mitarbeiter"}');
  let profile={starface_login_id:'',revision:0,bild_url:'/images/mitarbeiter-platzhalter.svg'};
  w.API={get:async url=>url.endsWith('/ich')?profile:[{id:1,name:'Test',bild_url:profile.bild_url},{id:2,name:'Kollege',bild_url:profile.bild_url}],put:async(url,data)=>{assert.equal(url,'/mitarbeiterprofile/ich');assert.equal(data.revision,0);profile={...profile,...data,revision:1};}};
- await w.mitarbeiterSymbole();assert.equal(w.document.querySelectorAll('.cu-team-symbol').length,1);
- assert.equal(w.document.querySelector('.cu-team-symbol').title,'Kollege');
+ await w.mitarbeiterSymbole();assert.equal(w.document.querySelectorAll('.cu-team-symbol').length,0);
+ assert.equal(w.document.querySelector('#cu-team button').getAttribute('aria-label'),'Alle Mitarbeiter');
  await w.meinProfil();const input=w.document.querySelector('#profil-starface');input.value='00467';
  [...w.document.querySelectorAll('button')].find(b=>b.textContent==='Speichern').click();
  await new Promise(r=>setTimeout(r,20));assert.equal(profile.starface_login_id,'00467');
