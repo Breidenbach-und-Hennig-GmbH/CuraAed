@@ -1,0 +1,11 @@
+.cu-adressimport{font-size:12px;padding:6px;min-width:0}
+.cu-adressimport p{margin:6px 0;line-height:1.35}
+.cu-import-datei{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.cu-adressimport input,.cu-adressimport select,.cu-adressimport button{font-size:12px;min-height:25px;padding:3px 6px}
+.cu-import-zuordnung{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 12px;margin:8px 0}
+.cu-import-zuordnung label{display:grid;grid-template-columns:90px minmax(0,1fr);align-items:center;gap:4px}
+.cu-import-zuordnung select{min-width:0;width:100%}
+.cu-import-vorschau{overflow:auto;max-height:50vh}
+.cu-import-vorschau td,.cu-import-vorschau th{font-size:12px;padding:4px 6px;overflow-wrap:anywhere}
+@media(max-width:1050px){.cu-import-zuordnung{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.cu-import-zuordnung{grid-template-columns:minmax(0,1fr)}}
