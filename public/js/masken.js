@@ -1540,11 +1540,14 @@ async function kontenrahmenAnsicht(o, ziel, lauf, bjParam) {
       el('div', { class: 'cu-leer' }, [icon('calc'), el('span', { text: vorhanden.length
         ? `Der Kontenrahmen (${vorhanden.length} Konten) ist da – für Buchungsjahre und WP-Ansätze bitte noch die FIBU-Grundwerte festlegen.`
         : 'Für dieses Objekt ist die FIBU noch nicht eingerichtet.' }),
-        schreiben ? el('button', { type: 'button', class: 'btn-primary cu-knopf', onclick: () => fibuGrundwerteDialog(o) }, [icon('plus'), el('span', { text: 'FIBU einrichten (Strg+F)' })]) : null]),
+        schreiben ? el('button', { type: 'button', class: 'btn-primary cu-knopf', onclick: () => fibuGrundwerteDialog(o) }, [icon('plus'), el('span', { text: 'FIBU einrichten (Strg+F)' })]) : null,
+        schreiben && !vorhanden.length ? el('button', { type: 'button', class: 'hp-mini', text: 'Buchungsimport', onclick: () => buchungsImportDialog(o, () => { ziel.replaceChildren(); kontenrahmenAnsicht(o, ziel, lauf, bjParam); }) }) : null,
+        !vorhanden.length ? el('button', { type: 'button', class: 'hp-mini', text: 'Buchungsjournal', onclick: () => buchungsJournalDialog(o) }) : null,
+      ]),
     ]));
     if (!vorhanden.length) return;
-    const j = new Date().getFullYear();
-    fibu = { ...fibu, grundwerte: { rechnungsart: 'eue', erstes_bj: j, aktuelles_bj: j, ust_option: 0, vorlaeufig: true }, jahre: [j] };
+    const j = fibu.jahre.length ? fibu.jahre[fibu.jahre.length - 1] : new Date().getFullYear();
+    fibu = { ...fibu, grundwerte: { rechnungsart: 'eue', erstes_bj: j, aktuelles_bj: j, ust_option: 0, vorlaeufig: true }, jahre: fibu.jahre.length ? fibu.jahre : [j] };
   }
   const jahr = fibu.jahre.includes(Number(bjParam)) ? Number(bjParam) : fibu.grundwerte.aktuelles_bj;
   const bjSel = el('select', { class: 'cu-bj-wahl', 'aria-label': 'Buchungsjahr' }, [
@@ -1595,6 +1598,8 @@ async function kontenrahmenAnsicht(o, ziel, lauf, bjParam) {
     el('div', { class: 'cu-fibu-knoepfe' }, [
       knopf('Grundwerte', () => fibuGrundwerteDialog(o), 'FIBU-Grundwerte (Strg+F)'),
       schreiben ? knopf('Excel-Import', () => kontenImportDialog(o, laden), 'Kontenrahmen aus HausPerfekt-Export (Excel/CSV) übernehmen') : null,
+      schreiben ? knopf('Buchungsimport', () => buchungsImportDialog(o, laden), 'HP-Buchungen: Vorschau und Dublettenprüfung') : null,
+      knopf('Buchungsjournal', () => buchungsJournalDialog(o, jahr)),
       schreiben ? knopf('Standard-Kontenrahmen', () => kontenrahmenVorlage(o, laden), 'Standard-Kontenrahmen einer WEG übernehmen (43 Konten)') : null,
       schreiben ? knopf('Kontenrahmen kopieren', () => kontenKopierenDialog(o, laden), 'Konten aus einem anderen Objekt übernehmen') : null,
       knopf('Drucken', () => window.print()),
