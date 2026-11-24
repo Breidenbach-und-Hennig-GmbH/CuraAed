@@ -1,0 +1,33 @@
+.cu-eddi{font-size:12px;border:1px solid #d5cde4;border-radius:3px;background:#fff;margin:2px 0 10px;min-width:0}
+.cu-eddi-zeile{display:flex;align-items:center;gap:8px;padding:5px 7px;margin:0}
+.cu-eddi-zeile>label{display:flex;gap:8px;align-items:center;margin:0;white-space:nowrap}
+.cu-eddi-zeile strong{color:var(--cu-violett,#7343b5)}
+.cu-eddi input,.cu-eddi button{font-size:12px;min-height:26px;padding:3px 7px}
+.cu-eddi-zeile>input{flex:1;min-width:140px;margin:0}
+.cu-eddi-panel{border-top:1px solid #e3dced;padding:7px}
+.cu-eddi-panel[hidden]{display:none}
+.cu-eddi-werkzeuge{display:flex;justify-content:flex-end;gap:5px;margin-bottom:5px}
+.cu-eddi-verlauf{max-height:32vh;overflow:auto}
+.cu-eddi-nachricht{padding:5px 6px;border-bottom:1px solid #eee9f4}
+.cu-eddi p{font-size:12px;margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4}
+.cu-eddi-nachricht p{margin-left:0}
+.cu-eddi-vorschlag{border:1px solid #d6c8ec;background:#f8f5fc;padding:7px;margin:6px 0}
+.cu-eddi-vorschlag button{margin-right:5px}
+.cu-eddi-zustimmung{display:flex;align-items:center;gap:6px;margin-top:6px}
+.cu-eddi-zustimmung input{min-height:0}
+.cu-eddi-status{color:#665a75}
+.cu-eddi-teilung{border-top:1px solid #ddd4e8;padding-top:6px;margin-top:8px}
+.cu-eddi-teilung[hidden]{display:none}
+.cu-eddi-teilung .cu-formular{max-width:1100px;margin:5px 0}
+.cu-eddi-teilung .cu-formular .field input{min-height:26px;padding:3px 7px;font-size:12px}
+.cu-eddi-teilung .cu-formular .field{margin-bottom:4px}
+.cu-eddi-einheiten summary{cursor:pointer;white-space:nowrap}
+.cu-eddi-einheiten{max-height:38vh;overflow:auto;margin:5px 0}
+.cu-eddi-einheiten table{min-width:800px;width:100%}
+.cu-eddi-einheiten input,.cu-eddi-einheiten select{width:100%;min-width:60px;max-width:170px}
+.cu-eddi-einheiten td:first-child{width:75px}
+.cu-eddi-einheiten td:nth-child(5){width:90px}
+.cu-eddi-einheiten td:nth-child(6){font-size:11px;max-width:250px;white-space:normal}
+.cu-eddi-warnung{color:#8b4e08}
+.cu-eddi-anleitung{font-size:12px}
+@media(max-width:850px){.cu-eddi-zeile{flex-wrap:wrap}.cu-eddi-zeile>label{flex-basis:100%;white-space:normal}}

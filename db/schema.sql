@@ -1048,3 +1048,36 @@ CREATE TABLE IF NOT EXISTS hp_import_leerstand_adressen (
 );
 
 CREATE TABLE IF NOT EXISTS email_sendungen(auftrag_id TEXT PRIMARY KEY,benutzer_id INTEGER NOT NULL REFERENCES benutzer(id),zugang TEXT NOT NULL,postfach TEXT NOT NULL,empfaenger TEXT NOT NULL,betreff TEXT NOT NULL,text TEXT NOT NULL,anfrage_hash TEXT NOT NULL,status TEXT NOT NULL,erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+
+CREATE TABLE IF NOT EXISTS eddi_chats (
+ id TEXT PRIMARY KEY,benutzer_id INTEGER NOT NULL REFERENCES benutzer(id) ON DELETE CASCADE,
+ messages TEXT NOT NULL DEFAULT '[]',geaendert_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS eddi_modell (
+ id INTEGER PRIMARY KEY CHECK(id=1),daten TEXT NOT NULL,revision INTEGER NOT NULL,
+ geaendert_von INTEGER NOT NULL REFERENCES benutzer(id),geaendert_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS eddi_ki_tage (tag TEXT PRIMARY KEY,aufrufe INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS eddi_chats_benutzer ON eddi_chats(benutzer_id,geaendert_am);
+CREATE TABLE IF NOT EXISTS eddi_aktionen (
+ id TEXT PRIMARY KEY,chat_id TEXT NOT NULL REFERENCES eddi_chats(id) ON DELETE CASCADE,
+ benutzer_id INTEGER NOT NULL REFERENCES benutzer(id) ON DELETE CASCADE,daten TEXT NOT NULL,
+ status TEXT NOT NULL CHECK(status IN ('wartet','ausgefuehrt','verworfen')),ablauf_ms INTEGER NOT NULL,ergebnis TEXT
+);
+CREATE TABLE IF NOT EXISTS eddi_anleitungen (
+ id INTEGER PRIMARY KEY,titel TEXT NOT NULL,text TEXT NOT NULL,quelle_url TEXT NOT NULL,stand TEXT NOT NULL,
+ geaendert_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS eddi_teilungen (
+ id TEXT PRIMARY KEY,benutzer_id INTEGER NOT NULL REFERENCES benutzer(id) ON DELETE CASCADE,
+ dateiname TEXT NOT NULL,speicher_name TEXT NOT NULL,groesse INTEGER NOT NULL,datei_hash TEXT NOT NULL,
+ status TEXT NOT NULL,fortschritt INTEGER NOT NULL DEFAULT 0,gesamt INTEGER NOT NULL DEFAULT 0,
+ seiten TEXT,ergebnis TEXT,meldung TEXT,objekt_id INTEGER REFERENCES objekte(id),uebernahme TEXT,
+ erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS eddi_teilungen_benutzer ON eddi_teilungen(benutzer_id,erstellt_am);
+CREATE TABLE IF NOT EXISTS objekt_teilungserklaerung (
+ objekt_id INTEGER PRIMARY KEY REFERENCES objekte(id),dokument_id INTEGER NOT NULL REFERENCES dokumente(id),
+ job_id TEXT NOT NULL UNIQUE REFERENCES eddi_teilungen(id),stimmregeln TEXT NOT NULL,hinweise TEXT NOT NULL,
+ geprueft_von INTEGER NOT NULL REFERENCES benutzer(id),erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

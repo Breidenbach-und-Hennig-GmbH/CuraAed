@@ -22,7 +22,8 @@ function regel(b){
 async function config(db,id){
  if(!await db.get('SELECT id FROM objekte WHERE id=?',[id]))fail('Objekt nicht gefunden.',404);
  const row=await db.get('SELECT * FROM objekt_stimmregeln WHERE objekt_id=?',[id]);
- return{objekt_id:Number(id),revision:row?.revision||0,daten:row?JSON.parse(row.daten):{...DEFAULT_CONFIG}};
+ const te=await db.get('SELECT dokument_id,stimmregeln,hinweise FROM objekt_teilungserklaerung WHERE objekt_id=?',[id]);
+ return{objekt_id:Number(id),revision:row?.revision||0,daten:row?JSON.parse(row.daten):{...DEFAULT_CONFIG},...(te?{teilungserklaerung:{dokument_id:te.dokument_id,stimmregeln:JSON.parse(te.stimmregeln),hinweise:JSON.parse(te.hinweise)}}:{})};
 }
 async function saveConfig(db,id,b){
  const d=konfig(b.daten);if(!Number.isSafeInteger(b.revision)||b.revision<0)fail('Ungültige Version.');

@@ -33,7 +33,7 @@ async function cockpitMaske(){
    el('nav',{'aria-label':'Cockpit-Schnellzugriff'},[el('button',{text:'Ticketsystem',onclick:()=>geheZu('#/tickets')}),el('button',{text:'Tages-ZIS',onclick:()=>cockpitListe('Tages-ZIS')}),el('button',{text:'Auftragsmanagement',onclick:()=>geheZu('#/vorgaenge?art=handwerker')}),el('button',{text:'Hilfe · F1',onclick:sprungUebersicht}),el('button',{text:'Aktualisieren',onclick:()=>cockpitMaske()})]),
    el('section',{class:'cu-cockpit-abwesend'},[el('h2',{text:'Heute abwesend'}),el('p',{class:'small muted',text:'Es ist noch keine Abwesenheitsverwaltung eingerichtet.'})]),
    fd?el('address',{},[fd.anschrift?el('p',{text:fd.anschrift}):null,fd.telefon?el('p',{},[el('span',{text:'Telefon: '}),el('a',{href:telHref(fd.telefon),text:fd.telefon})]):null,fd.email?el('p',{},[el('span',{text:'E-Mail: '}),el('a',{href:'mailto:'+fd.email,text:fd.email})]):null]):null]);
-  root.replaceChildren(el('div',{class:'cu-cockpit-kopf'},[greeting,counts,birthdays]),el('div',{class:'cu-cockpit-arbeitsbereich'},[el('div',{class:'cu-cockpit-listen'},[wieder,phones,calendar,docs]),side]));
+  root.replaceChildren(eddiLeiste(),el('div',{class:'cu-cockpit-kopf'},[greeting,counts,birthdays]),el('div',{class:'cu-cockpit-arbeitsbereich'},[el('div',{class:'cu-cockpit-listen'},[wieder,phones,calendar,docs]),side]));
  }catch(e){if(lauf===S.lauf)loading.replaceWith(el('p',{role:'alert',text:e.message}),el('button',{text:'Erneut laden',onclick:()=>cockpitMaske()}));}
 }
 async function cockpitTelefon(id,lauf){try{const k=await API.get('/telefoneingaenge/'+id);if(lauf!==S.lauf)return;if(darfSchreiben())await telefonEingang({},k,()=>cockpitMaske());}catch(e){fehler(e);}}

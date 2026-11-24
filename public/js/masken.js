@@ -2018,7 +2018,7 @@ async function benutzerMaske() {
         ['Rollen', 'Administrator: alles inkl. Benutzer · Mitarbeiter: lesen & schreiben · Leser: nur ansehen'],
         ['Kunden', 'Zugänge für Eigentümer/Mieter folgen in einer späteren Ausbaustufe'],
       ], 'hp-such-panel')],
-      seite: seitenleiste([{ text: 'Neu', titel: 'Neuen Benutzer anlegen', onclick: () => benutzerFormular() }]),
+      seite: seitenleiste([{ text: 'Neu', titel: 'Neuen Benutzer anlegen', onclick: () => benutzerFormular() }, {text:'KI · Eddi',onclick:()=>eddiModellDialog().catch(fehler)}]),
       unten: [abschnitt(`Mitarbeiter-Konten (${daten.length})`, raster([
         { label: 'Name', render: (b) => el('strong', { text: b.name }) },
         { label: 'Benutzername', render: (b) => b.benutzername },
