@@ -898,6 +898,14 @@ CREATE TABLE IF NOT EXISTS mitarbeiter_aktivitaet (
  gesehen_ms INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS telefonie_kopplung (
+  benutzer_id INTEGER PRIMARY KEY REFERENCES benutzer(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  ablauf_ms INTEGER NOT NULL,
+  gesehen_ms INTEGER,
+  status TEXT NOT NULL DEFAULT 'unbekannt' CHECK(status IN ('angemeldet','telefoniert','abgemeldet','unbekannt'))
+);
+
 -- Persönliche ETV-Einladungen: unveränderliche PDF und getrennte Versandnachweise.
 CREATE TABLE IF NOT EXISTS etv_einladung_akten(
  versammlung_id INTEGER PRIMARY KEY REFERENCES versammlungen(id),
