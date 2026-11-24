@@ -630,7 +630,7 @@ function MENUE() {
       { text: 'Objektbegehung (iPad)', folgt: STUFE2, stufe: 'Stufe 2' },
       { text: 'Wohnungsübergabe (iPad)', folgt: STUFE2, stufe: 'Stufe 2' },
     ] },
-    { titel: 'Konverter', eintraege: [{ text: 'CSV-Import aus HausPerfekt', folgt: 'In Planung – dafür werden Beispiel-Exporte aus HausPerfekt benötigt.', stufe: 'in Planung' }] },
+    { titel: 'Konverter', eintraege: [{ text: 'Adresslisten einlesen (CSV / Excel)', nurAdmin: true, aktion: () => geheZu('#/adressimport') }] },
     { titel: 'Datendienst', eintraege: [{ text: 'Datendienst', folgt: SPAETER, stufe: 'folgt' }] },
     { titel: 'Telegram', eintraege: [{ text: 'Telegram', folgt: SPAETER, stufe: 'folgt' }] },
     { titel: 'Hilfe', eintraege: [
