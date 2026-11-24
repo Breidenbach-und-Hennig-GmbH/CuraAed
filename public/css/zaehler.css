@@ -1,1 +1,53 @@
-.cu-zaehler .cu-zaehlpunkt{padding:12px;margin:10px 0}.cu-zaehler h2{font-size:15px;margin:0 0 8px}.cu-zaehler .hp-filter{display:flex;gap:8px;flex-wrap:wrap}.cu-zaehler .hp-filter input{flex:1;min-width:180px}.cu-zaehler .tel-plaud-knoepfe{margin:8px 0}.cu-zaehler .hp-tabelle{font-size:13px}.cu-zaehler p{overflow-wrap:anywhere}@media(max-width:650px){.cu-zaehler .cu-zaehlpunkt{padding:9px}.cu-zaehler .hp-filter>*{max-width:100%}}
+/* Kompaktes Arbeitsraster: oben Geräte, unten Ablesungen. */
+.cu-zaehler-fenster .hp-raster-layout{grid-template-columns:minmax(0,1fr);gap:0}
+.cu-zaehler-fenster .hp-seitenleiste{display:none}
+.cu-zaehler-fenster .cu-seitenkopf{margin-bottom:5px}
+.cu-zaehler-fenster .cu-seitenkopf-oben{min-height:18px}
+.cu-zaehler-fenster .cu-h1-zeile h1{font-size:19px;line-height:1.2;margin:3px 0 5px}
+.cu-zaehler-fenster .cu-brot{font-size:11px;gap:5px}
+.cu-zaehler.cu-frame-inhalt{padding:7px;border-radius:5px;box-shadow:none;font-size:12px}
+.cu-zaehler-werkzeuge,.cu-zaehler-zwischenleiste,.cu-zaehler-ablesekopf,.cu-zaehler-fuss{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cu-zaehler-werkzeuge{margin-bottom:6px}
+.cu-zaehler-werkzeuge>input{flex:1 1 240px;min-width:140px;width:auto}
+.cu-zaehler-werkzeuge>select{width:auto;max-width:260px;flex:0 1 230px}
+.cu-zaehler-zwischenleiste{margin:6px 0}
+.cu-zaehler-zwischenleiste>label{display:flex;align-items:center;gap:3px;margin:0;font-size:12px}
+.cu-zaehler-zwischenleiste input[type=checkbox]{width:14px;height:14px;min-height:0;margin:0}
+.cu-zaehler-ablesekopf{padding:5px 2px 4px;border-top:1px solid var(--cu-rand,#ddd)}
+.cu-zaehler-auswahl{font-weight:400;color:var(--cu-grau,#666);overflow-wrap:anywhere}
+.cu-zaehler-fuss{padding:5px 2px 0;justify-content:space-between}
+.cu-zaehler-hinweis{color:var(--cu-grau,#666);font-size:11px}
+.cu-zaehler .hp-tabelle-wrap{max-width:100%;overflow:auto;border-radius:3px}
+.cu-zaehler-liste>.hp-tabelle-wrap{height:clamp(125px,24vh,215px);min-height:90px;max-height:45vh;resize:vertical}
+.cu-zaehler-werte>.hp-tabelle-wrap{height:clamp(110px,22vh,190px);min-height:80px;max-height:40vh;resize:vertical}
+.cu-zaehler .hp-tabelle{font-size:12px;line-height:1.25;width:100%;white-space:nowrap}
+.cu-zaehler .hp-tabelle th{font-size:11px;font-weight:500;padding:4px 7px;position:sticky;top:0;z-index:1;background:var(--cu-violett-hell,#f4f1f8)}
+.cu-zaehler .hp-tabelle td{padding:3px 7px;height:25px;box-sizing:border-box}
+.cu-zaehler .hp-tabelle .hp-fuell td{height:25px}
+.cu-zaehler .hp-tabelle tr.ausgewaehlt td{background:#e8e1f5;color:#382350}
+.cu-zaehler .hp-tabelle tr.ausgewaehlt{box-shadow:inset 3px 0 var(--cu-violett,#7450c4)}
+.cu-zaehler .hp-tabelle tr:focus{outline:2px solid var(--cu-violett,#7450c4);outline-offset:-2px}
+.cu-zaehler .cu-zaehler-nummer{border:0;background:none;padding:0;min-height:0;border-radius:0;color:inherit;font:inherit;box-shadow:none}
+.cu-zaehler-weitere{position:relative;font-size:12px}
+.cu-zaehler-weitere>summary{cursor:pointer;padding:4px 6px;white-space:nowrap}
+.cu-zaehler-weitere[open]>div{position:absolute;right:0;top:100%;z-index:10;min-width:215px;background:white;border:1px solid var(--cu-rand,#ddd);padding:5px;box-shadow:0 3px 10px #20143018}
+.cu-zaehler-weitere[open]>div>button{display:block;width:100%;text-align:left;margin:2px 0}
+.cu-zaehler-dialog-inhalt p{margin:5px 0;overflow-wrap:anywhere}
+.modal:has(.cu-zaehler-dialog-inhalt){max-width:610px}
+.modal:has(.cu-zaehler-dialog-inhalt) header{padding:7px 10px}
+.modal:has(.cu-zaehler-dialog-inhalt) header h2{font-size:15px}
+.modal:has(.cu-zaehler-dialog-inhalt) .modal-body{padding:9px 11px}
+.modal:has(.cu-zaehler-dialog-inhalt) footer{padding:7px 11px}
+.cu-zaehler-dialog-inhalt .field{margin-bottom:5px}
+.cu-zaehler-dialog-inhalt .small{font-size:11px}
+@media(pointer:fine){
+ .cu-zaehler button:not(.cu-zaehler-nummer),.cu-zaehler input:not([type=checkbox]),.cu-zaehler select,.cu-zaehler-dialog-inhalt input,.cu-zaehler-dialog-inhalt select{min-height:26px;padding:3px 7px;font-size:12px}
+ .cu-zaehler-fenster .cu-knopf{min-height:26px;padding:3px 7px;font-size:12px}
+}
+@media(max-width:650px){
+ .cu-zaehler-fenster .cu-h1-zeile h1{font-size:17px}
+ .cu-zaehler .cu-mobil thead{display:table-header-group}.cu-zaehler .cu-mobil tbody{display:table-row-group}.cu-zaehler .cu-mobil tr{display:table-row;margin:0}.cu-zaehler .cu-mobil td,.cu-zaehler .cu-mobil th{display:table-cell;text-align:left}.cu-zaehler .cu-mobil td:before{display:none}
+ .cu-zaehler-werkzeuge>select{flex:1 1 160px;max-width:100%}
+ .cu-zaehler-liste .hp-tabelle{min-width:840px}.cu-zaehler-werte .hp-tabelle{min-width:430px}
+ .cu-zaehler-zwischenleiste>.hp-spacer{display:none}
+}
