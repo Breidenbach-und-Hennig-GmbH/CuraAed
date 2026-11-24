@@ -2,6 +2,12 @@
 
 const V = require('../lib/validation');
 const N = require('../lib/nummern');
+const objektSortierung = new Intl.Collator('de', { numeric: true, sensitivity: 'base' });
+function anzeigenummer(nummer) {
+  const s = String(nummer || '');
+  const hp = /^HP-[0-9a-f]{1,32}-(\d+)$/i.exec(s);
+  return hp ? hp[1] : s;
+}
 
 /** Liste mit Suche/Filter. opts: { suche, objekttyp, archiviert } */
 async function liste(db, opts = {}) {
@@ -33,8 +39,10 @@ async function liste(db, opts = {}) {
            OR v.einheit_id IN (SELECT id FROM einheiten WHERE objekt_id = o.id)) AS dokumente_anzahl
     FROM objekte o
     WHERE ${where.join(' AND ')}
-    ORDER BY CAST(o.nummer AS INTEGER), o.nummer COLLATE NOCASE, o.bezeichnung COLLATE NOCASE`;
-  return db.all(sql, params);
+    ORDER BY o.id`;
+  const rows = await db.all(sql, params);
+  return rows.map(o => ({ ...o, anzeigenummer: anzeigenummer(o.nummer) }))
+    .sort((a, b) => objektSortierung.compare(a.anzeigenummer, b.anzeigenummer) || a.id - b.id);
 }
 
 async function holen(db, id) {
