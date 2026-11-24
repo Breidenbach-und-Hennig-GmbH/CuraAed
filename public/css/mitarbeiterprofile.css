@@ -9,3 +9,32 @@
 .cu-profil-vorschau .cu-profilbild{width:88px;height:88px}
 .cu-avatar .cu-profilbild{width:100%;height:100%}
 @media(max-width:900px){.cu-team-symbol{display:none}}
+.cu-team-fenster{position:fixed;z-index:90;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;background:#f6f4fa;border:1px solid #b9abc9;border-radius:3px;box-shadow:0 4px 18px #271c4538;font:12px/1.35 "Segoe UI",sans-serif;color:#252030}
+.cu-team-fenster>header{display:flex;align-items:center;gap:4px;padding:4px 6px;background:#eeeaf4;border-bottom:1px solid #d9d1e4}
+.cu-team-fenster h2{font:600 12px/20px "Segoe UI",sans-serif;margin:0}
+.cu-team-fenster button,.cu-team-fenster input,.cu-team-fenster select{font:12px "Segoe UI",sans-serif;min-height:25px;padding:2px 5px;border-radius:1px}
+.cu-team-fenster .modal-x{width:24px;min-height:22px;padding:1px;flex:none}
+.cu-team-filter{display:grid;grid-template-columns:minmax(0,1fr) 108px;gap:5px;padding:6px}
+.cu-team-statusliste{flex:1;min-height:0;overflow:auto;border-top:1px solid #ded7e6;border-bottom:1px solid #ded7e6;background:#fff}
+.cu-team-statuszeile{display:flex;align-items:center;gap:6px;padding:4px 6px;min-height:38px}
+.cu-team-statuszeile:nth-child(even){background:#eeeaf6}
+.cu-team-statuszeile .cu-profilbild{width:28px;height:28px}
+.cu-team-statusname{display:flex;flex:1;min-width:0;flex-direction:column;overflow-wrap:anywhere}
+.cu-team-statusname .small{font-size:10px;color:#62586e}
+.cu-team-rufnummer{font-variant-numeric:tabular-nums;max-width:120px;overflow-wrap:anywhere}
+.cu-team-statuspunkt{display:block;width:9px;height:9px;border-radius:50%;background:#8d8896;flex:none}
+.cu-team-statuspunkt.gruen{background:#218739}.cu-team-statuspunkt.gelb{background:#e5ad00}.cu-team-statuspunkt.rot{background:#c73838}
+.cu-team-fenster>p{font-size:10px;margin:4px 6px;color:#62586e}
+.cu-team-fenster footer{display:flex;justify-content:flex-end;gap:5px;padding:4px 6px 14px}
+.cu-team-fenster :focus-visible{outline:2px solid #7653c7;outline-offset:1px}
+.cu-profilbild{display:block;width:36px;height:36px;object-fit:cover;border-radius:50%;background:#f5f3fa;border:1px solid #e5dfef;flex-shrink:0}
+.cu-team{display:flex;align-items:center;gap:5px}
+.cu-team-symbol{padding:0;border:0;background:transparent;border-radius:50%;cursor:pointer}
+.cu-team-symbol:hover{outline:2px solid #8655dc;outline-offset:2px}
+.cu-team-symbol .cu-profilbild{width:30px;height:30px}
+.cu-team-liste{display:grid;gap:12px;max-height:60vh;overflow:auto}
+.cu-team-person{display:flex;gap:12px;align-items:center}.cu-team-person span{flex:1}
+.cu-profil-form{display:grid;gap:12px}.cu-profil-form label{font-weight:600}
+.cu-profil-vorschau .cu-profilbild{width:88px;height:88px}
+.cu-avatar .cu-profilbild{width:100%;height:100%}
+@media(max-width:900px){.cu-team-symbol{display:none}}
