@@ -1,0 +1,58 @@
+/* Feldanordnung der HausPerfekt-Objektanzeige in CuraAed-Farben. */
+.cu-objekt-original{border:1px solid var(--cu-rand-2);border-radius:3px;background:var(--cu-hintergrund,#f6f4fa);font-size:12px;min-width:0}
+.cu-objekt-original .cu-objekt-titelbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 8px;border-bottom:1px solid var(--cu-rand);background:#eeeaf4}
+.cu-objekt-original .cu-objekt-titelbar h1{margin:0;font-family:inherit;font-size:13px;font-weight:500;line-height:20px;overflow-wrap:anywhere}
+.cu-objekt-titelbar>a{font-size:20px;line-height:20px;text-decoration:none;padding:0 5px}
+.cu-objekt-arbeitsbereich{display:grid;grid-template-columns:minmax(0,1fr) 132px;gap:6px;padding:6px;align-items:start}
+.cu-objekt-haupt,.cu-objekt-haupt>div{min-width:0}
+.cu-objekt-original .cu-objekt-stamm{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(170px,.65fr);gap:6px;margin:0 0 6px;padding:0;background:transparent;border:0;box-shadow:none}
+.cu-objekt-stamm>section,.cu-objekt-stamm>.cu-objekt-foto{border:1px solid var(--cu-rand);background:#fff;min-width:0;padding:6px 8px;border-radius:2px}
+.cu-objekt-stamm .cu-objekt-ident{grid-column:1/3;min-height:106px;display:flex;flex-direction:column;gap:4px}
+.cu-objekt-identzeile{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-height:22px}
+.cu-objekt-identzeile .cu-objekt-name{margin-left:12px;font-weight:600}
+.cu-objekt-identzeile>button{margin-left:auto}
+.cu-objekt-label{color:var(--cu-violett)}
+.cu-objekt-original .cu-objekt-stamm .cu-kv{display:grid;grid-template-columns:90px minmax(0,1fr);font-size:12px;line-height:18px;gap:5px;padding:1px 0}
+.cu-objekt-original .cu-objekt-stamm .cu-kv-l{color:var(--cu-violett)}
+.cu-objekt-orttyp{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.5fr);gap:12px;margin-top:auto}
+.cu-objekt-original .cu-objekt-foto{display:flex;align-items:center;justify-content:center;width:100%;height:106px;min-height:0;margin:0;overflow:hidden;background:#eeecf1;box-shadow:none}
+.cu-objekt-foto img{max-width:100%;max-height:100%;object-fit:contain}
+.cu-objekt-foto-leer{font-size:11px;color:var(--cu-grau)}
+.cu-objekt-verkauf{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;margin:4px -8px -6px;padding:4px 8px;border-top:1px solid var(--cu-rand);font-size:11px}
+.cu-objekt-original .cu-hp-leiste{position:sticky;top:106px;max-height:calc(100dvh - 112px);padding:6px;margin:0}
+.cu-objekt-original .cu-hp-leisteninfo .hp-symbole{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-top:5px}
+.cu-objekt-original .hp-symbol{width:24px;min-height:23px;height:23px;padding:1px;border-radius:1px}
+.cu-objekt-original .hp-reiter{display:flex;gap:0;margin:0 0 5px;border:1px solid var(--cu-rand);border-radius:0;background:#fff}
+.cu-objekt-original .hp-reiter button{flex:1 0 auto;min-height:25px;padding:3px 6px;border-radius:0;font-size:12px;border-right:1px solid var(--cu-rand)}
+.cu-objekt-allgemein{border:1px solid var(--cu-rand);padding:6px;background:#fff}
+.cu-objekt-sachbearbeiter{margin-bottom:6px}
+.cu-objekt-sachbearbeiter .cu-kv{display:flex;gap:8px;font-size:12px;line-height:18px;padding:0}
+.cu-objekt-allgemein-spalten{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:8px}
+.cu-objekt-info,.cu-objekt-verteiler{min-width:0;border:1px solid var(--cu-rand);min-height:340px;background:#faf9fc}
+.cu-objekt-abschnitt-kopf{display:flex;align-items:center;gap:5px;padding:3px 5px;min-height:27px;border-bottom:1px solid var(--cu-rand);background:#f1edf7}
+.cu-objekt-abschnitt-kopf h2{font-size:12px;font-weight:500;margin:0;color:var(--cu-violett)}
+.cu-objekt-info .cu-objekt-abschnitt-kopf{justify-content:space-between}
+.cu-objekt-info .hp-notizen{font-size:12px;line-height:1.4;min-height:280px;padding:6px;white-space:pre-wrap}
+.cu-objekt-verteilersuche{flex:1;min-width:60px;margin-left:auto}
+.cu-objekt-verteilersuche input{width:100%;font-size:11px;min-height:22px;height:22px;padding:2px 5px}
+.cu-objekt-original .hp-mini{min-height:22px;padding:1px 5px;font-size:11px;border-radius:1px}
+.cu-objekt-original .hp-mini .cu-icon{width:15px;height:15px}
+.cu-objekt-original .hp-tabelle{font-size:12px}
+.cu-objekt-original .hp-tabelle th,.cu-objekt-original .hp-tabelle td{padding:3px 6px;line-height:18px}
+.cu-objekt-original .hp-tabelle-wrap{border:0;border-radius:0;max-width:100%;overflow:auto}
+.cu-objekt-original .hp-objekt-vschl{min-width:0;background:repeating-linear-gradient(to bottom,#fff 0,#fff 24px,#f0ebfa 24px,#f0ebfa 48px);min-height:310px}
+@container(max-width:900px){
+ .cu-objekt-arbeitsbereich{grid-template-columns:minmax(0,1fr)}
+ .cu-objekt-original .cu-hp-leiste{position:static;max-height:none}
+ .cu-objekt-original .cu-hp-leisteninfo .hp-symbole{flex-direction:row}
+ .cu-objekt-original .cu-hp-leiste .hp-knoepfe{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
+}
+@container(max-width:650px){
+ .cu-objekt-original .cu-objekt-stamm{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .cu-objekt-stamm .cu-objekt-ident{grid-column:1/-1}
+ .cu-objekt-stamm .cu-objekt-foto{grid-column:2;grid-row:2}
+ .cu-objekt-orttyp,.cu-objekt-allgemein-spalten{grid-template-columns:minmax(0,1fr)}
+ .cu-objekt-info,.cu-objekt-verteiler{min-height:180px}
+ .cu-objekt-info .hp-notizen{min-height:140px}
+}
+@media print{.cu-objekt-original .cu-hp-leiste,.cu-objekt-titelbar>a,.cu-objekt-original button{display:none!important}.cu-objekt-arbeitsbereich{display:block}}
