@@ -30,6 +30,7 @@ async function dmsPosteingangMaske(sb,lauf){
   el('a',{href:'#/archiv',text:'Archiv öffnen'}),el('a',{href:'#/dms-uebernahme',text:'HP-Archiv übernehmen'})]);
  const save=el('button',{type:'button',class:'btn-primary',text:'Angaben speichern',disabled:true,onclick:async()=>{if(!active)return;save.disabled=true;try{
   await API.put('/dms-posteingang/'+active.dokument.id+'/metadaten',{revision:active.eingang.revision,basis_bemerkung:active.dokument.beschreibung||'',bemerkung:note.value,oeffentlich:publicFlag.checked,verfall_am:expiry.value,dokumentenart:art.value});dirty=false;await load(page);toast('Dokumentangaben gespeichert','success');
+  note.focus();
  }catch(e){fehler(e);save.disabled=false;}}});
  for(const field of [note,publicFlag,expiry,art])field.addEventListener('input',()=>{dirty=true;save.disabled=!active;});
  const noteCard=el('aside',{class:'cu-karte cu-dms-bemerkung'},[el('h2',{class:'cu-karten-titel',text:'Bemerkung'}),note,save]);
@@ -44,7 +45,7 @@ async function dmsPosteingangMaske(sb,lauf){
  const latest=await API.get('/dms-posteingang/'+active.dokument.id);
  if(latest.eingang.revision===active.eingang.revision+1&&(latest.dokument.beschreibung||'')===(active.dokument.beschreibung||'')&&latest.oeffentlich===active.oeffentlich&&latest.verfall_am===active.verfall_am)active=latest;
  status.textContent='Rechnung gespeichert · Dokumentenart RE. Ihre ungespeicherten Dokumentangaben bleiben erhalten.';art.value='RE';art.disabled=true;return;
-}await load(page);},typ:'dms',sachbearbeiter:sb,erstellen:upload,bearbeiten:edit};
+}await load(page);},typ:'dms',sachbearbeiter:sb,erstellen:upload,bearbeiten:edit,suchen:()=>search.focus(),spruenge:Object.fromEntries([['a','adresse'],['o','objekt'],['w','einheit']].map(([taste,typ])=>[taste,()=>zuordnungsSprung(typ,(active?.dokument.verknuepfungen||[]).filter(r=>r.typ===typ).map(r=>({...r,id:r.ziel_id})))]))};
  const frame=maskenFenster({titel:'DMS-Posteingang',kopf:{ueberschrift:'DMS – Posteingang',badge:sb||'Alle Sachbearbeiter',unterzeile:'Dokument auswählen, bearbeiten und zuordnen',drucken:false,brot:[{text:'Dokumente'},{text:'DMS-Posteingang'}]},inhalt:root});
  if(!zeigeAufDesktop(lauf,frame))return;
  function refreshButtons(){for(const b of buttons)b.disabled=!active;finish.disabled=!targets().some(r=>r.status==='offen');reopen.disabled=!targets().some(r=>r.status==='abgeschlossen');postage.disabled=!active?.dokument.verknuepfungen.some(r=>r.typ==='adresse');for(const field of [note,publicFlag,expiry,art])field.disabled=!active;art.disabled=!active||!!active.rechnung_erfasst;}
@@ -67,12 +68,13 @@ async function dmsPosteingangMaske(sb,lauf){
    note.value=doc.beschreibung||'';publicFlag.checked=d.oeffentlich;expiry.value=d.verfall_am||'';save.disabled=true;refreshButtons();highlight();
   }catch(e){if(lauf===S.lauf&&nr===detailVersion)fehler(e);}
  }
- async function load(p=1){if(dirty){if(!await bestaetigen('Ungespeicherte Dokumentangaben verwerfen?'))return;dirty=false;}const nr=++listVersion;status.textContent='Posteingang wird geladen …';try{
+ async function load(p=1){const listenFokus=list.contains(document.activeElement);if(dirty){if(!await bestaetigen('Ungespeicherte Dokumentangaben verwerfen?'))return;dirty=false;}const nr=++listVersion;status.textContent='Posteingang wird geladen …';try{
   const r=await API.get('/dms-posteingang'+API.qs({sb,seite:p,alle:closed.checked?'1':'',suche:search.value,sortierung:sort.value}));if(lauf!==S.lauf||nr!==listVersion)return;
   rows=r.eintraege;checked.clear();page=r.seite;prev.disabled=page<=1;next.disabled=!r.weitere;status.textContent=r.gesamt+' Posteingänge · Seite '+page;
   list.replaceChildren(raster([{label:'',render:d=>el('input',{type:'checkbox','aria-label':'Dokument '+d.titel+' auswählen',onclick:e=>e.stopPropagation(),onchange:e=>{e.target.checked?checked.add(d.dokument_id):checked.delete(d.dokument_id);refreshButtons();}})},
    {label:'Importdatum',render:d=>date(d.erstellt_am)},{label:'Uhrzeit',render:d=>time(d.erstellt_am)},{label:'Zugriff',render:d=>d.zugriffe},{label:'Dokument / Archivnummer',render:d=>el('div',{},[el('strong',{text:d.titel}),el('div',{class:'small muted',text:'Archiv '+d.dokument_id+' · SB '+(d.sachbearbeiter||'–')})])}],rows,{onOpen:choose,leer:'Keine Posteingänge für diese Auswahl.',mindestZeilen:rows.length?8:0}));
   if(rows.length)await choose(rows.find(d=>d.dokument_id===active?.dokument.id)||rows[0]);else{detailVersion++;empty();}
+  if(listenFokus&&!list.contains(document.activeElement))([...list.querySelectorAll('tr.klick')].find(tr=>tr.hpDaten.dokument_id===active?.dokument.id)||search).focus();
  }catch(e){if(lauf===S.lauf&&nr===listVersion)status.textContent=e.message;}}
  search.addEventListener('input',debounce(()=>load(1)));sort.addEventListener('change',()=>load(1));closed.addEventListener('change',()=>load(1));empty();await load(1);
 }
