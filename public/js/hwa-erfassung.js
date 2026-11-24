@@ -90,7 +90,12 @@ async function handwerkerErfassung(r={},options={}){
  form.addEventListener('keydown',e=>{
   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(e.ctrlKey||!changed)cancel();else form.requestSubmit();}
   if(e.key==='F4'){e.preventDefault();e.stopPropagation();}
-  if(e.key==='Enter'&&e.target.tagName==='INPUT'&&e.target.type!=='checkbox'){e.preventDefault();const fields=[...form.querySelectorAll('input:not([readonly]):not([disabled]),textarea,button:not([tabindex="-1"])')];fields[fields.indexOf(e.target)+1]?.focus();}
+  if(e.key==='Enter'&&e.target.tagName==='INPUT'&&e.target.type!=='checkbox'){
+   e.preventDefault();
+   const fields=[...form.querySelectorAll('input:not([readonly]):not([disabled]):not([type="hidden"]),textarea,button:not([disabled]):not([tabindex="-1"]),summary')]
+    .filter(field=>!field.closest('details:not([open])')||field.tagName==='SUMMARY');
+   fields[fields.indexOf(e.target)+1]?.focus();
+  }
  });
  form.addEventListener('submit',async e=>{
   e.preventDefault();if(busy)return;busy=true;save.disabled=true;error.textContent='';let current;
