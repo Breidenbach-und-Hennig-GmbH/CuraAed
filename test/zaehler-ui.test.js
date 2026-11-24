@@ -42,3 +42,12 @@ test('Lobaro-Vorschau schreibt erst nach ausdrücklicher Übernahme; Fehler sper
  await w.lobaroDialog(1,()=>{});assert.equal(button(w,'Geprüfte Werte übernehmen').disabled,true);w.document.getElementById('f_von').value='2026-10-01';w.document.getElementById('f_bis').value='2026-10-31';button(w,'Messwerte als Vorschau abrufen').click();await tick();assert.equal(writes,0);assert.equal(button(w,'Geprüfte Werte übernehmen').disabled,false);button(w,'Geprüfte Werte übernehmen').click();await tick();assert.equal(writes,1);assert.equal(button(w,'Geprüfte Werte übernehmen').disabled,true);
  w.API.post=async()=>({id:null,neu:0,bekannt:0,uebersprungen:0,eintraege:[],fehler:[{zaehler:'TEST',datensatz:'1',fehler:'Unbekannte Einheit'}]});button(w,'Messwerte als Vorschau abrufen').click();await tick();assert.equal(button(w,'Geprüfte Werte übernehmen').disabled,true);assert.match(w.document.body.textContent,/Unbekannte Einheit/);
 });
+
+test('HP-Präfixe verschwinden in Zählertitel, Tabelle und Wohnungswahl; IDs und Zählernummern bleiben erhalten',async t=>{
+ const w=setup(t),obj={...o,nummer:'HP-a75bebb7-4236'},wohnung={id:7,nummer:'HP-a75bebb7-4236-1',lage:'EG links',bezeichnung:'EG links'},p={...point,einheit_id:7,wohnung:wohnung.nummer,bezeichnung:'Bad'};
+ w.API={get:async url=>url.endsWith('/lobaro')?{token_vorhanden:false}:url.endsWith('/einheiten')?[wohnung]:url.endsWith('/messwerte')?[]:{objekt:obj,punkte:[p]}};
+ await w.zaehlerMaske(1,new URLSearchParams('einheit=7'));assert.match(w.document.querySelector('h1').textContent,/Zählerverwaltung · 4236/);assert.doesNotMatch(w.document.body.textContent,/HP-a75bebb7/);
+ const select=w.document.querySelector('[aria-label="Wohnung"]');assert.equal(select.value,'7');assert.equal(select.options[1].textContent,'1 · EG links');assert.ok(button(w,'Testzähler'));
+ button(w,'Neu · F4').click();assert.equal(w.document.querySelector('#f_einheit_id option[value="7"]').textContent,'1 · EG links');
+ assert.equal(w.eval('zaehlerWohnungsnummer("4236-0007")'),'4236-0007');assert.equal(w.eval('zaehlerWohnungsnummer("HP-a75bebb7-4236-0007")'),'0007');
+});
