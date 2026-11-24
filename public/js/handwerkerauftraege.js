@@ -40,7 +40,7 @@ function hwaVerlauf(r,root){
 function handwerkerMaske(r,params=new URLSearchParams()){
  const lauf=S.lauf,a=r.auftrag,basis=r.id?'#/vorgaenge/'+r.id:'#/hwa',tab=params.get('tab')||'allgemein',supplier=a.handwerker;
  if(r.id)S.hwaLetzter=r.id;
- S.kontext={typ:'handwerker',id:r.id,hwaRecord:r,bearbeiten:()=>handwerkerForm(r),erstellen:()=>handwerkerForm(),drucken:()=>hwaDruckDialog(r.id).catch(fehler),rechnungGespeichert:async()=>neuLaden()};
+ S.kontext={typ:'handwerker',id:r.id,hwaRecord:r,bearbeiten:r.id?()=>handwerkerForm(r):null,erstellen:()=>handwerkerForm(),drucken:()=>hwaDruckDialog(r.id).catch(fehler),rechnungGespeichert:async()=>neuLaden()};
  const tabs=[{key:'allgemein',label:'Allgemein'},{key:'korrespondenz',label:'Korrespondenz'},{key:'archiv',label:'Archiv'},{key:'rechnung',label:'Rechnung'},{key:'vorgaenge',label:'Akten / Vorgänge'},{key:'historie',label:'Historie'}];
  const ref=(row,path)=>row&&!row.id?el('span',{text:[row.nummer,hwaName(row),'(Originalzuordnung)'].filter(Boolean).join(' · ')}):row?el('a',{href:'#/'+path+'/'+row.id,text:[row.nummer,hwaName(row)].filter(Boolean).join(' · ')}):'–';
  const oben=[...(r.ticket_quellen||[]).map(t=>el('p',{class:'hp-hinweis'},[document.createTextNode('Erstellt aus '),el('a',{href:'#/tickets/'+t.id,text:t.nummer})])),el('div',{class:'cu-hwa-kopf'},[
@@ -52,7 +52,7 @@ function handwerkerMaske(r,params=new URLSearchParams()){
  const upload=()=>archivUpload(a.objekt?.id?{typ:'objekt',nummer:a.objekt.nummer,kategorie:tab==='rechnung'?'rechnung':'korrespondenz'}:null,async saved=>{try{const latest=await API.get('/vorgaenge/'+r.id);await API.post('/vorgaenge/'+r.id+'/auftragsdokumente',{dokument_id:saved.id,revision:latest.revision});neuLaden();}catch(e){fehler(new Error('Datei ist im Archiv gespeichert; Auftragszuordnung fehlgeschlagen: '+e.message));}});
  const seite=seitenleiste([
   {text:'Suche',onclick:()=>geheZu('#/vorgaenge?art=handwerker')},{text:'Neu',onclick:()=>handwerkerForm()},
-  {text:'Bearbeiten',onclick:()=>handwerkerForm(r)},{text:'Drucken',onclick:()=>window.print()},
+  {text:'Bearbeiten',gesperrt:!r.id,onclick:()=>handwerkerForm(r)},{text:'Drucken',onclick:()=>window.print()},
   {text:'Historie',onclick:()=>changeTab('historie')},{text:'Texte',onclick:()=>handwerkerForm(r)},
   {text:'Adressaten',onclick:()=>handwerkerForm(r)},{text:'Öffnen',onclick:()=>changeTab('archiv')},
   {text:'Rechnung',onclick:()=>changeTab('rechnung')},{text:'Gewährleist.',onclick:()=>handwerkerForm(r)},
