@@ -1,7 +1,7 @@
 'use strict';
 
 function buchungsZeilenTabelle(zeilen) {
-  const suche = el('input', { type: 'search', placeholder: 'PN, Konto, Beleg oder Text …', 'aria-label': 'Buchungen durchsuchen' });
+  const suche = el('input', { type: 'search', placeholder: 'PN, Konto, Beleg oder Text …', 'aria-label': 'Buchungen durchsuchen', style: 'max-width:250px' });
   const storno = el('input', { type: 'checkbox' });
   const box = el('div', { style: 'overflow:auto;max-height:48vh' });
   const stand = el('span', { class: 'small', 'aria-live': 'polite' });
@@ -14,7 +14,7 @@ function buchungsZeilenTabelle(zeilen) {
     seite = Math.max(0, Math.min(seite, Math.ceil(aktuell.length / 100) - 1));
     zurueck.disabled = seite === 0; weiter.disabled = (seite + 1) * 100 >= aktuell.length;
     stand.textContent = `${aktuell.length} Zeilen · Seite ${seite + 1} von ${Math.max(1, Math.ceil(aktuell.length / 100))}`;
-    box.replaceChildren(raster([
+    const tabelle = raster([
       { label: 'Status', render: (r) => r.status || 'übernommen' },
       { label: 'Datum', render: (r) => r.datum },
       { label: 'PN / Journal', render: (r) => `${r.pn} / ${r.journal}` },
@@ -25,7 +25,13 @@ function buchungsZeilenTabelle(zeilen) {
       { label: 'Soll €', class: 'zahl nowrap', render: (r) => zahlDe(r.soll_cents / 100, 2) },
       { label: 'Haben €', class: 'zahl nowrap', render: (r) => zahlDe(r.haben_cents / 100, 2) },
       { label: 'Storno', render: (r) => r.storno ? 'STORNO' : '' },
-    ], aktuell.slice(seite * 100, (seite + 1) * 100), { leer: 'Keine Buchungen gefunden.' }));
+    ], aktuell.slice(seite * 100, (seite + 1) * 100), { leer: 'Keine Buchungen gefunden.' });
+    // Kompakte Journalzeilen: breite Texte horizontal lesen, nicht jede Zelle umbrechen.
+    tabelle.style.overflow = 'visible';
+    tabelle.querySelector('table').style.minWidth = '1100px';
+    tabelle.querySelector('table').style.tableLayout = 'auto';
+    tabelle.querySelectorAll('th,td').forEach((zelle) => { zelle.style.whiteSpace = 'nowrap'; });
+    box.replaceChildren(tabelle);
   };
   suche.addEventListener('input', () => { seite = 0; zeichnen(); });
   storno.addEventListener('change', () => { seite = 0; zeichnen(); });
@@ -79,6 +85,7 @@ function buchungsImportDialog(o, danach) {
         finally { beschaeftigt = false; datei.disabled = konten.disabled = false; }
       } })],
   });
+  m.box.style.width = 'min(1200px, 96vw)'; m.box.style.maxWidth = '96vw';
 }
 
 function buchungsJournalDialog(o, startjahr = new Date().getFullYear()) {
@@ -91,9 +98,10 @@ function buchungsJournalDialog(o, startjahr = new Date().getFullYear()) {
     } catch (e) { if (v === version) box.replaceChildren(el('p', { class: 'error', text: e.message })); }
   };
   jahr.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); laden(); } });
-  modal({ titel: `Buchungsjournal · Objekt ${UI.objektNummer(o)}`, wide: true,
+  const m = modal({ titel: `Buchungsjournal · Objekt ${UI.objektNummer(o)}`, wide: true,
     inhalt: el('div', {}, [el('div', { class: 'cu-fibu-knoepfe' }, [jahr, el('button', { text: 'Anzeigen', onclick: laden })]), box]),
     footer: (close) => [el('button', { text: 'Schließen', onclick: close })],
   });
+  m.box.style.width = 'min(1200px, 96vw)'; m.box.style.maxWidth = '96vw';
   laden();
 }
