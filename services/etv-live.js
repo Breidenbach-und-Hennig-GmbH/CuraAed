@@ -128,7 +128,7 @@ async function guestState(db,id,token){
  const round=await db.get("SELECT * FROM etv_live_runden WHERE versammlung_id=? AND status IN ('offen','geschlossen') ORDER BY id DESC LIMIT 1",[id]);
  result.teams_url=r.teams_url;result.tops=tops;result.aktueller_top_id=r.aktueller_top_id;result.abstimmung=null;
  if(round){const base=JSON.parse(round.snapshot),votes=await db.all('SELECT gruppen_key,stimme,version FROM etv_live_stimmen WHERE runde_id=?',[round.id]),mine=base.stimmen.filter(x=>x.anfrage_id===g.id&&x.modus==='digital');
-  result.abstimmung={id:round.id,top_id:round.top_id,status:round.status,gruppen:mine.map(x=>({key:x.key,name:x.name,berechtigt:!x.ausgeschlossen&&x.teilnahme!=='abwesend',stimme:votes.find(v=>v.gruppen_key===x.key)?.stimme||null,version:votes.find(v=>v.gruppen_key===x.key)?.version||0})),ergebnis:round.ergebnis?(()=>{const z=JSON.parse(round.ergebnis);return{status:z.status,prinzip:z.prinzip,summen:z.summen};})():null};
+  result.abstimmung={id:round.id,top_id:round.top_id,status:round.status,gruppen:mine.map(x=>({key:x.key,name:x.name,berechtigt:!x.ausgeschlossen&&x.teilnahme!=='abwesend',stimme:votes.find(v=>v.gruppen_key===x.key)?.stimme||null,version:votes.find(v=>v.gruppen_key===x.key)?.version||0})),ergebnis:round.ergebnis?(()=>{const z=JSON.parse(round.ergebnis);return{status:z.status,prinzip:z.prinzip,summen:z.summen,...(z.summen_anzeige?{summen_anzeige:z.summen_anzeige,mea_bezug:z.mea_bezug}:{})};})():null};
  }
  return result;
 }
