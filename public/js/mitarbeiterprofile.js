@@ -53,7 +53,9 @@ function mitarbeiterFenster(){
   liste.replaceChildren(...rows.map(r=>{const s=mitarbeiterStatus(r);return el('div',{class:'cu-team-statuszeile'},[
    profilBild(r.bild_url,''),el('span',{class:'cu-team-statuspunkt '+s.farbe,role:'img','aria-label':s.text,title:s.text}),
    el('div',{class:'cu-team-statusname'},[el('strong',{text:r.name}),el('span',{class:'small',text:[r.kuerzel,s.text].filter(Boolean).join(' · ')})]),
-   el('span',{class:'cu-team-rufnummer',text:r.rufnummer||'–'}),
+   /^\+?\d{1,32}$/.test(String(r.rufnummer||'').replace(/[^+0-9]/g,''))
+    ?el('a',{class:'cu-team-rufnummer',href:'tel:'+r.rufnummer.replace(/[^+0-9]/g,''),text:r.rufnummer,title:'Über die lokale Telefon-App anrufen'})
+    :el('span',{class:'cu-team-rufnummer',text:r.rufnummer||'–'}),
   ]);}));
   if(!rows.length)liste.append(el('p',{text:'Keine Mitarbeiter gefunden.'}));
   meldung.textContent=fehlerhaft?'Status konnte nicht aktualisiert werden. Erneut versuchen.':'Aktualisierung alle 3 Sekunden · Grau = Telefonstatus unbekannt oder Verbindung veraltet.';
@@ -129,7 +131,7 @@ async function meineTelefonie(){
  const code=el('input',{type:'password',readOnly:true,autocomplete:'off','aria-label':'Persönlicher Telefonieschlüssel'}),err=el('p',{role:'alert'});
  let busy=false;
  modal({titel:'Meine Telefonie · '+S.benutzer.name,inhalt:el('div',{},[
-  info,el('p',{class:'small',text:'Der lokale Helfer läuft auf Ihrem eigenen Rechner mit der dort angemeldeten STARFACE-App. Er überträgt ausschließlich Ihren Telefonstatus an CuraAed. Rufnummern und Gesprächsinhalte werden nicht übertragen.'}),
+  info,el('p',{class:'small',text:'Der lokale Helfer meldet Ihren Telefonstatus an CuraAed. Zum Anrufen klicken Sie eine Telefonnummer in CuraAed an: Die gewählte Nummer wird dabei direkt an Ihre lokale Telefon-App übergeben. In Windows bitte STARFACE als Standard für Telefonlinks (TEL) auswählen. Gesprächsinhalte werden nicht übertragen.'}),
   el('label',{text:'CuraAed-Adresse'}),el('input',{value:location.origin,readOnly:true,'aria-label':'CuraAed-Adresse'}),
   el('label',{text:'Persönlicher Schlüssel (nur einmal sichtbar)'}),code,
   el('button',{type:'button',text:'Schlüssel kopieren',onclick:async()=>{if(!code.value)return;try{await navigator.clipboard.writeText(code.value);toast('Telefonieschlüssel kopiert');}catch{code.focus();code.select();}}}),
