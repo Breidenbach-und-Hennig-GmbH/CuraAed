@@ -26,6 +26,8 @@ test('Mitarbeiterfenster bleibt modeless, sortiert numerisch und hält Filter un
  await w.mitarbeiterSymbole();w.document.querySelector('#cu-team button').click();await tick();
  let box=w.document.querySelector('[aria-label="Mitarbeiterstatus"]');assert.ok(box);assert.equal(w.document.querySelector('.modal-backdrop'),null);assert.equal(w.document.querySelectorAll('.cu-team-symbol').length,0);
  const names=()=>[...box.querySelectorAll('.cu-team-statusname strong')].map(e=>e.textContent);assert.deepEqual(names(),['Anna','Zeta']);
+ assert.equal(box.querySelector('a.cu-team-rufnummer').getAttribute('href'),'tel:2');
+ assert.equal(box.querySelectorAll('a.cu-team-rufnummer').length,2);
  const sort=box.querySelector('select');sort.value='rufnummer';sort.dispatchEvent(new w.Event('change'));assert.deepEqual(names(),['Anna','Zeta']);
  const q=box.querySelector('input');q.value='Zeta';q.dispatchEvent(new w.Event('input'));assert.deepEqual(names(),['Zeta']);
  let creates=0;w.createTest=()=>creates++;w.eval('S.kontext={erstellen:window.createTest}');q.dispatchEvent(new w.KeyboardEvent('keydown',{key:'F4',bubbles:true,cancelable:true}));assert.equal(creates,0);
