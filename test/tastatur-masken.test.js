@@ -24,6 +24,7 @@ test('Kontextsprünge behalten Objekt, Wohnung und Adresse; Wohnung-Adresse filt
  const w=setup(t);for(const [typ,path,h] of [['objekt','objekte','hwa'],['einheit','einheiten','handwerker'],['adresse','adressen','handwerker']]){
   w.eval(`S.kontext={typ:'${typ}',${typ}:{id:7},objekt:{id:7}}`);
   w.befehl('h');assert.equal(w.location.hash,'#/'+path+'/7?tab='+h);w.befehl('k');assert.equal(w.location.hash,'#/'+path+'/7?tab=korrespondenz');w.befehl('v');assert.equal(w.location.hash,'#/'+path+'/7?tab=vorgaenge');
+  if(typ!=='einheit'){w.befehl('m');assert.equal(w.location.hash,'#/posteingang?typ='+typ+'&ziel=7');}
  }
  w.API={get:async()=>[{aktiv:true,einheit_id:3,adresse_id:8,anzeigename:'Richtig'},{aktiv:true,einheit_id:4,adresse_id:9,anzeigename:'Andere Wohnung'}]};await w.adresseWahl({id:7,nummer:'4236'},3);assert.match(w.document.querySelector('[role=dialog]').textContent,/Richtig/);assert.doesNotMatch(w.document.querySelector('[role=dialog]').textContent,/Andere Wohnung/);
 });
