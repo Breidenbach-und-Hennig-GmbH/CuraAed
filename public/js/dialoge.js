@@ -177,7 +177,7 @@ function adresseFormular(a) {
     { felder: [{ name: 'notizen', label: 'Notizen / Info', type: 'textarea', value: a?.notizen }] },
   ]);
   if (bearb) form.appendChild(el('p', { class: 'small muted', text: 'Telefonnummern, E-Mail-Adressen und Ansprechpartner pflegen Sie in der Adressmaske über die Pfeile ➠ bzw. die Knöpfe rechts.' }));
-  if(a?.hp_sync){inputs.nummer.readOnly=true;form.append(el('p',{role:'status',text:hpAdressStatus(a)}));}
+  if(a?.hp_sync){inputs.nummer.readOnly=true;if(istAdmin())form.append(el('p',{role:'status',text:hpAdressStatus(a)}));}
   form.classList.add('cu-adressformular');
   inputs.anrede.closest('.field').append(el('button',{type:'button',class:'hp-mini',text:'…',title:'Anrede auswählen (F5 im Feld Anrede)','aria-label':'Anrede auswählen',onclick:()=>anredeAuswahl(inputs.anrede)}));
   const kopieren=()=>anschriftKopierenDialog(quelle=>{
