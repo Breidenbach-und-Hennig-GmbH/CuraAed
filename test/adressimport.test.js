@@ -67,3 +67,16 @@ test('Import-API verlangt Administrator, passende Herkunft und ausdrückliche Vo
   const p = await (await post('vorschau', data, { cookie })).json();
   assert.equal((await post('uebernehmen', { ...data, pruefsumme: p.pruefsumme }, { cookie })).status, 200);
 });
+
+test('500 Importzeilen prüfen einen Bestand von 60000 Adressen seitenweise; Kurzname und zusätzliche E-Mail werden gefunden', async t => {
+  const { db, owner } = await setup(t);
+  await db.run("WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<60000) INSERT INTO adressen(nummer,adresstyp,vorname,nachname) SELECT CAST(x AS TEXT),'person','Vorname','Bestand'||x FROM n");
+  await db.run("UPDATE adressen SET vorname='',nachname='Li' WHERE id=60000");
+  await db.run("INSERT INTO adress_emails(adresse_id,adresse) VALUES(59999,'extra@example.test')");
+  const lines = ['Vorname;Nachname;E-Mail', ';Li;', 'Anderer;Name;extra@example.test', ...Array.from({ length: 498 }, (_, i) => 'Neu;Import' + i + ';')];
+  let calls = 0, maxPage = 0;
+  const bounded = { get: (...a) => db.get(...a), all: async (...a) => { calls++; const rows = await db.all(...a); maxPage = Math.max(maxPage, rows.length); return rows; } };
+  const p = await svc.plan(bounded, owner, input(lines.join('\n')));
+  assert.equal(p.neu, 498); assert.equal(p.dubletten, 2); assert.match(p.zeilen[0].meldung, /60000/); assert.match(p.zeilen[1].meldung, /59999/);
+  assert.ok(calls < 70, 'Bestand wird einmal statt je Importzeile gelesen'); assert.ok(maxPage <= 1000);
+});
