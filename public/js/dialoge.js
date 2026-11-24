@@ -62,6 +62,7 @@ async function objektFormular(objekt) {
       el('button', { class: 'btn-primary', text: 'Speichern', onclick: async () => {
         try {
           const v = werte();
+          if (!form.reportValidity()) return;
           if (bearb) { await API.put('/objekte/' + o.id, v); toast('Objekt gespeichert', 'success'); close(); neuLaden(); }
           else { const neu = await API.post('/objekte', v); toast('Objekt angelegt', 'success'); close(); geheZu('#/objekte/' + neu.id); }
         } catch (e) { fehler(e); }
@@ -99,6 +100,7 @@ function einheitFormular(objektId, einheit) {
       el('button', { class: 'btn-primary', text: 'Speichern', onclick: async () => {
         try {
           const v = werte();
+          if (!form.reportValidity()) return;
           if (bearb) { await API.put('/einheiten/' + einheit.id, v); toast('Gespeichert', 'success'); close(); neuLaden(); }
           else { await API.post('/objekte/' + objektId + '/einheiten', v); toast('Einheit angelegt', 'success'); close(); geheZu(`#/objekte/${objektId}?tab=einheiten`); }
         } catch (e) { fehler(e); }
@@ -1338,13 +1340,16 @@ async function einheitWahl(o) {
       el('button', { text: 'Abbrechen', onclick: close }),
     ],
   });
+  m.box.addEventListener('keydown', ev => {
+    if (ev.key === 'F4' && darfSchreiben()) { ev.preventDefault(); ev.stopPropagation(); m.close(); einheitFormular(o.id); }
+  });
   r.querySelector('tr.klick')?.focus();
 }
 
 /** Strg+A im Objekt: Adresse wählen (aktuelle Personenfunktionen im Objekt und seinen Wohnungen). */
-async function adresseWahl(o) {
+async function adresseWahl(o, einheitId = null) {
   let zuord;
-  try { zuord = (await API.get(`/objekte/${o.id}/zuordnungen`)).filter((z) => z.aktiv); } catch (e) { fehler(e); return; }
+  try { zuord = (await API.get(`/objekte/${o.id}/zuordnungen`)).filter((z) => z.aktiv && (einheitId == null || String(z.einheit_id) === String(einheitId))); } catch (e) { fehler(e); return; }
   if (!zuord.length) { toast('Im Objekt ist aktuell keine Personenfunktion hinterlegt.'); return; }
   let m;
   const r = raster([

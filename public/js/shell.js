@@ -102,27 +102,28 @@ const MASKEN_NAME = { adresse: 'Adress', objekt: 'Objekt', einheit: 'Wohnungs' }
 // nur: Maskentypen, in denen der Sprung existiert. browser: Strg+Taste ist im Browser belegt → Befehl-Feld.
 const BEFEHLE = [
   { taste: 'a', icon: 'pin', text: 'Adresse', aktion: (k) =>
-      (k.typ === 'objekt' ? adresseWahl(k.objekt)
+      (k.typ === 'handwerker' && k.hwaRecord?.auftrag?.handwerker?.id ? geheZu('#/adressen/' + k.hwaRecord.auftrag.handwerker.id)
+        : k.typ === 'objekt' || k.typ === 'einheit' ? adresseWahl(k.objekt, k.typ === 'einheit' ? k.einheit.id : null)
         : geheZu(k.typ === 'pkto' ? '#/adressen/' + k.adresse.id : k.typ === 'einheit' ? kontextRoute(k) + '?tab=allgemein' : k.typ === 'adresse' ? kontextRoute(k) : '#/adressen')) },
   { taste: 'b', icon: 'calendar', text: 'Buchungsjahr', nur: ['objekt', 'einheit'], aktion: (k) => geheZu(`#/objekte/${k.objekt.id}?fibu=1`) },
   { taste: 'e', icon: 'phone', text: 'Eingangstelefonat erfassen', aktion: eingangstelefonat },
   { taste: 'f', icon: 'file', text: 'FiBu Stammdaten', nur: ['objekt', 'einheit'], aktion: (k) => fibuGrundwerteDialog(k.objekt) },
-  { taste: 'h', icon: 'wrench', text: 'Handwerkerauftrag', aktion: () => geheZu('#/vorgaenge?art=handwerker') },
+  { taste: 'h', icon: 'wrench', text: 'Handwerkerauftrag', aktion: (k) => geheZu(kontextRoute(k) ? kontextRoute(k) + '?tab=' + (k.typ === 'objekt' ? 'hwa' : 'handwerker') : '#/hwa') },
   { taste: 'j', icon: 'calendar', text: 'Jahreskalender', aktion: () => geheZu('#/kalender') },
   { taste: 'k', icon: 'mail', text: 'Korrespondenz', aktion: (k) =>
-      geheZu(kontextRoute(k) ? kontextRoute(k) + '?tab=archiv&kategorie=korrespondenz' : '#/archiv?kategorie=korrespondenz') },
+      geheZu(k.typ === 'handwerker' && k.id ? '#/vorgaenge/' + k.id + '?tab=korrespondenz' : kontextRoute(k) ? kontextRoute(k) + '?tab=korrespondenz' : '#/archiv?kategorie=korrespondenz') },
   { taste: 'l', icon: 'building', text: 'Lieferant', nur: ['adresse'], folgt: FIBU },
-  { taste: 'm', icon: 'mail', text: 'E-Mail', aktion: () => { const k=S.kontext||{};geheZu('#/posteingang'+(['adresse','objekt','akte'].includes(k.typ)&&k.id?'?typ='+k.typ+'&ziel='+k.id:'')); } },
+  { taste: 'm', icon: 'mail', text: 'E-Mail', aktion: () => { const k=S.kontext||{},id=k.id||k[k.typ]?.id;geheZu('#/posteingang'+(['adresse','objekt','akte'].includes(k.typ)&&id?'?typ='+k.typ+'&ziel='+id:'')); } },
   { taste: 'o', icon: 'building', text: 'Objekt', aktion: (k) =>
-      (k.typ === 'adresse' ? pfktSprung(k, 'objekt') : geheZu(k.typ === 'einheit' || k.typ === 'pkto' ? '#/objekte/' + k.objekt.id : k.typ === 'objekt' ? kontextRoute(k) : '#/objekte')) },
+      (k.typ === 'adresse' ? pfktSprung(k, 'objekt') : geheZu(k.typ === 'handwerker' && k.hwaRecord?.auftrag?.objekt?.id ? '#/objekte/' + k.hwaRecord.auftrag.objekt.id : k.typ === 'einheit' || k.typ === 'pkto' ? '#/objekte/' + k.objekt.id : k.typ === 'objekt' ? kontextRoute(k) : '#/objekte')) },
   { taste: 'p', icon: 'user', text: 'Personenkonto', aktion: (k) => pktoSprung(k) },
   { taste: 'r', icon: 'file', text: 'Rechnung', aktion: () => rechnungAktuell() },
   { taste: 's', icon: 'book', text: 'Sachkontenrahmen', nur: ['objekt', 'einheit'], aktion: (k) => geheZu(`#/objekte/${k.objekt.id}?fibu=1`) },
   { taste: 't', icon: 'clock', text: 'Termin/Wiedervorlage', browser: true, aktion: terminWiedervorlage },
   { taste: 'v', icon: 'folder', text: 'Vorgang/Akte', aktion: (k) =>
-      (k.typ === 'adresse' || k.typ === 'objekt' ? geheZu(kontextRoute(k) + '?tab=vorgaenge') : toast('Vorgang/Akte: ' + SPAETER)) },
+      (k.typ === 'handwerker' && k.id ? geheZu('#/vorgaenge/' + k.id + '?tab=vorgaenge') : kontextRoute(k) ? geheZu(kontextRoute(k) + '?tab=vorgaenge') : toast('Vorgang/Akte: ' + SPAETER)) },
   { taste: 'w', icon: 'house', text: 'Wohnung', browser: true, aktion: (k) =>
-      (k.typ === 'adresse' ? pfktSprung(k, 'einheit') : k.typ === 'objekt' ? einheitWahl(k.objekt) : geheZu(k.typ === 'pkto' ? '#/einheiten/' + k.einheit.id : k.typ === 'einheit' ? kontextRoute(k) : '#/einheiten')) },
+      (k.typ === 'adresse' ? pfktSprung(k, 'einheit') : k.typ === 'objekt' ? einheitWahl(k.objekt) : geheZu(k.typ === 'handwerker' && k.hwaRecord?.auftrag?.einheit?.id ? '#/einheiten/' + k.hwaRecord.auftrag.einheit.id : k.typ === 'pkto' ? '#/einheiten/' + k.einheit.id : k.typ === 'einheit' ? kontextRoute(k) : '#/einheiten')) },
 ];
 
 // Alt+S, Buchstabe: Programmteile öffnen (Menü „Sprünge")

@@ -52,6 +52,7 @@ const UI = (() => {
   // Modal mit beliebigem Inhalt. Gibt {close} zurück.
   function modal({ titel, inhalt, footer, wide, onClose, fenster }) {
     const container = document.getElementById('modal-container');
+    const vorherigerFokus = document.activeElement;
     const box = el('div', { class: 'modal' + (wide ? ' wide' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': titel });
     const backdrop = el('div', { class: 'modal-backdrop' }, [box]);
     let zu = false;
@@ -64,13 +65,24 @@ const UI = (() => {
       fensterAufraeumen();
       backdrop.remove();
       document.removeEventListener('keydown', onKey);
+      if (vorherigerFokus?.isConnected) vorherigerFokus.focus();
       if (onClose) onClose();
     };
     // Wie HausPerfekt: Esc = Verlassen MIT Speichern (nur bei Änderungen, sonst einfach schließen),
     // Strg+Esc = Verlassen OHNE Speichern. Wirkt nur auf das oberste Fenster.
     let escGesperrt = false;
     const onKey = (ev) => {
-      if (ev.key !== 'Escape' || backdrop !== container.lastElementChild) return;
+      if (backdrop !== container.lastElementChild) return;
+      if (ev.key === 'Tab') {
+        const felder = [...box.querySelectorAll('input:not([type="hidden"]),select,textarea,button,a[href],summary,[tabindex]')]
+          .filter(f => !f.disabled && f.tabIndex >= 0 && !f.closest('[hidden]') && f.getClientRects().length);
+        if (!felder.length) return;
+        if (!box.contains(document.activeElement) || (ev.shiftKey ? document.activeElement === felder[0] : document.activeElement === felder.at(-1))) {
+          ev.preventDefault(); (ev.shiftKey ? felder.at(-1) : felder[0]).focus();
+        }
+        return;
+      }
+      if (ev.key !== 'Escape') return;
       ev.preventDefault();
       if (ev.ctrlKey || ev.metaKey) { schliessen(); return; }
       if (escGesperrt) return; // Speichern läuft bereits
@@ -129,6 +141,7 @@ const UI = (() => {
     };
     const erst = box.querySelector('.modal-body input, .modal-body select, .modal-body textarea') || box.querySelector('footer button');
     if (erst) erst.focus();
+    else { box.tabIndex = -1; box.focus(); }
     return { close: schliessen, box };
   }
 
