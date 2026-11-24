@@ -130,6 +130,22 @@ function baue(db, uploadDir, options = {}) {
     if (['lesen', 'auswerten'].includes(row.status) && !active.has(job)) { await fehlgeschlagen(job, new ValidationError('Bearbeitung wurde durch einen Neustart unterbrochen. Gelesene Seiten und Original bleiben erhalten.')); row = await own(user, job); }
     return { id: row.id, dateiname: row.dateiname, status: row.status, fortschritt: row.fortschritt, gesamt: row.gesamt, gelesen:!!row.seiten, meldung: row.meldung, ergebnis: row.ergebnis ? JSON.parse(row.ergebnis) : null, objekt_id: row.objekt_id };
   }
+  async function vorbereiten(user, job, data) {
+    if (active.size) fail('Eddi bearbeitet gerade ein Dokument.', 409);
+    return db.transaktion(async tx => {
+      const row = await tx.get('SELECT * FROM eddi_teilungen WHERE id=? AND benutzer_id=?', [job,user.id]);
+      if (!row) fail('Teilungserklärung nicht gefunden.',404);
+      if (row.objekt_id || !row.seiten || !['gelesen','fehler','analysiert'].includes(row.status)) fail('Bitte zuerst das vollständige Original lesen. Übernommene Daten können nicht ersetzt werden.',409);
+      if (data?.format !== 'curaaed-teilung-vorbereitung-v1' || data.quelle?.sha256 !== row.datei_hash || data.quelle?.pdf_seiten !== row.gesamt) fail('Die Vorbereitung gehört nicht zu diesem Original-PDF.');
+      const source=data.ergebnis;
+      if (!source || !Array.isArray(source.wohnungen)) fail('Vorbereitete Einheiten fehlen.');
+      const raw={...source,objekt:{...source.objekt,beleg:source.objekt_belege?.[0]},wohnungen:source.wohnungen.map(w=>({...w,mea:w.mea_original||w.mea}))};
+      const checked=vorschlag(raw,JSON.parse(row.seiten));
+      const result={objekt:checked.objekt,objekt_belege:[checked.objekt_beleg],wohnungen:checked.wohnungen,stimmregeln:checked.stimmregeln,hinweise:[...checked.hinweise,'Manuell vorbereiteter Datensatz; kein Ergebnis der OpenAI-API. Vorläufiger lokaler CuraAed-Bestand ohne HausPerfekt-Zuordnung.'],herkunft:'manuelle_vorbereitung',vorlaeufig:true};
+      await tx.run("UPDATE eddi_teilungen SET status='analysiert',ergebnis=?,meldung=NULL WHERE id=?",[JSON.stringify(result),job]);
+      return {id:job};
+    });
+  }
   async function uebernehmen(user, job, b) {
     if (b.geprueft !== true) fail('Bitte Objekt, alle Einheiten, Fundstellen und etwaige Nachträge vor der Anlage prüfen.');
     return db.transaktion(async tx => {
@@ -146,7 +162,11 @@ function baue(db, uploadDir, options = {}) {
       if(existing)fail('Objekt '+String(existing.nummer).replace(/^HP-[0-9a-f]{1,32}-(\d+)$/i,'$1')+' mit dieser Anschrift ist bereits vorhanden. Bitte Bestand prüfen.',409);
       if(data.wohnungen.some(w=>!w.mea))fail('Bitte die MEA jeder selbständigen Einheit prüfen und ergänzen. Sondernutzungsrechte sind keine eigenen Einheiten.');
       if(data.wohnungen.every(w=>String(w.mea).includes('/'))){const sum=data.wohnungen.reduce((s,w)=>Q.add(s,Q.parse(require('../lib/te-anteil')(w.mea))),Q.q(0n));if(Q.cmp(sum,Q.q(1n))!==0)fail('Die MEA-Brüche ergeben zusammen kein vollständiges Ganzes. Bitte Einheiten, Zahlen und Nachträge prüfen.');}
-      const o = await require('./objekte').anlegen(tx, { nummer: b.objektnummer || undefined, bezeichnung: addr.bezeichnung, strasse: addr.strasse, plz: addr.plz, ort: addr.ort, objekttyp: 'WEG' });
+      const provisional=original.vorlaeufig===true||b.vorlaeufig===true;
+      const number=provisional?(b.objektnummer||'VORL-'+row.id.slice(0,8)):b.objektnummer;
+      if(provisional&&!/^VORL-[A-Za-z0-9._-]+$/.test(number))fail('Vorläufige Objekte erhalten eine lokale Nummer mit VORL- am Anfang.');
+      // Local services only: no HP mapping, export or connector job is created.
+      const o = await require('./objekte').anlegen(tx, { nummer: number || undefined, bezeichnung: provisional?'VORLÄUFIG · '+addr.bezeichnung:addr.bezeichnung, strasse: addr.strasse, plz: addr.plz, ort: addr.ort, objekttyp: 'WEG', ...(provisional?{objekt_art:'Vorläufiger CuraAed-Bestand · ohne HausPerfekt',notizen:'VORLÄUFIG. Ausschließlich lokal in CuraAed angelegt, nicht mit HausPerfekt gekoppelt. Aktuellen Bestand und Nachträge vor endgültiger Freigabe prüfen.\n'+original.hinweise.join('\n')}: {}) });
       const seen = new Set(), unitIds = [];
       for (const w of data.wohnungen) {
         const nr = clean(w.nummer);
@@ -167,6 +187,6 @@ function baue(db, uploadDir, options = {}) {
       return { objekt_id: o.id, dokument_id: doc.id };
     });
   }
-  return { starten, analysieren, stand, uebernehmen, own, erneutLesen, aktiv:()=>!!active.size };
+  return { starten, analysieren, stand, uebernehmen, vorbereiten, own, erneutLesen, aktiv:()=>!!active.size };
 }
 module.exports = { baue, vorschlag, beleg };
