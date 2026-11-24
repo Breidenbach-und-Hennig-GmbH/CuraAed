@@ -6,6 +6,7 @@ const N = require('../lib/nummern');
 /** Anzeigename für Person/Firma. */
 function anzeigename(a) {
   if (!a) return '';
+  a = require('./adressBedienung').normalisieren(a);
   const name=a.adresstyp==='firma'?a.firmenname:[a.vorname,a.nachname].filter(Boolean).join(' ');
   if(name?.trim())return name;
   if(a.zusatz?.trim())return a.zusatz+' (Name aus Zusatzzeile)';
@@ -22,7 +23,7 @@ async function liste(db, opts = {}) {
     params.push(V.bool(opts.archiviert));
   }
   if (opts.adresstyp) {
-    where.push('adresstyp = ?');
+    where.push("(CASE WHEN LOWER(TRIM(anrede)) IN ('firma','firma.') THEN 'firma' ELSE adresstyp END) = ?");
     params.push(opts.adresstyp);
   }
   const suche = V.str(opts.suche);
@@ -38,7 +39,7 @@ async function liste(db, opts = {}) {
      ORDER BY COALESCE(NULLIF(nachname,''), firmenname) COLLATE NOCASE ASC LIMIT ?`,
     [...params, 500]
   );
-  return rows.map((r) => ({ ...r, anzeigename: anzeigename(r) }));
+  return rows.map((r) => ({ ...require('./adressBedienung').normalisieren(r), anzeigename: anzeigename(r) }));
 }
 
 async function holen(db, id) {
@@ -46,7 +47,7 @@ async function holen(db, id) {
     'SELECT a.*, b.name AS ampel_von_name FROM adressen a LEFT JOIN benutzer b ON b.id = a.ampel_von WHERE a.id = ?',
     [id]
   );
-  return a ? require('./hpAdressNeuanlage').metadata(db,await require('./hpAdressSync').metadata(db, { ...a, anzeigename: anzeigename(a) })) : undefined;
+  return a ? require('./hpAdressNeuanlage').metadata(db,await require('./hpAdressSync').metadata(db, { ...require('./adressBedienung').normalisieren(a), anzeigename: anzeigename(a), geburtstage:await require('./adressBedienung').geburtstage(db,a) })) : undefined;
 }
 
 function validiereNamen(data, adresstyp) {
