@@ -20,6 +20,7 @@ async function spalten(db, tabelle) {
  *    Objekten, Einheiten und Adressen zugeordnet werden kann.
  */
 async function migrieren(db, filePath) {
+  if(!(await spalten(db,'mitarbeiterprofile')).has('rufnummer'))await db.run('ALTER TABLE mitarbeiterprofile ADD COLUMN rufnummer TEXT');
   const sVersammlungen=await spalten(db,'versammlungen');
   if(!sVersammlungen.has('top_revision'))await db.run('ALTER TABLE versammlungen ADD COLUMN top_revision INTEGER NOT NULL DEFAULT 1');
   for(const [feld,tabelle] of [['beisitzer_id','benutzer'],['protokollfuehrer_id','benutzer'],['beirat_id','adressen'],['unterzeichner_id','adressen']])if(!sVersammlungen.has(feld))await db.run('ALTER TABLE versammlungen ADD COLUMN '+feld+' INTEGER REFERENCES '+tabelle+'(id) ON DELETE SET NULL');
