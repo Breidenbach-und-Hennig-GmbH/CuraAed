@@ -19,7 +19,7 @@ function uebersicht(register,teilnahme,units){
   }
   const classified=sum([sums.praesenz,sums.online,sums.gesperrt]);
   sums.abwesend=Q.add(total,Q.mul(classified,-1n));if(sums.abwesend.n<0n)valid=false;
-  const present=Q.add(sums.praesenz,sums.online),factor=mode==='mea'?scale:1n,fmt=n=>Q.str(Q.mul(n,factor)),percent=n=>total.n>0n?Number(n.n*total.d*10000n/(n.d*total.n))/100:0;
+  const present=Q.add(sums.praesenz,sums.online),factor=mode==='mea'?scale:1n,fmt=n=>mode==='mea'&&register.mea_basis?require('../lib/meaAnzeige').darstellen(Q.str(n),register.mea_basis):Q.str(Q.mul(n,factor)),percent=n=>total.n>0n?Number(n.n*total.d*10000n/(n.d*total.n))/100:0;
   out[mode]={verfuegbar:valid&&units.length>0,total:fmt(total),anwesend:fmt(present),prozent:valid?percent(present):null,werte:Object.fromEntries(types.map(k=>[k,fmt(sums[k])])),anteile:Object.fromEntries(types.map(k=>[k,valid?percent(sums[k]):0]))};
  }
  return out;
