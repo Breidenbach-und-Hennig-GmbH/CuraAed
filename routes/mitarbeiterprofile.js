@@ -8,6 +8,7 @@ module.exports=(db,publicUrl)=>{
  r.get('/ich',h(async(req,res)=>res.json(await svc.eigenes(db,req.benutzer.id))));
  r.put('/ich',h(async(req,res)=>res.json(await svc.speichern(db,req.benutzer.id,req.body||{}))));
  r.get('/',h(async(req,res)=>res.json(await svc.liste(db))));
+ r.post('/praesenz',h(async(req,res)=>res.json(await svc.aktivitaet(db,req.cookies?.[auth.COOKIE_NAME]))));
  r.get('/:id/bild',h(async(req,res)=>{
   const row=await db.get("SELECT p.bild FROM mitarbeiterprofile p JOIN benutzer b ON b.id=p.benutzer_id WHERE p.benutzer_id=? AND b.aktiv=1 AND b.rolle IN ('admin','mitarbeiter')",[req.params.id]);
   res.set('X-Content-Type-Options','nosniff');
