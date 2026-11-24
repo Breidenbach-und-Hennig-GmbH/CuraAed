@@ -996,6 +996,7 @@ function benutzerMenue(b) {
   if (offenesMenue && offenesMenue.knopf === b) { schliesseMenue(); return; }
   oeffneListe(b, 'Benutzer', [
     ...(darfSchreiben()?[{text:'Mein Profil',aktion:()=>meinProfil().catch(fehler)}]:[]),
+    {text:'Meine Microsoft-Anmeldung',aktion:()=>microsoftAnmeldeProfil()},
     { text: 'Passwort ändern …', aktion: passwortDialog },
     { text: 'Klassische Menüleiste', haken: () => S.klassik, titel: 'Menüband Datei, Edit, Optionen, Sprünge … und Symbolleiste einblenden', aktion: klassikUmschalten },
     { text: 'Sprung-Übersicht', taste: 'F1', aktion: sprungUebersicht },

@@ -55,6 +55,7 @@ function route() {
   if (bereich === 'fibu') return fibuMaske();
   if (bereich === 'pkto') return personenkontoMaske(id, params);
   if (bereich === 'verwaltungen') return verwaltungenMaske();
+  if (bereich === 'microsoft-konto') return microsoftKontoMaske();
   if (bereich === 'posteingang') return posteingangMaske(params);
   if (bereich === 'm365') return m365Maske();
   if (bereich === 'benutzer') return benutzerMaske();
