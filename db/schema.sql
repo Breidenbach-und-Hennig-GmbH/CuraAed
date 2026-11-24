@@ -957,6 +957,15 @@ CREATE TABLE IF NOT EXISTS m365_app_config(
 );
 
 CREATE TABLE IF NOT EXISTS m365_oauth_teams(state_hash TEXT PRIMARY KEY REFERENCES m365_oauth(state_hash) ON DELETE CASCADE);
+CREATE TABLE IF NOT EXISTS m365_oauth_postfach(state_hash TEXT PRIMARY KEY REFERENCES m365_oauth(state_hash) ON DELETE CASCADE);
+CREATE TABLE IF NOT EXISTS microsoft_anmeldungen(benutzer_id INTEGER PRIMARY KEY REFERENCES benutzer(id) ON DELETE CASCADE,mandant TEXT NOT NULL,kennung TEXT NOT NULL,konto TEXT NOT NULL,nur_microsoft INTEGER NOT NULL DEFAULT 1,erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(mandant,kennung));
+CREATE TABLE IF NOT EXISTS microsoft_login_oauth(state_hash TEXT PRIMARY KEY,browser_hash TEXT NOT NULL,nonce TEXT NOT NULL,verifier TEXT NOT NULL,config_hash TEXT NOT NULL,benutzer_id INTEGER REFERENCES benutzer(id) ON DELETE CASCADE,sitzung_hash TEXT,ablauf_am INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS m365_persoenliche_postfaecher(benutzer_id INTEGER PRIMARY KEY REFERENCES benutzer(id) ON DELETE CASCADE,token TEXT NOT NULL,konto TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS m365_postfach_oauth(state_hash TEXT PRIMARY KEY,benutzer_id INTEGER NOT NULL REFERENCES benutzer(id) ON DELETE CASCADE,sitzung_hash TEXT NOT NULL,verifier TEXT NOT NULL,config_hash TEXT NOT NULL,ablauf_am INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS email_nachrichten(id INTEGER PRIMARY KEY AUTOINCREMENT,zugang TEXT NOT NULL,postfach TEXT NOT NULL,graph_id TEXT NOT NULL,daten TEXT NOT NULL,gelesen_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,revision INTEGER NOT NULL DEFAULT 1,UNIQUE(zugang,postfach,graph_id));
+CREATE TABLE IF NOT EXISTS email_zuordnungen(nachricht_id INTEGER NOT NULL REFERENCES email_nachrichten(id) ON DELETE CASCADE,typ TEXT NOT NULL CHECK(typ IN ('adresse','objekt','akte')),ziel_id INTEGER NOT NULL,benutzer_id INTEGER NOT NULL REFERENCES benutzer(id),erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(nachricht_id,typ,ziel_id));
+CREATE INDEX IF NOT EXISTS idx_email_zuordnung ON email_zuordnungen(typ,ziel_id);
+CREATE TABLE IF NOT EXISTS email_antworten(auftrag_id TEXT PRIMARY KEY,nachricht_id INTEGER NOT NULL REFERENCES email_nachrichten(id),benutzer_id INTEGER NOT NULL REFERENCES benutzer(id),anfrage_hash TEXT NOT NULL,status TEXT NOT NULL,text TEXT NOT NULL,erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS etv_teams(
  versammlung_id INTEGER PRIMARY KEY REFERENCES versammlungen(id) ON DELETE CASCADE,
  firma_id INTEGER REFERENCES firmenbriefkoepfe(id),dauer INTEGER NOT NULL DEFAULT 180,external_id TEXT NOT NULL,meeting_id TEXT,join_url TEXT,organizer TEXT,basis_hash TEXT,
