@@ -18,6 +18,12 @@ test('Einlass ist lesend; MEA, Köpfe und Einheiten zählen Vertretung und Sperr
 test('Fehlende MEA werden nicht als vollständige Prozentzahl ausgegeben',async t=>{
  const db=await fixture(t);await attendance(db);await db.run("UPDATE einheiten SET mea=NULL WHERE id=4");const s=await E.stand(db,1);assert.equal(s.uebersicht.mea.verfuegbar,false);assert.equal(s.uebersicht.mea.prozent,null);assert.equal(s.uebersicht.einheiten.verfuegbar,true);assert.equal(s.start_moeglich,false);assert.ok(s.hinweise.length);
 });
+
+test('Einlass zeigt die ursprüngliche MEA-Basis auch bei unterschiedlich gekürzten Brüchen',()=>{
+ const groups=[{key:'a',mea:'1/8',mea_vollstaendig:true,einheiten:[{}]},{key:'b',mea:'1/4',mea_vollstaendig:true,einheiten:[{}]},{key:'c',mea:'5/8',mea_vollstaendig:true,einheiten:[{}]}];
+ const s=E.uebersicht({gruppen:groups,mea_basis:'10000'},{daten:{a:{teilnahme:'selbst',kanal:'praesenz'}}},groups);
+ assert.equal(s.mea.total,'10.000');assert.equal(s.mea.anwesend,'1.250');assert.equal(s.mea.werte.abwesend,'8.750');assert.equal(s.mea.prozent,12.5);
+});
 test('Start ist einmalig, atomar und verwendet Serverzeit; geplanter Beginn bleibt erhalten',async t=>{
  const db=await fixture(t);await attendance(db);const s=await E.stand(db,1),now=()=>new Date('2026-11-11T16:08:00.000Z');
  const [a,b]=await Promise.all([E.starten(db,1,body(s),1,now),E.starten(db,1,body(s),1,()=>new Date('2026-11-11T16:09:00Z'))]);

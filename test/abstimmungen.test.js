@@ -44,6 +44,19 @@ test('Individuelle Mehrheiten haben getrennte Bezugsgrößen für abgegeben, ver
  const r={mehrheit:'individuell',zaehler:1,nenner:2,vergleich:'gte'};
  assert.equal(count(g,s,{}, {...r,basis:'abgegeben'}).status,'angenommen');assert.equal(count(g,s,{}, {...r,basis:'vertreten'}).status,'angenommen');assert.equal(count(g,s,{}, {...r,basis:'alle'}).status,'abgelehnt');
 });
+
+test('Dreiviertel- und Zweidrittelquoten beachten auch Abwesende und die ausdrücklich gewählte Bezugsgröße',()=>{
+ const groups=['1','2','3','4'].map(k=>group(k)),votes=[row('1'),row('2','keine',{teilnahme:'abwesend'}),row('3','enthaltung'),row('4','keine',{teilnahme:'abwesend'})];
+ assert.equal(count(groups,votes,{}, {mehrheit:'drei_viertel',basis:'abgegeben'}).status,'angenommen');
+ for(const mehrheit of ['drei_viertel','zwei_drittel']){assert.equal(count(groups,votes,{}, {mehrheit,basis:'alle'}).status,'abgelehnt');assert.equal(count(groups,votes,{}, {mehrheit,basis:'vertreten'}).status,'abgelehnt');}
+ const boundary=[row('1'),row('2'),row('3'),row('4','keine',{teilnahme:'abwesend'})];assert.equal(count(groups,boundary,{}, {mehrheit:'drei_viertel',basis:'gesamt'}).status,'angenommen');
+});
+test('Gesamtbestand ist von stimmberechtigten Rechten getrennt; Original-MEA-Skala verändert keine Rechenwerte',()=>{
+ const groups=[group('1','3/5'),group('2','2/5')],votes=[row('1'),row('2','keine',{ausgeschlossen:true,ausschlussgrund:'Nur Test-TOP'})];
+ assert.equal(count(groups,votes,{prinzip:'mea'},{mehrheit:'drei_viertel',basis:'alle'}).status,'angenommen');
+ const register={...reg(groups),mea_basis:'10000'},result=A.zaehlen(register,{...A.DEFAULT_CONFIG,prinzip:'mea',geprueft:true},{...A.DEFAULT_RULE,mehrheit:'drei_viertel',basis:'gesamt'},votes,true);
+ assert.equal(result.status,'abgelehnt');assert.equal(result.basis,'1');assert.equal(result.summen.ja,'3/5');assert.equal(result.summen_anzeige.ja,'6.000');assert.equal(result.summen_anzeige.ausgeschlossen,'4.000');assert.equal(result.basis_anzeige,'10.000');
+});
 test('MEA-Zusatzquorum bezieht sich auf alle MEA einschließlich Abwesender und Ausgeschlossener',()=>{
  const g=[group('1','1/2'),group('2','1/4'),group('3','1/4')],s=[row('1'),row('2','keine',{teilnahme:'abwesend'}),row('3','keine',{ausgeschlossen:true,ausschlussgrund:'§ 25 Abs. 4'})];
  assert.equal(count(g,s,{}, {zusatz_mea:'mehr_haelfte'}).status,'abgelehnt');assert.equal(count(g,s,{}, {zusatz_mea:'mindestens_haelfte'}).status,'angenommen');
