@@ -5,6 +5,9 @@ module.exports=function(db,options={}){
  const r=express.Router({mergeParams:true}),lobaro=require('../services/lobaro').baue(db,options);
  r.use(auth.erfordereLogin);r.use((req,res,next)=>{res.set('Cache-Control','no-store');if(!['admin','mitarbeiter','leser'].includes(req.benutzer.rolle))return next(new ValidationError('Kein Zugriff auf die Zählerverwaltung.',403));if(req.method==='GET')return next();if(!['admin','mitarbeiter'].includes(req.benutzer.rolle))return next(new ValidationError('Keine Schreibberechtigung.',403));let origin;try{origin=new URL(options.publicUrl||process.env.APP_PUBLIC_URL||process.env.RENDER_EXTERNAL_URL).origin;}catch{}if(!origin||req.get('origin')!==origin||!req.is('application/json'))return next(new ValidationError('Bitte die Zählerverwaltung in CuraAed verwenden.',403));next();});
  const oid=req=>req.params.objektId;
+ const hpImport=require('../services/hpZaehlerImport');
+ r.post('/hp-import/vorschau',h(async(req,res)=>res.json(await hpImport.vorschau(db,oid(req),req.body.bericht))));
+ r.post('/hp-import/uebernehmen',h(async(req,res)=>res.json(await hpImport.uebernehmen(db,oid(req),req.body.bericht,req.body.pruefsumme,req.benutzer))));
  r.get('/',h(async(req,res)=>res.json(await Z.liste(db,oid(req)))));
  r.post('/punkte',h(async(req,res)=>res.status(201).json(await Z.punktSpeichern(db,oid(req),null,req.body,req.benutzer))));
  r.put('/punkte/:pid',h(async(req,res)=>res.json(await Z.punktSpeichern(db,oid(req),req.params.pid,req.body,req.benutzer))));
