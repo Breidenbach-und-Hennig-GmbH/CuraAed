@@ -14,6 +14,10 @@ function akteSuchen(){
  list.addEventListener('click',e=>{if(e.target.closest('a[href^="#/vorgaenge/"]'))m.close();});
  list.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('tr[tabindex]'))m.close();},true);
  m=modal({titel:'Akte / Vorgang suchen',wide:true,inhalt:list,footer:close=>[el('button',{text:'Schließen',onclick:close})]});vorgaengeListe(list,{art:'akte'});[...list.querySelectorAll('button')].find(b=>b.textContent==='Neu anlegen')?.addEventListener('click',()=>m.close(),true);list.querySelector('input')?.focus();
+ m.box.addEventListener('keydown',e=>{
+  if(e.key==='F4'&&darfSchreiben()){e.preventDefault();e.stopPropagation();m.close();akteForm();}
+  if(e.key==='F2'&&darfSchreiben()){const row=e.target.closest('tr')?.hpDaten;if(row){e.preventDefault();e.stopPropagation();m.close();API.get('/vorgaenge/'+row.id).then(akteForm).catch(fehler);}}
+ });
 }
 async function akteForm(r={},context=null){
  if(!darfSchreiben())return;const a=r.akte||{},lauf=S.lauf;
@@ -42,19 +46,20 @@ async function akteForm(r={},context=null){
   input.addEventListener('blur',()=>resolve(key).then(()=>input.setCustomValidity('')).catch(e=>{if(!closed){hint.textContent=e.message;input.setCustomValidity(e.message);}}));
   if(typeof tippAuswahl==='function')tippAuswahl(input,{label:typ==='objekt'?'Objekt':'Wohnung',format:row=>String(row.nummer),scope:()=>inputs.objekt_nr.value,suchen:async q=>{const object=typ==='einheit'?await resolve('objekt_nr'):null;return tippSuche(typ,q,{objektId:object?.id});},auswaehlen:row=>{refs[key]=row;hint.textContent=row.anzeigename||row.bezeichnung||'';input.setCustomValidity('');if(key==='objekt_nr'){refs.wohnung_nr=null;inputs.wohnung_nr.value='';names.wohnung_nr.textContent='';}}});
  }
- let m;const error=el('p',{role:'alert'}),save=el('button',{type:'submit',form:'akte-form',class:'btn-primary',text:'OK'});form.append(error);
+ let m;const error=el('p',{role:'alert'}),save=el('button',{type:'submit',form:'akte-form',class:'btn-primary','data-speichern':'1',text:'OK'});form.append(error);
  form.addEventListener('submit',async e=>{e.preventDefault();save.disabled=true;error.textContent='';try{const object=await resolve('objekt_nr'),unit=await resolve('wohnung_nr'),v=werte();
   const data={art:'akte',titel:v.titel,text:v.text,status:v.geschlossen_am?'erledigt':v.status,prioritaet:r.prioritaet||'normal',faellig_am:r.faellig_am||null,uhrzeit:r.uhrzeit||null,zustaendig_id:r.zustaendig_id||null,revision:r.revision,kontext:context,
    akte:{...Object.fromEntries(['art_code','art_text','begonnen_am','geschlossen_am','bemerkung','ablageort','firma','sb'].map(k=>[k,v[k]])),sonderleistung:inputs.sonderleistung.checked,objekt_id:object?.id||null,einheit_id:unit?.id||null}};
   const saved=r.id?await API.put('/vorgaenge/'+r.id,data):await API.post('/vorgaenge',data);closed=true;m.close();toast('Akte gespeichert','success');geheZu('#/vorgaenge/'+saved.id);
  }catch(e){error.textContent=e.message;}finally{save.disabled=false;}});
- m=modal({titel:r.id?'Akte bearbeiten':'Neuanlage Akte / Vorgang',wide:true,inhalt:form,footer:close=>[el('button',{text:'Abbrechen',onclick:()=>{closed=true;close();}}),save]});inputs.art_code.focus();
+ m=modal({titel:r.id?'Akte bearbeiten':'Neuanlage Akte / Vorgang',wide:true,inhalt:form,onClose:()=>{closed=true;},footer:close=>[el('button',{text:'Abbrechen',onclick:close}),save]});inputs.art_code.focus();
 }
 function aktenMaske(r,params=new URLSearchParams(),context=null){
  const lauf=S.lauf,a=r.akte||{},refs=r.bezuege||[],basis=r.id?'#/vorgaenge/'+r.id:'#/vorgaenge',tab=params.get('tab')||'adressen';if(r.id)S.akteLetzte=r.id;
  S.kontext={typ:'akte',id:r.id,suchen:akteSuchen,erstellen:()=>akteForm({},context),...(r.id?{bearbeiten:()=>akteForm(r),drucken:()=>window.print()}:{})};
  const rows=a.adressen||refs.filter(b=>b.typ==='adresse').map(b=>({id:b.ziel_id,nummer:b.hp_nummer,name:b.name}));let selected=rows.find(v=>v.id===S.akteAdresse)||rows[0]||null;
  const pf=el('div'),content=el('div',{class:'cu-akte-inhalt'}),change=t=>geheZu(basis+'?tab='+t),name=akteNummer(r);
+ S.kontext.spruenge={a:()=>zuordnungsSprung('adresse',selected?[selected]:[]),o:()=>zuordnungsSprung('objekt',a.objekt?[a.objekt]:refs.filter(b=>b.typ==='objekt').map(b=>({...b,id:b.ziel_id}))),w:()=>zuordnungsSprung('einheit',a.einheit?[a.einheit]:refs.filter(b=>b.typ==='einheit').map(b=>({...b,id:b.ziel_id}))),k:()=>change('korrespondenz'),h:()=>change('handwerker'),v:()=>change('adressen')};
  const object=a.objekt?el('a',{href:'#/objekte/'+a.objekt.id,text:[a.objekt.nummer,a.objekt.bezeichnung].filter(Boolean).join(' · ')}):refs.find(b=>b.typ==='objekt')?.name||'–';
  const unit=a.einheit?el('a',{href:'#/einheiten/'+a.einheit.id,text:[a.einheit.nummer,a.einheit.lage||a.einheit.bezeichnung].filter(Boolean).join(' · ')}):refs.find(b=>b.typ==='einheit')?.name||'–';
  const oben=[el('div',{class:'cu-akte-kopf'},[panel([[a.art_code||'Aktenart',a.art_text||AKTEN_ARTEN[a.art_code]||'–'],['Suchbegriff',r.titel||'Keine Akte ausgewählt'],['Begonnen am',datum(a.begonnen_am)],['Bemerkung',a.bemerkung||'–'],['Objekt',object],['Ort',[a.objekt?.plz,a.objekt?.ort].filter(Boolean).join(' ')||'–'],['VE / Lage',unit],['Ablageort',a.ablageort||'–']]),el('div',{class:'cu-akte-status'},[panel([['Angelegt',datum(a.angelegt_hp||r.erstellt_am)],['Geschlossen',datum(a.geschlossen_am)],['Bearbeitungsstand',VORGANG_STATUS[r.status]||'–'],['Firma / SB',[a.firma,a.sb].filter(Boolean).join(' / ')||r.zustaendig||'–']]),el('label',{class:'cu-akte-sonder'},[el('input',{type:'checkbox',checked:!!a.sonderleistung,disabled:true}),document.createTextNode('Sonderleistung')])])])];

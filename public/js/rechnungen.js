@@ -77,6 +77,7 @@ async function rechnungMaske(dokument,kontext={}){
  const suggestionBox=el('section',{class:'cu-rechnung-erkannt cu-rechnung-zuordnung','aria-label':'Automatische Zuordnung'});form.insertBefore(suggestionBox,header);
  let matchVersion=0;
  function showMatches(r){
+  const fokusLabel=suggestionBox.contains(document.activeElement)?document.activeElement.getAttribute('aria-label'):null;
   suggestionBox.replaceChildren(el('strong',{text:'Automatische Zuordnung · bitte prüfen'}));
   const groups=[['lieferanten','Lieferant','lieferantenkonto'],['objekte','Objekt','objekt_nr'],['konten','Buchungskonto','buchungskonto']];
   for(const [group,label,field] of groups){
@@ -88,6 +89,7 @@ async function rechnungMaske(dokument,kontext={}){
    select.addEventListener('change',()=>{if(!select.value)return;f[field].value=select.value;f[field].classList.add('cu-rechnung-auto');f[field].dispatchEvent(new Event('input',{bubbles:true}));if(field!=='buchungskonto'){if(field==='objekt_nr'){f.buchungskonto.value='';objectInfo();}else if(f.buchungskonto.classList.contains('cu-rechnung-auto'))f.buchungskonto.value='';refreshMatches(true).catch(e=>{alert.textContent=e.message;});}});
    suggestionBox.append(el('label',{text:label}),select);
   }
+  if(fokusLabel)[...suggestionBox.querySelectorAll('select')].find(s=>s.getAttribute('aria-label')===fokusLabel)?.focus();
  }
  async function refreshMatches(apply=false){
   const n=++matchVersion,r=await API.post('/eingangsrechnungen/zuordnung',{dokument:ref,auswahl:{lieferantenkonto:f.lieferantenkonto.value,objekt_nr:f.objekt_nr.value}});
@@ -111,5 +113,5 @@ async function rechnungMaske(dokument,kontext={}){
  const r=await API.post('/eingangsrechnungen/dokument',{dokument:ref,revision,daten});revision=r.revision;toast('Rechnung CA-R-'+r.id+' gespeichert · Dokumentenart RE','success');close();if(S.lauf===lauf&&S.kontext?.rechnungGespeichert)S.kontext.rechnungGespeichert().catch(fehler);
  }catch(e){alert.textContent=e.message;}finally{busy=false;button.disabled=false;}}
  let submit;const m=modal({titel:'Eingangsrechnung',inhalt:form,wide:true,onClose:()=>{closed=true;},footer:close=>[el('button',{text:'Abbrechen',onclick:close}),submit=el('button',{type:'button',text:'OK',class:'btn-primary','data-speichern':'1',onclick:()=>save(close,submit)})]});m.box.classList.add('cu-rechnung-dialog');
- form.addEventListener('submit',e=>{e.preventDefault();save(m.close,submit);});update();if(f.objekt_nr.value)objectInfo();
+ form.addEventListener('submit',e=>{e.preventDefault();save(m.close,submit);});f.lieferantenkonto.focus();update();if(f.objekt_nr.value)objectInfo();
 }

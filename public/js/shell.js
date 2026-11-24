@@ -185,11 +185,25 @@ function pfktSprung(k, art) {
 function befehl(taste, ausBefehlFeld = false) {
   const k = S.kontext || {};
   if (ausBefehlFeld && taste === 's' && k.suchen) { k.suchen(); return; }
+  if (k.spruenge?.[taste]) { k.spruenge[taste](); return; }
   const b = BEFEHLE.find((x) => x.taste === taste);
   if (!b) { toast(`Unbekannter Befehl „${taste}".`, 'error'); return; }
   if (b.nur && !b.nur.includes(k.typ)) { toast(`${b.text}: nur in der ${b.nur.map((t) => MASKEN_NAME[t] + 'maske').join(' / ')}.`); return; }
   if (b.folgt) { toast(`${b.text}: ${b.folgt}`); return; }
   b.aktion(k);
+}
+
+/** Ein oder mehrere tatsächlich zugeordnete Ziele per Tastatur öffnen. */
+function zuordnungsSprung(typ, eintraege = []) {
+  const route = {adresse:'adressen',objekt:'objekte',einheit:'einheiten',akte:'vorgaenge',handwerker:'vorgaenge'}[typ];
+  const ziele = [...new Map(eintraege.filter(z=>z?.id).map(z=>[String(z.id),z])).values()];
+  if (!route || !ziele.length) { toast('Keine passende Zuordnung vorhanden.'); return; }
+  const oeffnen = z => geheZu('#/'+route+'/'+encodeURIComponent(z.id));
+  if (ziele.length === 1) { oeffnen(ziele[0]); return; }
+  let m;
+  const r = raster([{label:'Nummer',render:z=>z.nummer||'CA-'+z.id},{label:'Bezeichnung',render:z=>z.label||z.name||z.bezeichnung||''}],ziele,{onOpen:z=>{m.close();oeffnen(z);}});
+  m=modal({titel:'Zuordnung auswählen',inhalt:r,footer:close=>[el('button',{text:'Abbrechen',onclick:close})]});
+  r.querySelector('tr.klick')?.focus();
 }
 
 function bearbeitenAktuell() {
