@@ -1,4 +1,4 @@
-{
+"{
   "name": "hausverwaltung",
   "version": "1.0.0",
   "description": "WEG- und Mietverwaltung – Stufe 1: Objekte, Einheiten, zentrale Adressdatenbank, rollenbasierte Zuordnung, Dokumentenarchiv",
@@ -27,7 +27,8 @@
     "jose": "6.2.15"
   },
   "devDependencies": {
-    "jsdom": "26.1.0"
+    "jsdom": "26.1.0" 
+    "express-rate-limit": "7.4.0"
   },
   "engines": {
     "node": ">=22.19.0"
