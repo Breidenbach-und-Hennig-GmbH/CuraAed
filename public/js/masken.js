@@ -73,7 +73,7 @@ function objektSuche() {
     ],
     abrufen: (w) => API.get('/objekte' + API.qs(w)),
     spalten: [
-      { label: 'Nr.', class: 'nowrap', render: (o) => o.anzeigenummer || o.nummer },
+      { label: 'Nr.', class: 'nowrap', render: (o) => UI.objektNummer(o) },
       { label: 'Bezeichnung', render: (o) => el('strong', { text: o.bezeichnung }) },
       { label: 'Typ', render: (o) => (o.objekttyp === 'HP' ? 'HP-Typ' : o.objekttyp === 'WEG' ? 'WEG' : 'Miete') },
       { label: 'Strasse', render: (o) => o.strasse },
@@ -102,7 +102,7 @@ function einheitSuche() {
       { label: 'Bezeichnung', render: (e) => el('strong', { text: e.bezeichnung }) },
       { label: 'Typ', render: (e) => L.einheitstyp[e.einheitstyp] || e.einheitstyp },
       { label: 'VE / Lage', render: (e) => e.lage },
-      { label: 'Objekt', render: (e) => `${e.objekt_nummer} ${e.objekt_bezeichnung}` },
+      { label: 'Objekt', render: (e) => `${UI.objektNummer(e.objekt_nummer)} ${e.objekt_bezeichnung}` },
       { label: 'Ort', render: (e) => e.objekt_ort },
       { label: 'Fläche', class: 'zahl nowrap', render: (e) => (e.flaeche_qm != null ? `${String(e.flaeche_qm).replace('.', ',')} m²` : '') },
     ],
@@ -423,19 +423,19 @@ async function objektMaske(id, params) {
   // ältere Links (?tab=einheiten/adressen/notizen) auf die neuen Reiter abbilden
   const tab = { einheiten: 'kennzahlen', adressen: 'allgemein', notizen: 'allgemein' }[params.get('tab')] || params.get('tab') || 'allgemein';
   const schreiben = darfSchreiben();
-  S.kontext = { typ: 'objekt', objekt: o, archivKtx: { typ: 'objekt', id: o.id, nummer: o.nummer }, bearbeiten: () => objektFormular(o),
+  S.kontext = { typ: 'objekt', objekt: o, archivKtx: { typ: 'objekt', id: o.id, nummer: UI.objektNummer(o) }, bearbeiten: () => objektFormular(o),
     erstellen: () => objektFormular(), loeschen: () => aktivUmschalten('Objekt', '/objekte/' + o.id, o), suchen: () => geheZu('#/objektliste') };
   const SPAETER_KNOPF = 'Folgt in einer späteren Ausbaustufe.';
 
   // ---- Objektstammdaten (Karte, zwei Spalten)
-  const fotoKtx = { typ: 'objekt', id: o.id, nummer: o.nummer, kategorie: 'foto' };
+  const fotoKtx = { typ: 'objekt', id: o.id, nummer: UI.objektNummer(o), kategorie: 'foto' };
   const zeile = (l, w) => el('div', { class: 'cu-kv' }, [el('span', { class: 'cu-kv-l', text: l }), el('span', { class: 'cu-kv-w', text: w == null || w === '' ? '—' : String(w) })]);
   const oben = [
     el('section', { class: 'cu-karte cu-stammdaten hp-objekt-kopf', 'aria-label': 'Objektstammdaten' }, [
       el('h2', { class: 'cu-karten-titel' }, [icon('building', 'cu-akzent'), el('span', { text: 'Objektstammdaten' })]),
       el('div', { class: 'cu-spalten' }, [
         el('div', { class: 'cu-spalte' }, [
-          el('div', { class: 'cu-gruppe' }, [zeile('Objektnummer', o.nummer), zeile('Straße', o.strasse), zeile('PLZ / Ort', [o.plz, o.ort].filter(Boolean).join(' '))]),
+          el('div', { class: 'cu-gruppe' }, [zeile('Objektnummer', UI.objektNummer(o)), zeile('Straße', o.strasse), zeile('PLZ / Ort', [o.plz, o.ort].filter(Boolean).join(' '))]),
           el('div', { class: 'cu-gruppe' }, [zeile('Objekttyp', objektTypText(o)), zeile('Büro-Kostenstelle', o.buero_kst), zeile('Sachbearbeitung', o.sachbearbeiter_name)]),
         ]),
         el('div', { class: 'cu-spalte hp-objekt-technik' }, [
@@ -564,12 +564,12 @@ async function objektMaske(id, params) {
   }
 
   zeigeAufDesktop(lauf, maskenFenster({
-    titel: `Objekt anzeigen  Nr.: ${o.nummer} ${String(o.bezeichnung || '').toUpperCase()}`,
+    titel: `Objekt anzeigen  Nr.: ${UI.objektNummer(o)} ${String(o.bezeichnung || '').toUpperCase()}`,
     kopf: {
-      brot: [{ text: 'Objekte', href: '#/objektliste' }, { text: o.nummer, href: basis }, { text: o.bezeichnung }],
+      brot: [{ text: 'Objekte', href: '#/objektliste' }, { text: UI.objektNummer(o), href: basis }, { text: o.bezeichnung }],
       ueberschrift: o.bezeichnung,
       badge: o.objekttyp === 'HP' ? 'HP-Typ noch nicht zugeordnet' : o.objekttyp === 'WEG' ? 'WEG-Verwaltung' : 'Mietverwaltung', badgeKlasse: o.objekttyp === 'WEG' ? 'cu-badge-weg' : 'cu-badge-miete',
-      unterzeile: [`Objekt ${o.nummer}`, [o.plz, o.ort].filter(Boolean).join(' ')].filter(Boolean).join('  •  ') + (o.archiviert ? '  •  deaktiviert' : ''),
+      unterzeile: [`Objekt ${UI.objektNummer(o)}`, [o.plz, o.ort].filter(Boolean).join(' ')].filter(Boolean).join('  •  ') + (o.archiviert ? '  •  deaktiviert' : ''),
       buchungsjahr: true,
     },
     inhalt: maskenRaster({
@@ -611,7 +611,7 @@ async function einheitMaske(id, params) {
   const oben = [
     panel([
       [art, e.nummer, el('strong', { text: e.bezeichnung })],
-      ['Objekt', link(o.nummer, '#/objekte/' + o.id), el('span', { class: 'hp-gross', text: o.bezeichnung })],
+      ['Objekt', link(UI.objektNummer(o), '#/objekte/' + o.id), el('span', { class: 'hp-gross', text: o.bezeichnung })],
       ['Ort', o.plz, o.ort],
       ['VE / Lage', e.lage],
       ['Fläche', e.flaeche_qm != null ? `${String(e.flaeche_qm).replace('.', ',')} m²` : '', e.zimmer != null ? `${String(e.zimmer).replace('.', ',')} Zimmer` : ''],
@@ -682,10 +682,10 @@ async function einheitMaske(id, params) {
   zeigeAufDesktop(lauf, maskenFenster({
     titel: `${art} – ${e.nummer} ${e.bezeichnung} · ${o.bezeichnung}`,
     kopf: {
-      brot: [{ text: 'Objekte', href: '#/objektliste' }, { text: `${o.nummer} ${o.bezeichnung}`, href: '#/objekte/' + o.id }, { text: e.nummer }],
+      brot: [{ text: 'Objekte', href: '#/objektliste' }, { text: `${UI.objektNummer(o)} ${o.bezeichnung}`, href: '#/objekte/' + o.id }, { text: e.nummer }],
       ueberschrift: e.bezeichnung || `${art} ${e.nummer}`,
       badge: art, badgeKlasse: 'cu-badge-neutral',
-      unterzeile: [`${art} ${e.nummer}`, `Objekt ${o.nummer} ${o.bezeichnung}`, e.lage].filter(Boolean).join('  •  ') + (e.archiviert ? '  •  deaktiviert' : ''),
+      unterzeile: [`${art} ${e.nummer}`, `Objekt ${UI.objektNummer(o)} ${o.bezeichnung}`, e.lage].filter(Boolean).join('  •  ') + (e.archiviert ? '  •  deaktiviert' : ''),
       knoepfe: [{ text: 'Personenkonto', icon: 'wallet', titel: 'Personenkonto der Wohnung (Strg+P)', onclick: () => pktoWahl(pktos, { einheit: e }) }],
     },
     inhalt: maskenRaster({
@@ -1088,7 +1088,7 @@ function zisAnsicht(a, ziel, lauf, objekt = null) {
     druckeBereich(el('div', {}, [
       el('h2', { text: `ZIS – ${nr} ${name}` }),
       el('p', { text: `${zisDatum(e.zeitpunkt)} ${zisZeit(e.zeitpunkt)} · ${ZIS_ART[e.art] || e.art}${e.sb ? ' · SB ' + String(e.sb).toUpperCase() : ''}${e.minuten != null ? ' · ' + e.minuten + ' Min.' : ''}${e.intern ? ' · intern' : ''}` }),
-      e.objekt_nummer ? el('p', { text: `Objekt ${e.objekt_nummer} ${e.objekt_bezeichnung || ''}${e.einheit_nummer ? ` · Wohnung ${e.einheit_nummer} ${e.einheit_bezeichnung || ''}` : ''}` }) : null,
+      e.objekt_nummer ? el('p', { text: `Objekt ${UI.objektNummer(e.objekt_nummer)} ${e.objekt_bezeichnung || ''}${e.einheit_nummer ? ` · Wohnung ${e.einheit_nummer} ${e.einheit_bezeichnung || ''}` : ''}` }) : null,
       el('p', { class: 'hp-umbruch', text: [e.text, e.notiz].filter(Boolean).join('\n\n') }),
     ]));
   };
@@ -1421,7 +1421,7 @@ async function archivMaske(params) {
   try {
     if (params.get('objekt')) {
       const o = await API.get('/objekte/' + encodeURIComponent(params.get('objekt')));
-      ktx = { typ: 'objekt', id: o.id, nummer: o.nummer, titel: `Objekt ${o.nummer} ${o.bezeichnung}`, href: '#/objekte/' + o.id };
+      ktx = { typ: 'objekt', id: o.id, nummer: UI.objektNummer(o), titel: `Objekt ${UI.objektNummer(o)} ${o.bezeichnung}`, href: '#/objekte/' + o.id };
     } else if (params.get('einheit')) {
       const e = await API.get('/einheiten/' + encodeURIComponent(params.get('einheit')));
       ktx = { typ: 'einheit', id: e.id, nummer: e.nummer, titel: `Einheit ${e.nummer} ${e.bezeichnung}`, href: '#/einheiten/' + e.id };
@@ -1462,7 +1462,7 @@ const RECHNUNGSART = { eue: 'Einnahmen-Überschuss-Rechnung', bilanz: 'Bilanz' }
 const KONTOARTEN = { S: 'S – Sachkonto', B: 'B – Bankkonto', A: 'A – (lt. HausPerfekt, z. B. Offene Forderungen Rücklage)' };
 
 async function kontenrahmenVorlage(o, danach) {
-  if (!(await bestaetigen(`Standard-Kontenrahmen (43 Konten von 1200 Heizkosten bis 9995 IBK: MCV) in Objekt ${o.nummer} übernehmen? Vorhandene Konto-Nummern bleiben unverändert.`, { text: 'Übernehmen' }))) return;
+  if (!(await bestaetigen(`Standard-Kontenrahmen (43 Konten von 1200 Heizkosten bis 9995 IBK: MCV) in Objekt ${UI.objektNummer(o)} übernehmen? Vorhandene Konto-Nummern bleiben unverändert.`, { text: 'Übernehmen' }))) return;
   try { const r = await API.post(`/objekte/${o.id}/sachkonten/vorlage`, {}); toast(`${r.uebernommen} Konten übernommen`, 'success'); danach(); } catch (e) { fehler(e); }
 }
 
@@ -1576,7 +1576,7 @@ async function fibuGrundwerteDialog(o) {
 
 function sachkontoForm(o, k, jahr, danach) {
   formFenster({
-    titel: k ? `Konto ${k.nummer} – ${k.bezeichnung}` : `Neues Konto – Objekt ${o.nummer}`,
+    titel: k ? `Konto ${k.nummer} – ${k.bezeichnung}` : `Neues Konto – Objekt ${UI.objektNummer(o)}`,
     felder: [
       { grid: 3, felder: [
         { name: 'nummer', label: 'Konto-Nr. (1000–9999)', type: 'number', required: true, value: k ? k.nummer : '' },
@@ -1642,7 +1642,7 @@ function kontenImportDialog(o, danach) {
     m.box.querySelector('.btn-primary').disabled = !geprueft;
   });
   m = modal({
-    titel: `Kontenrahmen importieren – Objekt ${o.nummer} ${o.bezeichnung}`, wide: true,
+    titel: `Kontenrahmen importieren – Objekt ${UI.objektNummer(o)} ${o.bezeichnung}`, wide: true,
     inhalt: el('div', {}, [
       el('p', { class: 'small muted', text: 'Export aus HausPerfekt (Kontenrahmen als Excel oder CSV). Übernommen werden Sach-, Bank- und Sonderkonten (1000–9999) samt Verteilerschlüsseln und Abrechnungsangaben. Personenkonten (K) und Lieferanten (L) werden nicht als Sachkonten angelegt.' }),
       el('div', { class: 'field' }, [el('label', { for: 'f_kontendatei', text: 'Datei (.xlsx oder .csv)' }), datei]),
@@ -1667,7 +1667,7 @@ async function kontenKopierenDialog(o, danach) {
   ] }]);
   form.appendChild(el('p', { class: 'small muted', text: 'Übernommen werden nur Konto-Nummern, die es in diesem Objekt noch nicht gibt. WP-Ansätze und Salden werden nicht kopiert.' }));
   modal({
-    titel: `Kontenrahmen kopieren – Objekt ${o.nummer}`, inhalt: form,
+    titel: `Kontenrahmen kopieren – Objekt ${UI.objektNummer(o)}`, inhalt: form,
     footer: (close) => [
       el('button', { text: 'Abbrechen', onclick: close }),
       el('button', { class: 'btn-primary', text: 'Kopieren', onclick: async () => {
@@ -1756,7 +1756,7 @@ async function versammlungForm(v, { kopie = false, container = null } = {}) {
     felder: [
       { grid: 2, felder: [
         { name: 'objekt_id', label: 'Objekt', type: 'select', required: true, value: x.objekt_id || '',
-          options: [{ value: '', label: '– Objekt wählen –' }].concat(objekte.map((o) => ({ value: o.id, label: `${o.nummer} · ${o.bezeichnung}` }))) },
+          options: [{ value: '', label: '– Objekt wählen –' }].concat(objekte.map((o) => ({ value: o.id, label: `${UI.objektNummer(o)} · ${o.bezeichnung}` }))) },
         { name: 'name', label: 'Name', required: true, value: x.name || `ETV ${new Date().getFullYear()}` },
       ] },
       { grid: 3, felder: [

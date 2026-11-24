@@ -325,5 +325,10 @@ const UI = (() => {
     return (b / 1024 / 1024).toFixed(1) + ' MB';
   }
 
-  return { esc, el, toast, fehler, modal, bestaetigen, feld, formular, badgeObjekttyp, datum, dateiGroesse };
+  // HP-Importkennungen bleiben intern erhalten; Anwender sehen die HP-Objektnummer.
+  function objektNummer(objekt) {
+    const nummer = String(typeof objekt === 'object' && objekt !== null ? objekt.anzeigenummer || objekt.nummer || '' : objekt || '');
+    return /^HP-[0-9a-f]{1,32}-(\d+)$/i.exec(nummer)?.[1] || nummer;
+  }
+  return { esc, el, toast, fehler, modal, bestaetigen, feld, formular, badgeObjekttyp, datum, dateiGroesse, objektNummer };
 })();

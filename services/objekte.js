@@ -46,11 +46,12 @@ async function liste(db, opts = {}) {
 }
 
 async function holen(db, id) {
-  return db.get(
+  const objekt = await db.get(
     `SELECT o.*, b.name AS sachbearbeiter_name, b.benutzername AS sachbearbeiter_kuerzel
      FROM objekte o LEFT JOIN benutzer b ON b.id = o.sachbearbeiter_id WHERE o.id = ?`,
     [id]
   );
+  return objekt ? { ...objekt, anzeigenummer: anzeigenummer(objekt.nummer) } : objekt;
 }
 
 const ganzzahl = (v, feld) => {
