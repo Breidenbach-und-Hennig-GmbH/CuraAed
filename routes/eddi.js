@@ -31,6 +31,7 @@ module.exports = (db, publicUrl, options, uploadDir) => {
     res.status(202).json(await te.analysieren(req.benutzer, req.params.id, req.body?.zustimmung));
   }));
   r.post('/teilungen/:id/uebernehmen', h(async (req, res) => res.json(await te.uebernehmen(req.benutzer, req.params.id, req.body || {}))));
+  r.post('/teilungen/:id/vorbereitung', h(async(req,res)=>res.json(await te.vorbereiten(req.benutzer,req.params.id,req.body||{}))));
   r.get('/teilungen/:id/datei', h(async (req, res) => {
     const row = await te.own(req.benutzer, req.params.id);
     res.type('application/pdf').sendFile(require('node:path').resolve(uploadDir, require('node:path').basename(row.speicher_name)));
