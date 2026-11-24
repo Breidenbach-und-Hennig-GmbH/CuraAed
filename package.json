@@ -9,6 +9,7 @@
     "test": "node --test"
   },
   "dependencies": {
+    "helmet": "^8.0.0",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@napi-rs/canvas": "1.1.0",
     "@tesseract.js-data/deu": "1.0.0",
