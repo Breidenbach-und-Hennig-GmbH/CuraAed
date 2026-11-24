@@ -92,6 +92,7 @@ const UI = (() => {
     if (typeof inhalt === 'string') body.innerHTML = inhalt; else body.appendChild(inhalt);
     box.appendChild(body);
     if (footer) box.appendChild(el('footer', {}, footer(schliessen)));
+    if(footer && body.querySelector('form')) box.classList.add('cu-hp-eingabe');
     container.appendChild(backdrop);
     entfernung = new MutationObserver(() => { if (!backdrop.isConnected) schliessen(); });
     entfernung.observe(container, { childList: true });

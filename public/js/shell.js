@@ -108,7 +108,7 @@ const BEFEHLE = [
   { taste: 'e', icon: 'phone', text: 'Eingangstelefonat erfassen', aktion: eingangstelefonat },
   { taste: 'f', icon: 'file', text: 'FiBu Stammdaten', nur: ['objekt', 'einheit'], aktion: (k) => fibuGrundwerteDialog(k.objekt) },
   { taste: 'h', icon: 'wrench', text: 'Handwerkerauftrag', aktion: () => geheZu('#/vorgaenge?art=handwerker') },
-  { taste: 'j', icon: 'calendar', text: 'Kalender', aktion: () => geheZu('#/kalender') },
+  { taste: 'j', icon: 'calendar', text: 'Jahreskalender', aktion: () => geheZu('#/kalender') },
   { taste: 'k', icon: 'mail', text: 'Korrespondenz', aktion: (k) =>
       geheZu(kontextRoute(k) ? kontextRoute(k) + '?tab=archiv&kategorie=korrespondenz' : '#/archiv?kategorie=korrespondenz') },
   { taste: 'l', icon: 'building', text: 'Lieferant', nur: ['adresse'], folgt: FIBU },
@@ -130,6 +130,7 @@ const SPRUENGE = [
   { taste: 'a', icon: 'pin', text: 'Adresse', aktion: () => geheZu('#/adressen') },
   { taste: 'b', icon: 'calendar', text: 'Buchung erfassen', folgt: FIBU },
   { taste: 'd', text: 'HP DMS System (Archiv)', aktion: () => geheZu('#/dms') },
+  { taste: 'f', icon: 'file', text: 'FiBu Gesamtmenü', aktion: () => geheZu('#/fibu') },
   { taste: 'h', icon: 'wrench', text: 'Handwerkerauftrag', aktion: () => handwerkerSprung() },
   { taste: 'j', icon: 'calendar', text: 'Kalender', aktion: () => geheZu('#/kalender') },
   { taste: 'k', icon: 'mail', text: 'Korrespondenz', aktion: () => befehl('k') },
@@ -139,7 +140,7 @@ const SPRUENGE = [
   { taste: 'p', icon: 'user', text: 'Personenkonto', aktion: () => pktoSprung(S.kontext || {}) },
   { taste: 'r', icon: 'file', text: 'Rechnung erfassen', aktion: () => rechnungAktuell() },
   { taste: 't', icon: 'clock', text: 'Termin/Wiedervorlage', aktion: () => terminWiedervorlage(S.kontext || {}) },
-  { taste: 'v', icon: 'folder', text: 'Vorgang/Akte', folgt: SPAETER },
+  { taste: 'v', icon: 'folder', text: 'Vorgang/Akte', aktion: () => geheZu('#/vorgaenge') },
   { taste: 'w', icon: 'house', text: 'Wohnung', aktion: () => geheZu('#/einheiten') },
   { taste: 'z', text: 'Zentrale Information (Z.I.S)', aktion: () => zentraleInfo(S.kontext || {}) },
 ];
@@ -1092,36 +1093,20 @@ function tastenPanel(start) {
 }
 
 /** F1 / Hilfe: Sprung-Übersicht wie im HausPerfekt-Handbuch; graue Einträge folgen später. */
+const HP_SPRUNG_ORIGINAL={
+ objekt:[['a','Adresse'],['b','Buchungsjahr'],['f','FiBu Stammdaten'],['h','Handwerkerauftrag'],['j','Jahreskalender'],['k','Korrespondenz'],['m','E-Mail zum Objekt'],['p','Personenkonto'],['r','Rechnung'],['s','Sachkontenrahmen'],['t','Termin/Wiedervorlage'],['v','Vorgang/Akte'],['w','Wohnung']],
+ adresse:[['a','Adresse zugeordnet'],['h','Handwerkerauftrag'],['j','Jahreskalender'],['k','Korrespondenz (F5=Aufruf)'],['m','E-Mail zur Adresse'],['l','Lieferant'],['o','Objekt'],['p','Pers.konto (F5=Übersicht)'],['r','Rechnung (wenn Lieferant)'],['t','Termin / Wiedervorlage'],['v','Vorgang / Akte'],['w','Wohnung']],
+ einheit:[['a','Adresse'],['b','Buchungsjahr'],['f','FiBu Stammdaten'],['h','Handwerkerauftrag'],['j','Jahreskalender'],['k','Korrespondenz'],['m','E-Mail zur Wohnung'],['o','Objekt'],['p','Personenkonto'],['s','Sachkontenrahmen'],['t','Termin/Wiedervorlage'],['v','Vorgang/Akte']],
+};
 function sprungUebersicht() {
-  const F = SPAETER;
-  const GLOBAL = [
-    ['F1', 'Hilfe (diese Übersicht)'], ['F2', 'Ändern (auf markierter Zeile: diese Zeile)'], ['F3', 'Löschen/Deaktivieren · nach „Suchen" in Listen: Weitersuchen'],
-    ['F4', 'Neuanlage'], ['F5', 'Zoom'], ['F6', 'Feld verbreitern'], ['F7', 'Bereich eingrenzen ab', F], ['F8', 'Bereich eingrenzen bis', F], ['F10', 'Bereich bestätigen/Aktion ausführen', F],
-    ['Strg F1', 'Eigene Infos', F], ['Strg F2', 'Abfragen-Modus'], ['Strg F5', 'Datensatz suchen'], ['Strg F6', 'Bereich eingrenzen', F],
-    ['Strg F7', 'Sortierschlüssel'], ['Strg F8', 'Sortieren'],
-    ['Alt S, Z', 'Zentrale Information (Z.I.S)'], ['Alt S, M', 'Mehrauslagen erfassen', F],
-    ['Alt F1', 'Zweite Menü-Ebene', F], ['Alt F2', 'Aktive Arbeitsplätze', F], ['Alt F8', 'Druckspooler', F], ['Alt F10', 'Archiv'],
-    ['Esc', 'Verlassen mit Speichern (Bearbeitungsfenster) · Maske verlassen'], ['Strg Esc', 'Verlassen ohne Speichern'], ['Strg E', 'Telefoneingang erfassen'], ['Strg D', 'Feld duplizieren', F],
-    ['Strg U', 'Auf NULL setzen (Feld leeren)'], ['Strg I', 'Ausgabe umlenken (CSV)'], ['s', 'Suchen (in Adress-, Objekt- und Wohnungsmaske)'],
-  ];
-  const tasteText = (b) => (b.browser ? `Strg ${b.taste} *` : `Strg ${b.taste}`);
-  const teil = (typ) => BEFEHLE.filter((b) => !b.nur || b.nur.includes(typ)).filter((b) => !(typ === 'adresse' && b.taste === 'e'))
-    .map((b) => [tasteText(b), b.text, b.folgt]);
-  const block = (titel, zeilen) => el('section', { class: 'hp-sprung-block' }, [
-    el('h3', { text: titel }),
-    el('table', { class: 'hp-sprung-tabelle' }, [el('tbody', {}, zeilen.map(([t, x, folgt]) => el('tr', { class: folgt ? 'folgt' : '', title: folgt || null }, [
-      el('td', { class: 'nowrap', text: t }), el('td', { text: x + (folgt ? ' (folgt)' : '') }),
-    ])))]),
-  ]);
-  const inhalt = el('div', { class: 'hp-sprung' }, [
-    block('Funktionen, die an allen Stellen funktionieren', GLOBAL),
-    block('Programmteile öffnen: Alt S + Buchstabe', SPRUENGE.map((b) => [`Alt S, ${b.taste.toUpperCase()}`, b.text, b.folgt])),
-    block('Adresse <Alt s> <a>', teil('adresse')),
-    block('Objekt <Alt s> <o>', teil('objekt')),
-    block('Wohnung <Alt s> <w>', teil('einheit')),
-    el('p', { class: 'small muted', text: '* Strg+W und Strg+T sind im Browser belegt: Buchstaben ins Feld „Befehl" tippen und Enter drücken. Grau = folgt in einer späteren Ausbaustufe.' }),
-  ]);
-  modal({ titel: 'Sprung-Übersicht', wide: true, inhalt, footer: (close) => [el('button', { text: 'Schließen', onclick: close })] });
+ const typ=S.kontext?.typ,original=HP_SPRUNG_ORIGINAL[typ],name={objekt:'Objekt',adresse:'Adresse',einheit:'Wohnung'}[typ]||'aktuelle Maske';
+ const table=(rows)=>el('table',{class:'hp-sprung-tabelle'},[el('thead',{},[el('tr',{},[el('th',{text:'Taste'}),el('th',{text:'Funktion'})])]),el('tbody',{},rows.map(([taste,text])=>el('tr',{},[el('td',{class:'nowrap',text:taste}),el('td',{text})])))]);
+ const blocks=[];
+ if(original)blocks.push(el('section',{class:'hp-sprung-block'},[el('h3',{text:'Tastaturbefehle '+(typ==='adresse'?'zur ':'zum ')+name+' · HausPerfekt-Original'}),table(original.map(([taste,text])=>['Strg '+taste,text]))]));
+ blocks.push(el('section',{class:'hp-sprung-block'},[el('h3',{text:'Allgemeine Bedienung'}),table([['F1','Sprungübersicht'],['F2','Ändern'],['F3','Löschen / Deaktivieren'],['F4','Neuanlage'],['Tab / Umschalt+Tab','Nächstes / vorheriges Feld'],['s','Suchen'],['Esc','Fenster verlassen; geänderte Eingabe speichern'],['Strg Esc','Fenster ohne Speichern schließen']])]));
+ blocks.push(el('section',{class:'hp-sprung-block'},[el('h3',{text:'Programmteile · Alt S + Buchstabe'}),table(SPRUENGE.map(b=>['Alt S, '+b.taste.toUpperCase(),b.text+(b.folgt?' · noch nicht verfügbar':'')]))]));
+ blocks.push(el('p',{class:'small',text:'Im Browser reservierte Kombinationen (z. B. Strg+W und Strg+T): den Buchstaben im Feld „Befehl“ eingeben und Enter drücken. Die Originalhinweise F5=Aufruf/Übersicht sind zur Orientierung übernommen; in CuraAed wählen Sie die betreffende Zeile und öffnen sie mit Enter oder Doppelklick. Grau dargestellte Funktionen sind noch nicht verfügbar.'}));
+ modal({titel:'Sprungübersicht – '+name,wide:true,fenster:'hp-sprunguebersicht',inhalt:el('div',{class:'hp-sprung cu-hp-sprung-original'},blocks),footer:close=>[el('button',{text:'Schließen',onclick:close})]});
 }
 
 // Datei → Öffnen Applikation (Shift+Ctrl+O): Bereich per Name auswählen und öffnen
@@ -1202,51 +1187,43 @@ function ueberDialog() {
  * badge, badgeKlasse, unterzeile, buchungsjahr, drucken }. aria-label = Maskentitel.
  */
 function maskenFenster({ titel, inhalt, zusatz, kopf = {} }) {
-  const k = S.kontext || {};
-  const weitere = (inhalt && inhalt.hpWeitere) || [];
-  const symbole = inhalt && inhalt.hpZusatz;
-  const ueberschrift = kopf.ueberschrift || titel;
-  const brot = kopf.brot || [{ text: 'Übersicht', href: '#/' }, { text: ueberschrift }];
-  const pfad = el('nav', { class: 'cu-brot', 'aria-label': 'Pfad' });
-  brot.forEach((b, i) => {
-    if (i) pfad.appendChild(el('span', { class: 'cu-brot-trenner', 'aria-hidden': 'true', text: '/' }));
-    pfad.appendChild(b.href && i < brot.length - 1 ? el('a', { href: b.href, text: b.text }) : el('span', { 'aria-current': i === brot.length - 1 ? 'page' : null, text: b.text }));
-  });
-  let weiterKnopf = null;
-  if (weitere.length) {
-    weiterKnopf = el('button', { type: 'button', class: 'cu-knopf', 'aria-haspopup': 'true' }, [icon('dots'), el('span', { text: 'Weitere Aktionen' }), icon('chevron')]);
-    weiterKnopf.addEventListener('click', () => (offenesMenue && offenesMenue.knopf === weiterKnopf ? schliesseMenue() : oeffneListe(weiterKnopf, 'Weitere Aktionen', weitere, { rechts: true })));
-  }
-  const aktionen = el('div', { class: 'cu-aktionen' }, [
-    // zusätzliche, immer sichtbare Knöpfe der Maske (z. B. „Personenkonto" in der Wohnung)
-    ...(kopf.knoepfe || []).map((k) => el('button', { type: 'button', class: 'cu-knopf', title: k.titel || k.text, onclick: k.onclick }, [icon(k.icon || iconFuer(k.text)), el('span', { text: k.text })])),
-    kopf.drucken === false ? null : el('button', { type: 'button', class: 'cu-knopf', title: 'Maske drucken', onclick: () => window.print() }, [icon('printer'), el('span', { text: 'Drucken' })]),
-    weiterKnopf,
-    k.bearbeiten && darfSchreiben() ? el('button', { type: 'button', class: 'btn-primary cu-knopf', title: 'Bearbeiten (F2)', onclick: bearbeitenAktuell }, [icon('pencil'), el('span', { text: 'Bearbeiten' })]) : null,
-  ]);
-  return el('section', { class: 'hp-maske', 'aria-label': titel }, [
-    el('div', { class: 'cu-seitenkopf' }, [
-      el('div', { class: 'cu-seitenkopf-oben' }, [
-        pfad,
-        kopf.buchungsjahr ? el('span', { class: 'cu-chip', title: 'Buchungsjahr – wird mit der Finanzbuchhaltung (FIBU) wählbar' }, [
-          icon('calendar'), el('span', { text: 'Buchungsjahr' }), el('strong', { text: String(new Date().getFullYear()) }),
-        ]) : null,
-      ]),
-      el('div', { class: 'cu-titelzeile' }, [
-        el('div', { class: 'cu-titel' }, [
-          el('div', { class: 'cu-h1-zeile' }, [
-            el('h1', { text: ueberschrift }),
-            kopf.badge ? el('span', { class: 'cu-badge ' + (kopf.badgeKlasse || ''), text: kopf.badge }) : null,
-          ]),
-          kopf.unterzeile ? el('div', { class: 'cu-unterzeile', text: kopf.unterzeile }) : null,
-          zusatz ? el('div', { class: 'cu-unterzeile', text: zusatz }) : null,
-          symbole ? el('div', { class: 'cu-symbolzeile' }, [symbole]) : null,
-        ]),
-        aktionen,
-      ]),
+  const k=S.kontext||{},root=inhalt||el('div'),symbole=root.hpZusatz;
+  let rail=root.classList.contains('hp-raster-layout')?root.querySelector('.hp-seite>.hp-seitenleiste'):null;
+  if(rail){rail.remove();root.querySelector('.hp-seite')?.remove();root.classList.add('cu-hp-haupt-raster');}
+  else rail=seitenleiste([]);
+  const liste=rail.querySelector('.hp-knoepfe');
+  const add=(text,onclick,titel)=>{if([...liste.children].some(b=>b.textContent===text))return;liste.appendChild(el('button',{type:'button',class:'hp-knopf cu-hp-knopf',text,title:titel||text,onclick}));};
+  for(const b of kopf.knoepfe||[])add(b.text,b.onclick,b.titel);
+  if(kopf.drucken!==false&&!['Drucke','Drucken'].some(t=>[...liste.children].some(b=>b.textContent===t)))add('Drucke',()=>window.print(),'Maske drucken');
+  if(k.bearbeiten&&darfSchreiben())add('Bearbeiten',bearbeitenAktuell,'Bearbeiten (F2)');
+  for(const b of root.hpWeitere||[])if(!b.folgt)add(b.text,b.aktion,b.titel);
+  // DMS behält seine originalen Button-Instanzen und deren Aktivierungslogik.
+  const dms=root.querySelector('.cu-dms-aktionen');
+  if(dms){dms.remove();dms.classList.add('cu-hp-dms-aktionen');liste.prepend(dms);}
+  if(symbole)rail.querySelector('.cu-hp-leisteninfo')?.appendChild(symbole);
+  const brot=kopf.brot||[],pfad=el('nav',{class:'cu-hp-pfad','aria-label':'Pfad'});
+  brot.forEach((b,i)=>{if(i)pfad.appendChild(el('span',{text:' / '}));pfad.appendChild(b.href?el('a',{href:b.href,text:b.text}):el('span',{text:b.text}));});
+  return el('section',{class:'hp-maske cu-hp-frame','aria-label':titel,'data-maskentyp':k.typ||''},[
+    el('header',{class:'cu-hp-titelbar'},[el('h1',{text:kopf.ueberschrift||titel}),kopf.badge?el('span',{class:'cu-hp-status',text:kopf.badge}):null]),
+    el('div',{class:'cu-hp-arbeitsbereich'},[
+      el('div',{class:'cu-hp-haupt'},[
+        brot.length?pfad:null,
+        kopf.unterzeile||zusatz?el('div',{class:'cu-hp-hinweis cu-unterzeile',text:[kopf.unterzeile,zusatz].filter(Boolean).join(' · ')}):null,
+        root,
+      ]),rail,
     ]),
-    el('div', { class: 'hp-maske-inhalt' }, inhalt),
   ]);
+}
+
+/** Vorhandene Aktionsknöpfe verschieben; Submit-Zuordnung und Listener bleiben erhalten. */
+function maskenAktionenRechts(root,aktionen){
+ const rail=root.closest('.cu-hp-frame')?.querySelector('.cu-hp-arbeitsbereich>.cu-hp-leiste>.hp-knoepfe');
+ if(!rail||!aktionen)return false;
+ for(const button of aktionen.querySelectorAll('button')){
+  const form=button.form;
+  if(form){if(!form.id)form.id='hp-aktionsformular-'+(++befehlZaehler);button.setAttribute('form',form.id);}
+ }
+ aktionen.classList.add('cu-hp-fachaktionen');rail.prepend(aktionen);return true;
 }
 
 function maskenRaster({ oben, seite, unten }) {
@@ -1337,6 +1314,9 @@ function seitenleiste(knoepfe, { zusatz } = {}) {
       ...spruenge.map(b=>knopf({text:(SCHNELL_TEXT[b.taste]||{})[typ]||b.text,gesperrt:!!b.folgt,grund:b.folgt,titel:(b.browser?'Befehl ':'Strg + ')+b.taste.toUpperCase(),onclick:()=>befehl(b.taste)})),
     ]):null,
   ]);
+  liste.appendChild(el('button',{type:'button',class:'hp-knopf cu-hp-knopf',text:'Sprungübersicht',title:'HausPerfekt-Sprungübersicht (F1)',onclick:sprungUebersicht}));
+  const orig=HP_SPRUNG_ORIGINAL[typ]||[];
+  for(const b of liste.querySelectorAll('button,a')){const found=orig.find(([,text])=>text.toLowerCase().startsWith(b.textContent.trim().toLowerCase()));if(found)b.title=(b.title||b.textContent)+' · Strg '+found[0].toUpperCase();}
   karte.hpWeitere=[];
   karte.hpZusatz=zusatz||null;
   return karte;
@@ -1495,6 +1475,6 @@ function arbeitsMaske(lauf,root,{titel,brot,info=[],aktionen=[]}){
  root.classList.add('cu-frame-inhalt');
  const frame=maskenFenster({titel,kopf:{ueberschrift:titel,brot:brot||[{text:'Übersicht',href:'#/'},{text:titel}],drucken:false},
   inhalt:maskenRaster({oben:info.length?[panel(info,'hp-such-panel')]:[],seite:seitenleiste(aktionen),unten:[root]})});
- root.cuTitelSetzen=text=>{frame.querySelector('.cu-h1-zeile h1').textContent=text;frame.setAttribute('aria-label',text);const current=frame.querySelector('[aria-current="page"]');if(current)current.textContent=text;};
+ root.cuTitelSetzen=text=>{frame.querySelector('.cu-hp-titelbar h1').textContent=text;frame.setAttribute('aria-label',text);const current=frame.querySelector('[aria-current="page"]');if(current)current.textContent=text;};
  return zeigeAufDesktop(lauf,frame);
 }

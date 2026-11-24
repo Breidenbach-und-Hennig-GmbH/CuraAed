@@ -5,7 +5,7 @@ function etvInlineFenster(container,{titel,inhalt,footer,onClose}){
  const close=()=>{if(onClose)onClose();if(container.etvSchliessen)container.etvSchliessen();};
  const body=el('section',{class:'cu-etv-inline'},[el('h2',{text:titel}),inhalt]);
  if(footer)body.append(el('footer',{class:'cu-etv-inline-fuss'},footer(close)));
- container.replaceChildren(body);etvMerkeStand(container);return{close,box:body};
+ container.replaceChildren(body);if(typeof maskenAktionenRechts==='function')maskenAktionenRechts(container,body.querySelector('.cu-etv-inline-fuss'));etvMerkeStand(container);return{close,box:body};
 }
 function etvAblaufRahmen(id,schritt,inhalt){
  const steps=[['basisdaten','Basisdaten'],['tagesordnung','Tagesordnung'],['teilnehmer','Teilnehmer'],['durchfuehrung','Durchführung']],nav=el('nav',{'aria-label':'Versammlungsablauf'}),layout=el('div',{class:'cu-etv-ablauf'}),seitenkopf=el('div',{class:'cu-etv-seitenkopf',text:'Versammlung'}),main=el('div',{class:'cu-etv-inhalt'},[inhalt]);
