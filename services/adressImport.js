@@ -100,32 +100,72 @@ function adresse(row, map) {
   return a;
 }
 
+// Read the stock once in bounded pages, retaining only matches for the selected file.
+// This avoids hundreds of unindexed fuzzy-name scans on large HP address stocks.
+async function bestandsDubletten(db, items) {
+  const names = new Map(), emails = new Map(), results = new Map();
+  function index(map, key, item) { if (!key) return; if (!map.has(key)) map.set(key, new Set()); map.get(key).add(item); }
+  for (const item of items) {
+    const a = item.adresse; results.set(item, new Map());
+    index(names, dubletten.norm(a.adresstyp === 'firma' ? a.firmenname : [a.vorname, a.nachname].filter(Boolean).join(' ')), item);
+    index(emails, (a.email || '').toLowerCase(), item);
+  }
+  if (!items.length) return results;
+  const fields = 'a.id,a.nummer,a.adresstyp,a.vorname,a.nachname,a.firmenname,a.strasse,a.plz,a.ort,a.archiviert';
+  function add(items, row) {
+    for (const item of items || []) {
+      const hits = results.get(item);
+      // Keep the first twenty stock records in ID order, even if a later e-mail page finds an earlier ID.
+      hits.set(row.id, { id: row.id, nummer: row.nummer, name: adressen.anzeigename(row) });
+      if (hits.size > 20) hits.delete(Math.max(...hits.keys()));
+    }
+  }
+  let cursor = 0;
+  while (true) {
+    const rows = await db.all('SELECT ' + fields + ',a.email FROM adressen a WHERE a.id>? ORDER BY a.id LIMIT 1000', [cursor]);
+    if (!rows.length) break;
+    for (const row of rows) {
+      add(names.get(dubletten.norm(row.firmenname)), row);
+      add(names.get(dubletten.norm([row.vorname, row.nachname].filter(Boolean).join(' '))), row);
+      add(emails.get((row.email || '').toLowerCase()), row);
+    }
+    cursor = rows.at(-1).id;
+  }
+  cursor = 0;
+  if (emails.size) while (true) {
+    const rows = await db.all('SELECT ' + fields + ',e.id AS email_id,e.adresse AS email FROM adress_emails e JOIN adressen a ON a.id=e.adresse_id WHERE e.id>? ORDER BY e.id LIMIT 1000', [cursor]);
+    if (!rows.length) break;
+    for (const row of rows) add(emails.get((row.email || '').toLowerCase()), row);
+    cursor = rows.at(-1).email_id;
+  }
+  return results;
+}
+
 async function plan(db, owner, b) {
   const file = datei(b), map = mapping(b.zuordnung, file.kopf.length), zeilen = [], seen = new Map();
   for (const [i, row] of file.rows.entries()) {
     if (!row.some(x => String(x).trim())) continue;
     const item = { zeile: i + 2, status: 'neu', meldung: '', adresse: null };
+    try { item.adresse = adresse(row, map); }
+    catch (e) { if (!(e instanceof V.ValidationError)) throw e; item.status = 'fehler'; item.meldung = e.message; }
+    zeilen.push(item);
+  }
+  const duplicates = await bestandsDubletten(db, zeilen.filter(x => x.status === 'neu'));
+  for (const item of zeilen.filter(x => x.status === 'neu')) {
     try {
-      const a = item.adresse = adresse(row, map);
+      const a = item.adresse;
       const name = dubletten.norm(a.adresstyp === 'firma' ? a.firmenname : [a.vorname, a.nachname].filter(Boolean).join(' '));
       const keys = ['name:' + name, ...(a.email ? ['email:' + a.email.toLowerCase()] : [])];
       const vorher = keys.map(k => seen.get(k)).find(Boolean);
       keys.forEach(k => { if (!seen.has(k)) seen.set(k, item.zeile); });
-      const existing = await dubletten.pruefen(db, a);
-      // The general fuzzy search deliberately ignores very short names; imports must still
-      // catch exact short names (e.g. "Li") rather than creating them on every run.
-      if (name.length < 3 && !existing.treffer.length) {
-        const short = await db.all("SELECT id,nummer,vorname,nachname,firmenname,adresstyp FROM adressen WHERE LOWER(TRIM(CASE WHEN adresstyp='firma' THEN COALESCE(firmenname,'') ELSE COALESCE(vorname,'')||' '||COALESCE(nachname,'') END))=? LIMIT 20", [(a.adresstyp === 'firma' ? a.firmenname : [a.vorname, a.nachname].filter(Boolean).join(' ')).toLowerCase()]);
-        existing.treffer.push(...short.map(x => ({ nummer: x.nummer, name: adressen.anzeigename(x) })));
-      }
+      const existing = { treffer: [...duplicates.get(item).values()].sort((a, b) => a.id - b.id) };
       if (existing.treffer.length) { item.status = 'dublette'; item.meldung = 'Vorhanden: ' + existing.treffer.map(x => x.nummer + ' · ' + x.name).join('; '); }
       else if (vorher) { item.status = 'dublette'; item.meldung = 'Bereits in Dateizeile ' + vorher + '.'; }
-      else await hp.vorbereiten(db, owner.id, a);
+      else await hp.vorbereiten(db, owner.id, a, existing);
     } catch (e) {
       if (!(e instanceof V.ValidationError)) throw e;
       item.status = 'fehler'; item.meldung = e.message;
     }
-    zeilen.push(item);
   }
   const pruefsumme = crypto.createHash('sha256').update(JSON.stringify([owner.id, b.datei, map, zeilen])).digest('hex');
   return { zeilen, pruefsumme, neu: zeilen.filter(x => x.status === 'neu').length,
@@ -139,9 +179,8 @@ async function uebernehmen(db, owner, b) {
     if (!p.neu) fail('Keine neuen, gültigen Adressen vorhanden.', 409);
     const angelegt = [];
     for (const item of p.zeilen.filter(x => x.status === 'neu')) {
-      // Recheck within the write transaction; no duplicate override and no update of existing addresses.
-      await dubletten.neuanlagePruefen(tx, item.adresse);
-      const prepared = await hp.vorbereiten(tx, owner.id, item.adresse);
+      // plan() has just rechecked stock and within-file duplicates inside this exclusive transaction.
+      const prepared = await hp.vorbereiten(tx, owner.id, item.adresse, { treffer: [] });
       const a = await adressen.anlegen(tx, item.adresse);
       await hp.einreihen(tx, a.id, prepared);
       await historie.protokollieren(tx, { bereich: 'adresse', alt: null, neu: a, wer: historie.akteur(owner) });
