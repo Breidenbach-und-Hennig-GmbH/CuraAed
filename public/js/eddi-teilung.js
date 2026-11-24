@@ -5,10 +5,17 @@ function eddiTeilung(root, modelStatus, consent) {
   const file = el('input', { type: 'file', accept: '.pdf,application/pdf', hidden: true, 'aria-label': 'Teilungserklärung auswählen' });
   const state = el('p', { role: 'status', 'aria-live': 'polite' }), details = el('div');
   const choose = el('button', { type: 'button', text: 'Teilungserklärung lesen', onclick: () => file.click() });
+  const prepared=el('input',{type:'file',accept:'.json,application/json',hidden:true,'aria-label':'Vorbereitete Teilungsdaten auswählen'});
   let job, timer, revision = 0, busy = false;
   const key = 'curaaed-teilung-' + S.benutzer.id;
   try { job = sessionStorage.getItem(key); } catch {}
-  root.append(file);
+  root.append(file,prepared);
+  prepared.addEventListener('change',async()=>{
+    const f=prepared.files?.[0];if(!f||!job)return;
+    try{if(f.size>256*1024)throw Error('Vorbereitungsdatei zu groß.');const data=JSON.parse(await f.text());await API.post('/eddi/teilungen/'+job+'/vorbereitung',data);await poll();}
+    catch(e){state.textContent=e instanceof SyntaxError?'Die Vorbereitungsdatei ist keine lesbare JSON-Datei.':e.message;}
+    finally{prepared.value='';}
+  });
   file.addEventListener('change', async () => {
     const f = file.files?.[0]; if (!f || busy) return;
     box.hidden = false; details.replaceChildren(); clearTimeout(timer); revision++;
@@ -32,6 +39,7 @@ function eddiTeilung(root, modelStatus, consent) {
       details.append(el('button', { type: 'button', text: 'Original-PDF anzeigen', onclick: () => dmsVorschau('/api/eddi/teilungen/' + job + '/datei', { titel: r.dateiname, original_name: r.dateiname }) }));
       if (r.objekt_id) { details.append(el('a', { href: '#/objekte/' + r.objekt_id, text: 'Angelegtes Objekt öffnen' })); return; }
       if (['lesen', 'auswerten'].includes(r.status)) { timer = setTimeout(poll, 3000); return; }
+      if(r.gelesen)details.append(el('button',{type:'button',text:'Vorbereitete Daten laden',onclick:()=>prepared.click()}));
       if(r.status==='fehler'&&!r.gelesen)details.append(el('button',{type:'button',text:'PDF erneut lesen',onclick:async e=>{e.currentTarget.disabled=true;try{await API.post('/eddi/teilungen/'+job+'/lesen',{});await poll();}catch(err){state.textContent=err.message;e.currentTarget.disabled=false;}}}));
       if (r.status === 'gelesen' || (r.status === 'fehler'&&r.gelesen)) details.append(el('button', { type: 'button', text: 'Mit Eddi auswerten', onclick: async e => {
         const status = await modelStatus();
@@ -45,7 +53,7 @@ function eddiTeilung(root, modelStatus, consent) {
   }
   function entwurf(d) {
     const f = formular([
-      {grid:2,felder:[{ name: 'objektnummer', label: 'Neue Objekt-Nr. (leer = automatisch)' }, { name: 'bezeichnung', label: 'Objektbezeichnung', value: d.objekt.bezeichnung, required: true }]},
+      {grid:2,felder:[{ name: 'objektnummer', label: d.vorlaeufig?'Lokale Objekt-Nr. (VORL-…)':'Neue Objekt-Nr. (leer = automatisch)' }, { name: 'bezeichnung', label: 'Objektbezeichnung', value: d.objekt.bezeichnung, required: true }]},
       {grid:3,felder:[{ name: 'strasse', label: 'Straße', value: d.objekt.strasse, required:true }, { name: 'plz', label: 'PLZ', value: d.objekt.plz, required:true }, { name: 'ort', label: 'Ort', value: d.objekt.ort, required:true }]},
     ]), units = el('tbody'), fields = [];
     const table = el('table', { class: 'hp-tabelle', 'aria-label': 'Erkannte Einheiten' }, [el('thead', {}, [el('tr', {}, ['Nr.', 'Bezeichnung', 'Art', 'Lage', 'MEA', 'Fundstelle', ''].map(text => el('th', { text })))]), units]);
@@ -61,19 +69,19 @@ function eddiTeilung(root, modelStatus, consent) {
       units.append(tr);
     }
     d.wohnungen.forEach(add);
-    const checked = el('input', { type: 'checkbox', 'aria-label': 'Alle Einheiten und Nachträge geprüft' });
+    const checked = el('input', { type: 'checkbox', 'aria-label': 'Angaben und offene Prüfhinweise geprüft' });
     const take = el('button', { type: 'button', text: 'Objekt und Wohnungen anlegen', onclick: async () => {
       if (!f.form.reportValidity()) return;
       if (!checked.checked) { state.textContent = 'Bitte alle Einheiten, MEA, Fundstellen und Nachträge prüfen und bestätigen.'; checked.focus(); return; }
       const v = f.werte(), data = { objekt: { bezeichnung: v.bezeichnung, strasse: v.strasse, plz: v.plz, ort: v.ort }, wohnungen: fields.map(item => Object.fromEntries(['nummer', 'bezeichnung', 'art', 'lage', 'mea'].map(key => [key, item[key].value]))) };
-      if (!await bestaetigen('Neues Objekt mit ' + data.wohnungen.length + ' Einheiten jetzt anlegen? Das Stimmprinzip bleibt bis zur Prüfung im ETV-Tool unbestätigt.')) return;
+      if (!await bestaetigen((d.vorlaeufig?'Vorläufiges lokales Objekt ohne HausPerfekt-Kopplung':'Neues Objekt')+' mit ' + data.wohnungen.length + ' Einheiten jetzt anlegen? Das Stimmprinzip bleibt bis zur Prüfung im ETV-Tool unbestätigt.')) return;
       take.disabled = true;
-      try { await API.post('/eddi/teilungen/' + job + '/uebernehmen', { daten: data, objektnummer: v.objektnummer, geprueft: true }); await poll(); }
+      try { await API.post('/eddi/teilungen/' + job + '/uebernehmen', { daten: data, objektnummer: v.objektnummer, geprueft: true, vorlaeufig:d.vorlaeufig===true }); await poll(); }
       catch (e) { state.textContent = e.message; take.disabled = false; }
     } });
     details.append(f.form, ...(d.objekt_belege || []).map(x => el('p', { text: 'Objekt-Fundstelle · PDF-Seite ' + x.seite + ': ' + x.zitat })), el('h3', { text: 'Einheiten · Vorschlag' }), el('div', { class: 'cu-eddi-einheiten' }, [table]), el('button', { type: 'button', text: 'Einheit ergänzen', onclick: () => add() }),
       el('h3', { text: 'Stimmregeln · vor ETV fachlich prüfen' }), ...d.stimmregeln.map(r => el('p', { text: (STIMM_PRINZIP[r.prinzip] || 'Unklar') + ' · ' + r.text + '\nPDF-Seite ' + r.beleg.seite + ': ' + r.beleg.zitat })),
-      ...d.hinweise.map(text => el('p', { class: 'cu-eddi-warnung', text })), el('label', { class: 'cu-eddi-zustimmung' }, [checked, el('span', { text: 'Objekt, sämtliche Einheiten, MEA und Fundstellen mit dem vollständigen Original und vorhandenen Nachträgen geprüft.' })]), take);
+      ...d.hinweise.map(text => el('p', { class: 'cu-eddi-warnung', text })), el('label', { class: 'cu-eddi-zustimmung' }, [checked, el('span', { text: 'Angaben mit dem vorliegenden Original verglichen; offene Punkte bleiben als Prüfhinweis erhalten.' })]), take);
     f.form.addEventListener('submit', e => e.preventDefault());
   }
   box.append(state, details);
