@@ -1230,7 +1230,7 @@ const verteilerSpalten = [
   { label: 'VerteilerSchl.', class: 'nowrap', render: (s) => s.kuerzel },
   { label:'Jahr',render:s=>s.jahr||'—' },
   { label: 'Bezeichnung', render: (s) => s.bezeichnung },
-  { label: 'Anteil', class: 'zahl nowrap', render: (s) => s.jahr?String(s.anteil??'—').replace('.',','):(s.abweichung
+  { label: 'Anteil', class: 'zahl nowrap', render: (s) => s.jahr?(s.anteil==null?'—':zahlDe(s.anteil,3)):(s.abweichung
     ? el('span', { class: 'hp-warn', title: `Summe der Einheiten ${zahlDe(s.summe_einheiten)} weicht vom Gesamtanteil ab`, text: `⚠ ${zahlDe(s.anteil)}` })
     : zahlDe(s.anteil)) },
 ];
