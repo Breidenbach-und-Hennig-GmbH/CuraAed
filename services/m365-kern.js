@@ -114,7 +114,7 @@ function baue(db,options={}){
   return call('https://graph.microsoft.com/v1.0/users/'+encodeURIComponent(p.absender)+suffix,{method,headers:{Authorization:'Bearer '+p.accessToken,Prefer:'outlook.timezone="UTC", outlook.body-content-type="text"',...(etag?{'If-Match':etag}:{})},...(body?{headers:{Authorization:'Bearer '+p.accessToken,Prefer:'outlook.timezone="UTC", outlook.body-content-type="text"','Content-Type':'application/json',...(etag?{'If-Match':etag}:{})},body:JSON.stringify(body)}:{})});
  }
  async function postfachAnfrage(id,{suffix,method='GET',body}={}){
-  if(typeof suffix!=='string'||!/^\/(?:mailFolders\/(?:inbox|sentitems)\/messages(?:\?[^\r\n]*)?|messages\/[^/?#]+(?:\?[^\r\n]*|\/reply|\/attachments(?:\?[^\r\n]*|\/[^/?#]+)?)?)$/.test(suffix)||!['GET','POST'].includes(method)||method==='POST'&&!suffix.endsWith('/reply'))fail('Ungültige Postfachanfrage.');
+  if(typeof suffix!=='string'||!/^\/(?:sendMail|mailFolders\/(?:inbox|sentitems)\/messages(?:\?[^\r\n]*)?|messages\/[^/?#]+(?:\?[^\r\n]*|\/reply|\/attachments(?:\?[^\r\n]*|\/[^/?#]+)?)?)$/.test(suffix)||!['GET','POST'].includes(method)||method==='POST'&&suffix!=='/sendMail'&&!suffix.endsWith('/reply'))fail('Ungültige Postfachanfrage.');
   const p=await vorbereiten(id);if(!p.postfach)fail('Das Firmenpostfach benötigt noch die Microsoft-Freigabe zum Lesen.',409);
   return call('https://graph.microsoft.com/v1.0/users/'+encodeURIComponent(p.absender)+suffix,{method,headers:{Authorization:'Bearer '+p.accessToken,Prefer:'IdType="ImmutableId", outlook.body-content-type="text"',...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});
  }
