@@ -74,6 +74,9 @@ function baueApi(db, uploadDir, options = {}) {
     },
   });
 
+  const m365=require('../services/m365').baue(db,{...options.m365,publicUrl:options.m365?.publicUrl||options.hausperfekt?.publicUrl});
+  router.use('/auth/microsoft',require('./microsoft-anmeldung')(db,m365));
+
   // ===================== Authentifizierung ==============================
   router.post(
     '/auth/login',
@@ -81,6 +84,7 @@ function baueApi(db, uploadDir, options = {}) {
       const { benutzername, passwort } = req.body || {};
       const b = await benutzerSvc.pruefeAnmeldung(db, benutzername, passwort);
       if (!b) return res.status(401).json({ fehler: 'Benutzername oder Passwort falsch.' });
+      if(await db.get('SELECT benutzer_id FROM microsoft_anmeldungen WHERE benutzer_id=? AND nur_microsoft=1',[b.id]))return res.status(403).json({fehler:'Ihre Kennung verwendet die Microsoft-Anmeldung. Bitte Mit Microsoft anmelden wählen.'});
       const token = await auth.sitzungErstellen(db, b.id);
       auth.cookieSetzen(res, token);
       res.json({ benutzer: b });
@@ -124,8 +128,9 @@ function baueApi(db, uploadDir, options = {}) {
   router.use(auth.erfordereLogin);
   router.use('/objekte/:objektId/zaehler',require('./zaehler')(db,{...options.lobaro,publicUrl:options.hausperfekt?.publicUrl}));
   router.use('/mitarbeiterprofile',require('./mitarbeiterprofile')(db,options.hausperfekt?.publicUrl));
-  const m365=require('../services/m365').baue(db,{...options.m365,publicUrl:options.m365?.publicUrl||options.hausperfekt?.publicUrl});
+
   router.use('/m365',require('./m365')(db,m365));
+  router.use('/posteingang',require('./posteingang')(db,m365));
   router.use('/kalender/m365',require('./m365-kalender')(m365.kalender,m365.origin));
   const einladungVersand=require('../services/etv-versand').baue(db,uploadDir,{m365});
   router.use('/versammlungen/:vid/einladungen',require('./etv-versand')(einladungVersand,m365.origin));
