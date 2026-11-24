@@ -33,15 +33,16 @@ function parseInvoice(text){
  if(felder.rechnungs_nr)felder.verwendungszweck1='Re-Nr. '+felder.rechnungs_nr;
  return{rechnung:invoice,felder:invoice?felder:{},belege:invoice?belege:{},hinweise,ibans};
 }
-function extract(file){
- return new Promise((resolve,reject)=>{
+async function extract(file){
+ const release=require('../lib/ocrSlot')();
+ try{return await new Promise((resolve,reject)=>{
   const child=fork(path.join(__dirname,'rechnungsOcrWorker.js'),[file],{execArgv:['--max-old-space-size=384'],stdio:['ignore','ignore','ignore','ipc']});
   let done=false;const finish=(e,r)=>{if(done)return;done=true;clearTimeout(timer);child.kill();e?reject(e):resolve(r);};
   const timer=setTimeout(()=>finish(new ValidationError('Die Texterkennung hat zu lange gedauert. Bitte erneut versuchen oder Angaben manuell erfassen.',504)),85000);
   child.once('error',()=>finish(new ValidationError('Texterkennung konnte nicht gestartet werden.',503)));
   child.once('exit',(code,signal)=>{if(done)return;const error=new ValidationError('Texterkennung wurde unterbrochen. Bitte erneut versuchen.',503);error.workerExit={code,signal};finish(error);});
   child.on('message',m=>m.error?finish(new ValidationError(m.error,422)):finish(null,m));
- });
+ });}finally{release();}
 }
 function baueErkennung(db,{rechnungen,archiv,uploadDir,lesen=extract}){
  const active=new Map();
