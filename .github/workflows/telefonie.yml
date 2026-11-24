@@ -1,0 +1,23 @@
+name: TAPI Windows connector
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  telefonie:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and verify personal phone status monitor
+        shell: pwsh
+        run: |
+          $tapiCompiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          & $tapiCompiler /nologo /target:winexe /platform:anycpu /out:CuraAed-Telefonie.exe /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Net.Http.dll /r:System.Security.dll /r:System.Web.Extensions.dll tools\starface\CuraAedTelefonie.cs tools\starface\TapiMonitor.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $tapiCompiler /nologo /target:exe /platform:anycpu /out:TapiTests.exe tools\starface\TapiMonitor.cs tools\starface\TapiTests.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & .\TapiTests.exe
+          exit $LASTEXITCODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CuraAed-Telefonie
+          path: CuraAed-Telefonie.exe
