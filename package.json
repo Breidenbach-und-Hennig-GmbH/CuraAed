@@ -21,14 +21,14 @@
     "pdfkit": "0.20.2",
     "qrcode": "1.5.4",
     "saxes": "6.0.0",
-    "sqlite3": "^5.1.7",
+        "sqlite3": "^5.1.7",
     "tesseract.js": "7.0.0",
     "undici": "8.12.4",
-    "jose": "6.2.15"
+    "jose": "6.2.15",
+    "express-rate-limit": "7.4.0"
   },
   "devDependencies": {
-    "jsdom": "26.1.0",
-    "express-rate-limit": "7.4.0"
+    "jsdom": "26.1.0"
   },
   "engines": {
     "node": ">=22.19.0"
