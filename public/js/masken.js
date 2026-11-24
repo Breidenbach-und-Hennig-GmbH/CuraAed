@@ -430,27 +430,35 @@ async function objektMaske(id, params) {
   // ---- Objektstammdaten (Karte, zwei Spalten)
   const fotoKtx = { typ: 'objekt', id: o.id, nummer: UI.objektNummer(o), kategorie: 'foto' };
   const zeile = (l, w) => el('div', { class: 'cu-kv' }, [el('span', { class: 'cu-kv-l', text: l }), el('span', { class: 'cu-kv-w', text: w == null || w === '' ? '—' : String(w) })]);
-  const oben = [
-    el('section', { class: 'cu-karte cu-stammdaten hp-objekt-kopf', 'aria-label': 'Objektstammdaten' }, [
-      el('h2', { class: 'cu-karten-titel' }, [icon('building', 'cu-akzent'), el('span', { text: 'Objektstammdaten' })]),
-      el('div', { class: 'cu-spalten' }, [
-        el('div', { class: 'cu-spalte' }, [
-          el('div', { class: 'cu-gruppe' }, [zeile('Objektnummer', UI.objektNummer(o)), zeile('Straße', o.strasse), zeile('PLZ / Ort', [o.plz, o.ort].filter(Boolean).join(' '))]),
-          el('div', { class: 'cu-gruppe' }, [zeile('Objekttyp', objektTypText(o)), zeile('Büro-Kostenstelle', o.buero_kst), zeile('Sachbearbeitung', o.sachbearbeiter_name)]),
-        ]),
-        el('div', { class: 'cu-spalte hp-objekt-technik' }, [
-          el('div', { class: 'cu-gruppe' }, [zeile('Baujahr', o.baujahr), zeile('Gebäude', o.anzahl_gebaeude ?? 0), zeile('Eingänge', o.anzahl_eingaenge ?? 0)]),
-          el('div', { class: 'cu-gruppe' }, [zeile('Heizungsart', o.heizungsart), zeile('Warmwasser', o.warmwasser), zeile('Garagenart', o.garagenart), zeile('Müllgefäße', o.muellgefaesse)]),
-          el('div', { class: 'cu-pillen hp-verkauf' }, [
-            el('span', { class: 'cu-pille' }, [document.createTextNode('Verkauf: '), el('strong', { text: o.verkauf ? 'Ja' : 'Nein' })]),
-            el('span', { class: 'cu-pille' }, [document.createTextNode('Vermietung: '), el('strong', { text: o.vermietung ? 'Ja' : 'Nein' })]),
-          ]),
-        ]),
-        bild ? el('button', { type: 'button', class: 'hp-objekt-bild', title: `Bild zum Objekt: ${bild.titel}`, 'aria-label': 'Bild zum Objekt öffnen', onclick: () => archivBearbeiten(bild.id, neuLaden) },
-          [el('img', { src: `/api/archiv/${bild.id}/bild`, alt: bild.titel || 'Bild zum Objekt' })]) : null,
+  const oben = el('div', { class:'cu-objekt-stamm hp-objekt-kopf', 'aria-label':'Objektstammdaten', role:'region' }, [
+    el('section',{class:'cu-objekt-ident'},[
+      el('div',{class:'cu-objekt-identzeile'},[
+        el('span',{class:'cu-objekt-label',text:'Objekt-Nr.'}),
+        el('strong',{text:UI.objektNummer(o)}),
+        el('strong',{class:'cu-objekt-name',text:o.bezeichnung}),
+        schreiben?el('button',{type:'button',class:'hp-mini',title:'Objekt bearbeiten (F2)','aria-label':'Objekt bearbeiten',onclick:()=>objektFormular(o)},[icon('pencil')]):null,
       ]),
+      zeile('Straße',o.strasse),
+      el('div',{class:'cu-objekt-orttyp'},[
+        zeile('PLZ / Ort',[o.plz,o.ort].filter(Boolean).join(' ')),
+        zeile('Objekt-Typ',objektTypText(o)),
+      ]),
+      o.archiviert?el('span',{class:'badge badge-inaktiv',text:'deaktiviert'}):null,
     ]),
-  ];
+    bild?el('button',{type:'button',class:'cu-objekt-foto',title:bild.titel||'Bild zum Objekt','aria-label':'Bild zum Objekt öffnen',onclick:()=>archivBearbeiten(bild.id,neuLaden)},[
+      el('img',{src:'/api/archiv/'+bild.id+'/bild',alt:bild.titel||'Bild zum Objekt'}),
+    ]):el('div',{class:'cu-objekt-foto cu-objekt-foto-leer','aria-label':'Kein Objektbild'},[
+      schreiben?el('button',{type:'button',class:'hp-mini',text:'Bild hinzufügen',onclick:()=>archivUpload(fotoKtx,neuLaden)}):el('span',{text:'Kein Objektbild'}),
+    ]),
+    el('section',{class:'cu-objekt-gruppen','aria-label':'Gruppenzuordnung'},[1,2,3,4,5].map(n=>zeile('Gruppe '+n,o['gruppe'+n]))),
+    el('section',{class:'cu-objekt-technik','aria-label':'Technik'},[
+      zeile('Heizungsart',o.heizungsart),zeile('Warmwasser',o.warmwasser),zeile('Garagenart',o.garagenart),zeile('Müllgefäße',o.muellgefaesse),
+    ]),
+    el('section',{class:'cu-objekt-gebaeude','aria-label':'Gebäudedaten'},[
+      zeile('Baujahr',o.baujahr),zeile('Gebäude',o.anzahl_gebaeude??0),zeile('Eingänge',o.anzahl_eingaenge??0),
+      el('div',{class:'cu-objekt-verkauf'},[el('span',{text:'Verkauf '+(o.verkauf?'Ja':'Nein')}),el('span',{text:'Vermietung '+(o.vermietung?'Ja':'Nein')})]),
+    ]),
+  ]);
   const symbole = el('div', { class: 'hp-symbole hp-objekt-symbole' }, [
     el('button', { type: 'button', class: 'hp-symbol', title: 'Kontakte und Dokumente zum Objekt (Z.I.S)', 'aria-label': 'Z.I.S zum Objekt', onclick: () => geheZu(basis + '?zis=1') },
       [el('span', { 'aria-hidden': 'true', text: '☎' })]),
@@ -496,39 +504,34 @@ async function objektMaske(id, params) {
       const liste = q ? verteiler.filter((v) => `${v.kuerzel} ${v.bezeichnung}`.toLowerCase().includes(q)) : verteiler;
       vBox.replaceChildren(raster([
         { label: 'Schlüssel', class: 'nowrap', render: (v) => v.kuerzel },
-        ...verteilerSpalten.slice(1),
+        ...verteilerSpalten.slice(1).filter(spalte=>spalte.label!=='Jahr'),
       ], liste, { onOpen: schreiben ? (v) => verteilerForm(o, v, neuLaden) : null, leer: q ? 'Kein Schlüssel gefunden.' : 'Noch keine Verteilerschlüssel.' }));
     };
     vSuche.addEventListener('input', vZeichnen);
     vZeichnen();
-    const leerZustand = (ic, text) => el('div', { class: 'cu-leer' }, [icon(ic), el('span', { text })]);
-    inhalt.append(
-      el('section', { class: 'cu-karte', 'aria-label': 'Verteilerschlüssel' }, [
-        el('div', { class: 'cu-karten-kopf' }, [
-          el('h2', { class: 'cu-karten-titel' }, [icon('key', 'cu-akzent'), el('span', { text: 'Verteilerschlüssel'+(verteiler[0]?.jahr?' · '+verteiler[0].jahr:'') })]),
-          el('span', { class: 'hp-spacer' }),
-          el('div', { class: 'cu-suche-klein' }, [icon('search'), vSuche]),
-          schreiben ? el('button', { type: 'button', class: 'btn-primary cu-knopf', onclick: () => verteilerForm(o, null, neuLaden) }, [icon('plus'), el('span', { text: 'Schlüssel' })]) : null,
-        ]),
-        vBox,
+    inhalt.appendChild(el('section',{class:'cu-objekt-allgemein','aria-label':'Objekt Allgemein'},[
+      el('div',{class:'cu-objekt-sachbearbeiter'},[
+        zeile('Sachbearbeiter',o.sachbearbeiter_name),
+        o.buero_kst?zeile('Büro-Kostenstelle',o.buero_kst):null,
       ]),
-      el('div', { class: 'cu-zweispaltig' }, [
-        el('section', { class: 'cu-karte hp-objekt-gruppen', 'aria-label': 'Gruppenzuordnung' }, [
-          el('h2', { class: 'cu-karten-titel' }, [icon('users', 'cu-akzent'), el('span', { text: 'Gruppenzuordnung' })]),
-          el('div', { class: 'cu-streifen' }, [1, 2, 3, 4, 5].map((n) => el('div', { class: 'cu-kv' }, [
-            el('span', { class: 'cu-kv-l hp-label', text: 'Gruppe ' + n }), el('span', { class: 'cu-kv-w', text: o['gruppe' + n] || '—' }),
-          ]))),
-        ]),
-        el('section', { class: 'cu-karte', 'aria-label': 'Notizen' }, [
-          el('div', { class: 'cu-karten-kopf' }, [
-            el('h2', { class: 'cu-karten-titel' }, [icon('file', 'cu-akzent'), el('span', { text: 'Notizen' })]),
-            el('span', { class: 'hp-spacer' }),
-            schreiben ? el('button', { type: 'button', class: 'hp-mini', title: 'Notizen bearbeiten', 'aria-label': 'Notizen bearbeiten', onclick: () => objektInfoDialog(o) }, [icon('pencil')]) : null,
+      el('div',{class:'cu-objekt-allgemein-spalten'},[
+        el('section',{class:'cu-objekt-info','aria-label':'Info'},[
+          el('div',{class:'cu-objekt-abschnitt-kopf'},[
+            el('h2',{text:'Info'}),
+            schreiben?el('button',{type:'button',class:'hp-mini',text:'Bearbeiten',title:'Info bearbeiten',onclick:()=>objektInfoDialog(o)}):null,
           ]),
-          o.notizen ? el('div', { class: 'hp-notizen', text: o.notizen }) : leerZustand('file', 'Keine Notizen hinterlegt'),
+          el('div',{class:'hp-notizen',text:o.notizen||''}),
+        ]),
+        el('section',{class:'cu-objekt-verteiler','aria-label':'Verteilerschlüssel'},[
+          el('div',{class:'cu-objekt-abschnitt-kopf'},[
+            el('h2',{text:'Verteilerschlüssel'+(verteiler[0]?.jahr?' · '+verteiler[0].jahr:'')}),
+            el('div',{class:'cu-objekt-verteilersuche'},[vSuche]),
+            schreiben?el('button',{type:'button',class:'hp-mini',text:'Neu',title:'Verteilerschlüssel anlegen',onclick:()=>verteilerForm(o,null,neuLaden)}):null,
+          ]),
+          vBox,
         ]),
       ]),
-    );
+    ]));
   } else if (tab === 'korrespondenz') {
     archivListe(inhalt, { ktx: { typ: 'objekt', id: o.id }, kategorie: 'korrespondenz', lauf });
   } else if (tab === 'archiv') {
@@ -565,28 +568,31 @@ async function objektMaske(id, params) {
     inhalt.appendChild(abschnitt(titel, el('div', { class: 'hp-notizen', text: `${titel} folgen in einer späteren Ausbaustufe.` })));
   }
 
-  zeigeAufDesktop(lauf, maskenFenster({
-    titel: `Objekt anzeigen  Nr.: ${UI.objektNummer(o)} ${String(o.bezeichnung || '').toUpperCase()}`,
-    kopf: {
-      brot: [{ text: 'Objekte', href: '#/objektliste' }, { text: UI.objektNummer(o), href: basis }, { text: o.bezeichnung }],
-      ueberschrift: o.bezeichnung,
-      badge: o.objekttyp === 'HP' ? 'HP-Typ noch nicht zugeordnet' : o.objekttyp === 'WEG' ? 'WEG-Verwaltung' : 'Mietverwaltung', badgeKlasse: o.objekttyp === 'WEG' ? 'cu-badge-weg' : 'cu-badge-miete',
-      unterzeile: [`Objekt ${UI.objektNummer(o)}`, [o.plz, o.ort].filter(Boolean).join(' ')].filter(Boolean).join('  •  ') + (o.archiviert ? '  •  deaktiviert' : ''),
-      buchungsjahr: true, drucken: false,
-    },
-    inhalt: maskenRaster({
-      oben, seite,
-      unten: [reiterLeiste([
-        { key: 'allgemein', label: 'Allgemein' },
-        { key: 'korrespondenz', label: 'Korrespondenz' },
-        { key: 'archiv', label: 'Archiv' },
-        { key: 'vorgaenge', label: 'Vorgänge/ Akten' },
-        { key: 'hwa', label: 'HWA - Aufträge' },
-        { key: 'energie', label: 'Energie' },
-        { key: 'kennzahlen', label: 'Kennzahlen' },
-      ], tab, basis), inhalt],
-    }),
-  }));
+  const titel='Objekt anzeigen  Nr.: '+UI.objektNummer(o)+' '+String(o.bezeichnung||'').toUpperCase();
+  seite.querySelector('.cu-hp-leisteninfo')?.appendChild(el('div',{text:'BJ: '+(verteiler[0]?.jahr||new Date().getFullYear())}));
+  seite.querySelector('.cu-hp-leisteninfo')?.appendChild(symbole);
+  zeigeAufDesktop(lauf,el('section',{class:'hp-maske cu-objekt-original','aria-label':titel},[
+    el('header',{class:'cu-objekt-titelbar'},[
+      el('h1',{text:titel}),
+      el('a',{href:'#/objektliste',title:'Zur Objektliste','aria-label':'Objektmaske schließen',text:'×'}),
+    ]),
+    el('div',{class:'cu-objekt-arbeitsbereich'},[
+      el('div',{class:'cu-objekt-haupt'},[
+        oben,
+        reiterLeiste([
+          {key:'allgemein',label:'Allgemein'},
+          {key:'korrespondenz',label:'Korrespondenz'},
+          {key:'archiv',label:'Archiv'},
+          {key:'vorgaenge',label:'Vorgänge/ Akten'},
+          {key:'hwa',label:'HWA - Aufträge'},
+          {key:'energie',label:'Energie'},
+          {key:'kennzahlen',label:'Kennzahlen'},
+        ],tab,basis),
+        inhalt,
+      ]),
+      seite,
+    ]),
+  ]));
 }
 
 // ---------------------------------------------------------------------
