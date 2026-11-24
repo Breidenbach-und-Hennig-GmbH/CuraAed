@@ -113,7 +113,7 @@ const BEFEHLE = [
   { taste: 'k', icon: 'mail', text: 'Korrespondenz', aktion: (k) =>
       geheZu(k.typ === 'handwerker' && k.id ? '#/vorgaenge/' + k.id + '?tab=korrespondenz' : kontextRoute(k) ? kontextRoute(k) + '?tab=korrespondenz' : '#/archiv?kategorie=korrespondenz') },
   { taste: 'l', icon: 'building', text: 'Lieferant', nur: ['adresse'], folgt: FIBU },
-  { taste: 'm', icon: 'mail', text: 'E-Mail', aktion: () => { const k=S.kontext||{};geheZu('#/posteingang'+(['adresse','objekt','akte'].includes(k.typ)&&k.id?'?typ='+k.typ+'&ziel='+k.id:'')); } },
+  { taste: 'm', icon: 'mail', text: 'E-Mail', aktion: () => { const k=S.kontext||{},id=k.id||k[k.typ]?.id;geheZu('#/posteingang'+(['adresse','objekt','akte'].includes(k.typ)&&id?'?typ='+k.typ+'&ziel='+id:'')); } },
   { taste: 'o', icon: 'building', text: 'Objekt', aktion: (k) =>
       (k.typ === 'adresse' ? pfktSprung(k, 'objekt') : geheZu(k.typ === 'handwerker' && k.hwaRecord?.auftrag?.objekt?.id ? '#/objekte/' + k.hwaRecord.auftrag.objekt.id : k.typ === 'einheit' || k.typ === 'pkto' ? '#/objekte/' + k.objekt.id : k.typ === 'objekt' ? kontextRoute(k) : '#/objekte')) },
   { taste: 'p', icon: 'user', text: 'Personenkonto', aktion: (k) => pktoSprung(k) },
