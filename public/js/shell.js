@@ -1300,62 +1300,45 @@ function schnellKnopf({ icon: ic, text, kbd, gesperrt, titel, onclick, href }) {
   return b;
 }
 
-/**
- * Rechte Karte „Schnellaktionen": Strg-Sprünge der Maske + Knöpfe mit schnell:true.
- * Übrige Knöpfe landen im Menü „Weitere Aktionen" (aside.hpWeitere); in Masken
- * ohne Sprünge (Listen, Archiv …) stehen alle Knöpfe in der Karte.
- */
+/** Schmale HausPerfekt-Knopfleiste; Tastaturbefehle bleiben unabhängig nutzbar. */
 function seitenleiste(knoepfe, { zusatz } = {}) {
   const typ = (S.kontext || {}).typ;
-  const mitSpruengen = !!SCHNELL_OHNE[typ];
   const id = 'hp-befehl-' + (++befehlZaehler);
-  const eingabe = el('input', { id, class: 'hp-befehl', maxlength: '1', autocomplete: 'off', title: 'Buchstabe eingeben und Enter drücken (z. B. o = Objekt, w = Wohnung)' });
-  eingabe.addEventListener('keydown', (ev) => {
-    if (ev.key !== 'Enter') return;
+  const eingabe = el('input', { id, class: 'hp-befehl', maxlength: '1', autocomplete: 'off', title: 'Buchstabe eingeben und Enter drücken (z. B. w = Wohnung)' });
+  eingabe.addEventListener('keydown', ev => {
+    if(ev.key !== 'Enter') return;
     ev.preventDefault();
-    const k = eingabe.value.trim().toLowerCase();
-    eingabe.value = '';
-    if (k) befehl(k, true);
+    const k=eingabe.value.trim().toLowerCase(); eingabe.value='';
+    if(k) befehl(k,true);
   });
-  const liste = el('div', { class: 'hp-knoepfe' });
-  const weitere = [];
-  if (mitSpruengen) {
-    BEFEHLE.filter((b) => (!b.nur || b.nur.includes(typ)) && !SCHNELL_OHNE[typ].includes(b.taste)).forEach((b) => {
-      liste.appendChild(schnellKnopf({
-        icon: b.icon, text: (SCHNELL_TEXT[b.taste] || {})[typ] || b.text,
-        kbd: b.browser ? `Befehl ${b.taste.toUpperCase()}` : `Strg + ${b.taste.toUpperCase()}`,
-        gesperrt: !!b.folgt, titel: b.folgt || (b.browser ? `Strg+${b.taste.toUpperCase()} ist im Browser belegt – Buchstabe ${b.taste} ins Feld „Befehl" tippen` : null),
-        onclick: () => befehl(b.taste),
-      }));
-    });
-  }
-  knoepfe.filter(Boolean).forEach((k) => {
-    if (k.gruppe || k.abstand) return;
-    if (/^(Drucke|Drucken|Bearbeiten)$/.test(k.text)) return; // stehen oben im Seitenkopf
-    const klick = () => (k.gesperrt ? toast(k.grund || 'Keine Schreibberechtigung.') : k.onclick());
-    if (!mitSpruengen || k.schnell) {
-      liste.appendChild(schnellKnopf({ icon: k.icon, text: k.text, gesperrt: k.gesperrt, titel: k.titel, href: k.href, onclick: klick }));
-    } else {
-      weitere.push(k.gesperrt
-        ? { text: k.text, folgt: k.grund || 'Keine Schreibberechtigung.', stufe: '' }
-        : { text: k.text, titel: k.titel, aktion: k.href ? () => { window.location.href = k.href; } : k.onclick });
-    }
+  const liste=el('div',{class:'hp-knoepfe'});
+  const knopf=k=>{
+    const titel=k.grund || k.titel || k.text;
+    const attrs={class:'hp-knopf cu-hp-knopf'+(k.gesperrt?' gesperrt':''),title:titel,'aria-disabled':k.gesperrt?'true':null};
+    if(k.href&&!k.gesperrt)return el('a',{...attrs,href:k.href,text:k.text});
+    return el('button',{...attrs,type:'button',text:k.text,onclick:()=>k.gesperrt?toast(k.grund||'Keine Schreibberechtigung.'):k.onclick?.()});
+  };
+  knoepfe.filter(Boolean).forEach(k=>{
+    if(k.gruppe||k.abstand){liste.appendChild(el('div',{class:'cu-hp-abstand','aria-hidden':'true'}));return;}
+    liste.appendChild(knopf(k));
   });
-  const schmal = !!(window.matchMedia && window.matchMedia('(max-width: 760px)').matches);
-  const kopfKnopf = el('button', { type: 'button', class: 'cu-karten-titel cu-klapp', 'aria-expanded': String(!schmal), 'aria-controls': id + '-liste' },
-    [icon('zap', 'cu-akzent'), el('span', { text: 'Schnellaktionen' }), icon('chevron', 'cu-klapp-pfeil')]);
-  liste.id = id + '-liste';
-  const karte = el('aside', { class: 'hp-seitenleiste cu-karte' + (schmal ? ' zu' : ''), 'aria-label': 'Schnellaktionen' }, [
-    el('h2', { class: 'cu-karten-h2' }, [kopfKnopf]),
-    liste,
-    el('div', { class: 'hp-befehl-zeile' }, [el('label', { for: id, text: 'Befehl' }), eingabe]),
+  const spruenge=SCHNELL_OHNE[typ]?BEFEHLE.filter(b=>(!b.nur||b.nur.includes(typ))&&!SCHNELL_OHNE[typ].includes(b.taste)):[];
+  const datum=new Date();
+  const info=el('div',{class:'cu-hp-leisteninfo'},[
+    el('div',{text:'SB: '+(S.benutzer?.kuerzel||S.benutzer?.benutzername||'—')}),
+    el('div',{text:datum.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',year:'2-digit'})}),
   ]);
-  kopfKnopf.addEventListener('click', () => {
-    const offen = !karte.classList.toggle('zu');
-    kopfKnopf.setAttribute('aria-expanded', String(offen));
-  });
-  karte.hpWeitere = weitere;
-  karte.hpZusatz = zusatz || null;
+  const karte=el('aside',{class:'hp-seitenleiste cu-karte cu-hp-leiste','aria-label':'Schnellaktionen'},[
+    info,
+    el('div',{class:'hp-befehl-zeile'},[el('label',{for:id,text:'Befehl:'}),eingabe]),
+    liste,
+    spruenge.length?el('details',{class:'cu-hp-spruenge'},[
+      el('summary',{text:'Tastatursprünge'}),
+      ...spruenge.map(b=>knopf({text:(SCHNELL_TEXT[b.taste]||{})[typ]||b.text,gesperrt:!!b.folgt,grund:b.folgt,titel:(b.browser?'Befehl ':'Strg + ')+b.taste.toUpperCase(),onclick:()=>befehl(b.taste)})),
+    ]):null,
+  ]);
+  karte.hpWeitere=[];
+  karte.hpZusatz=zusatz||null;
   return karte;
 }
 
