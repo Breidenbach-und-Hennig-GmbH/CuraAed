@@ -55,6 +55,7 @@ function route() {
   if (bereich === 'fibu') return fibuMaske();
   if (bereich === 'pkto') return personenkontoMaske(id, params);
   if (bereich === 'verwaltungen') return verwaltungenMaske();
+  if (bereich === 'posteingang') return posteingangMaske(params);
   if (bereich === 'm365') return m365Maske();
   if (bereich === 'benutzer') return benutzerMaske();
   if (bereich === 'plaud') return plaudRueckkehr(params);
@@ -91,6 +92,10 @@ function renderLogin() {
   const appEl = document.getElementById('app');
   appEl.innerHTML = '';
   appEl.appendChild(el('div', { class: 'login-wrap' }, [fenster]));
+  const microsoft=el('button',{type:'button',class:'btn-primary',text:'Mit Microsoft anmelden',style:'width:100%;margin:10px 0',onclick:()=>microsoftAnmelden(false)});
+  API.get('/auth/microsoft/status').then(r=>{if(r.bereit&&fenster.isConnected)fenster.insertBefore(microsoft,form);}).catch(()=>{});
+  const error=new URLSearchParams(location.search).get('microsoft_fehler');if(error){fenster.append(el('p',{role:'alert',text:error}));history.replaceState(null,'',location.pathname+location.hash);}
+
   form.querySelector('#f_benutzername').focus();
 }
 

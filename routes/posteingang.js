@@ -1,0 +1,21 @@
+'use strict';
+const express=require('express'),auth=require('../lib/auth'),{ValidationError}=require('../lib/validation');
+const h=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);
+module.exports=(db,m365)=>{
+ const r=express.Router(),z=m365.postfachZugang,s=require('../services/posteingang').baue(db,z);
+ r.use(auth.erfordereLogin,auth.erfordereSchreibrecht,(req,res,next)=>{res.set({'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'});next();});
+ const same=(req,res,next)=>req.get('origin')===m365.origin&&req.is('application/json')?next():next(new ValidationError('Bitte den Posteingang in CuraAed verwenden.',403));
+ const source=req=>req.query.quelle||req.body?.quelle;
+ r.get('/quellen',h(async(req,res)=>res.json(await z.quellen(req.benutzer))));
+ r.post('/verbinden',same,h(async(req,res)=>{if(req.body?.zustimmung!==true)throw new ValidationError('Bitte die Microsoft-Freigabe bestätigen.');res.json(await z.verbinden(req.benutzer,req.sessionToken));}));
+ r.post('/trennen',same,h(async(req,res)=>res.json(await z.trennen(req.benutzer.id))));
+ r.get('/nachrichten',h(async(req,res)=>res.json(await s.liste(req.benutzer,source(req),req.query))));
+ r.get('/lesen',h(async(req,res)=>res.json(await s.lesen(req.benutzer,source(req),req.query.id))));
+ r.get('/suche',h(async(req,res)=>res.json(await s.suche(req.benutzer,req.query.typ,req.query.suche))));
+ r.get('/nachrichten/:id',h(async(req,res)=>res.json(await s.gespeichert(req.benutzer,source(req),req.params.id))));
+ r.put('/nachrichten/:id/zuordnung',same,h(async(req,res)=>res.json(await s.zuordnen(req.benutzer,source(req),req.params.id,req.body||{}))));
+ r.post('/nachrichten/:id/antwort',same,h(async(req,res)=>res.json(await s.antworten(req.benutzer,source(req),req.params.id,req.body||{}))));
+ r.get('/nachrichten/:id/anhaenge',h(async(req,res)=>res.json(await s.anhaenge(req.benutzer,source(req),req.params.id))));
+ r.get('/nachrichten/:id/anhaenge/:aid',h(async(req,res)=>{const a=await s.anhaenge(req.benutzer,source(req),req.params.id,req.params.aid);res.attachment(a.name).type('application/octet-stream').send(a.bytes);}));
+ return r;
+};

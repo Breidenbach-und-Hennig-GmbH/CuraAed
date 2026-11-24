@@ -35,17 +35,19 @@ function baue(db,options={}){
   await db.transaktion(async tx=>{
    const row=await tx.get('SELECT revision FROM m365_app_config WHERE id=1');
    if((row?.revision||0)!==old.revision)fail('Die Microsoft-Einrichtung wurde inzwischen geändert. Bitte neu öffnen.',409);
-   if(changed){await tx.run('DELETE FROM m365_verbindungen');await tx.run('DELETE FROM m365_persoenliche_kalender');}await tx.run('DELETE FROM m365_kalender_oauth');
+   if(changed){await tx.run('DELETE FROM m365_verbindungen');await tx.run('DELETE FROM m365_persoenliche_kalender');await tx.run('DELETE FROM m365_persoenliche_postfaecher');}await tx.run('DELETE FROM m365_kalender_oauth');await tx.run('DELETE FROM m365_postfach_oauth');
    await tx.run('DELETE FROM m365_oauth');
    await tx.run("INSERT INTO m365_app_config(id,daten,revision,quelle,geaendert_von) VALUES(1,?,1,'Benutzerverwaltung',?) ON CONFLICT(id) DO UPDATE SET daten=excluded.daten,revision=revision+1,quelle=excluded.quelle,geaendert_von=excluded.geaendert_von,geaendert_am=CURRENT_TIMESTAMP",[seal(config),user.id]);
   });
   return safe(await load());
  }
  const service={origin:base.origin,get ready(){return active.ready;}};
- for(const method of ['settings','saveSettings','verbinden','callbackFinish','vorbereiten','senden','trennen','teamsBesprechung','kalenderAnfrage'])service[method]=(...args)=>exclusive(db,async()=>{const core=await current();return core[method](...args);});
+ for(const method of ['settings','saveSettings','verbinden','callbackFinish','vorbereiten','senden','trennen','teamsBesprechung','kalenderAnfrage','postfachAnfrage'])service[method]=(...args)=>exclusive(db,async()=>{const core=await current();return core[method](...args);});
  service.konfiguration=()=>exclusive(db,konfiguration);
  service.konfigurationSpeichern=(b,user)=>exclusive(db,()=>konfigurationSpeichern(b,user));
  service.kalender=require('./m365-kalender').baue(db,{origin:base.origin,config:()=>exclusive(db,async()=>(await load()).config),shared:service,fetch:options.fetch});
+ service.postfachZugang=require('./m365-postfach-zugang').baue(db,{origin:base.origin,config:()=>exclusive(db,async()=>(await load()).config),shared:service,fetch:options.fetch});
+ service.anmeldung=require('./microsoft-anmeldung').baue(db,{origin:base.origin,config:()=>exclusive(db,async()=>(await load()).config),fetch:options.fetch});
  return service;
 }
 module.exports={baue,mailbox:kern.mailbox};
