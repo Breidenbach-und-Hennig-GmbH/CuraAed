@@ -104,3 +104,14 @@ test('Vorläufige Übernahme bleibt lokal, archiviert das Original und verhinder
  const other=await lesen(te,a);await te.vorbereiten(a,other,vorbereitung());const next=await te.stand(a,other);await assert.rejects(te.uebernehmen(a,other,{daten:next.ergebnis,geprueft:true}),e=>e.status===409);
  assert.equal((await db.get('SELECT COUNT(*) n FROM objekte')).n,1);
 });
+
+test('MEA-Anzeige und Summe verwenden den Originalnenner, ohne Rechenwerte zu verändern oder veraltete Angaben anzuzeigen',async t=>{
+ const {db,a,te}=await setup(t),job=await lesen(te,a);await te.vorbereiten(a,job,vorbereitung());const r=await te.stand(a,job);
+ const saved=await te.uebernehmen(a,job,{daten:r.ergebnis,geprueft:true}),units=require('../services/einheiten');
+ const list=await units.listeNachObjekt(db,saved.objekt_id);assert.equal(list[0].mea,'2469/200000');assert.equal(list[0].mea_anzeige,'123,45/10.000');assert.equal(list[1].mea_anzeige,'9876,55/10.000');
+ const k=await require('../services/objekte').kennzahlen(db,saved.objekt_id);assert.equal(k.mea_summe_anzeige,'10.000/10.000');assert.equal(k.mea_summe,10000);
+ assert.equal((await units.suche(db,{suche:'Testweg'}))[0].mea_anzeige,'123,45/10.000');assert.equal((await units.holen(db,list[0].id)).mea_anzeige,'123,45/10.000');
+ await db.run('UPDATE einheiten SET mea=? WHERE id=?',['1/2',list[0].id]);assert.equal((await units.holen(db,list[0].id)).mea_anzeige,undefined);
+ assert.equal((await require('../services/objekte').kennzahlen(db,saved.objekt_id)).mea_summe_anzeige,null);
+ assert.equal((await db.get('SELECT COUNT(*) n FROM hp_objekt_zuordnung')).n,0);
+});
