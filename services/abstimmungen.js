@@ -11,7 +11,7 @@ function konfig(b){
  return{prinzip:b.prinzip,geprueft:b.geprueft,grundlage};
 }
 function regel(b){
- if(!b||!['einfach','drei_viertel','zwei_drittel','einstimmig','allstimmig','individuell'].includes(b.mehrheit)||!['abgegeben','alle','vertreten'].includes(b.basis)||!['gt','gte'].includes(b.vergleich)||!['keines','mehr_haelfte','mindestens_haelfte'].includes(b.zusatz_mea)||!['versammlung','umlauf'].includes(b.verfahren))fail('Ungültige Mehrheitsregel.');
+ if(!b||!['einfach','drei_viertel','zwei_drittel','einstimmig','allstimmig','individuell'].includes(b.mehrheit)||!['abgegeben','alle','vertreten','gesamt'].includes(b.basis)||!['gt','gte'].includes(b.vergleich)||!['keines','mehr_haelfte','mindestens_haelfte'].includes(b.zusatz_mea)||!['versammlung','umlauf'].includes(b.verfahren))fail('Ungültige Mehrheitsregel.');
  const zaehler=Number(b.zaehler),nenner=Number(b.nenner);
  if(!Number.isSafeInteger(zaehler)||!Number.isSafeInteger(nenner)||zaehler<1||nenner<1||zaehler>nenner||nenner>10000)fail('Ungültiges Mehrheitsverhältnis.');
  const r={mehrheit:b.mehrheit,basis:b.basis,zaehler,nenner,vergleich:b.vergleich,zusatz_mea:b.zusatz_mea,verfahren:b.verfahren,grundlage:text(b.grundlage),umlauf_beschluss:text(b.umlauf_beschluss)};
@@ -47,7 +47,7 @@ async function saveRule(db,vid,tid,b){
  });
 }
 async function register(db,v){
- const units=await db.all('SELECT id,nummer,bezeichnung,mea FROM einheiten WHERE objekt_id=? AND archiviert=0 ORDER BY id',[v.objekt_id]);
+ const M=require('../lib/meaAnzeige'),units=await M.ergaenzen(db,await db.all('SELECT id,objekt_id,nummer,bezeichnung,mea FROM einheiten WHERE objekt_id=? AND archiviert=0 ORDER BY id',[v.objekt_id])),meaBasis=M.basis(units);
  const rows=await db.all("SELECT z.einheit_id,z.adresse_id,z.anteil,a.adresstyp,a.vorname,a.nachname,a.firmenname,a.nummer FROM rollen_zuordnungen z JOIN adressen a ON a.id=z.adresse_id JOIN einheiten e ON e.id=z.einheit_id WHERE e.objekt_id=? AND z.rolle='eigentuemer' AND COALESCE(z.inaktiv,0)=0 AND (z.objekt_id IS NULL OR z.objekt_id=e.objekt_id) AND (z.gueltig_von IS NULL OR z.gueltig_von<=?) AND (z.gueltig_bis IS NULL OR z.gueltig_bis>=?) ORDER BY z.einheit_id,z.adresse_id",[v.objekt_id,v.datum,v.datum]);
  const groups=new Map(),hinweise=[],meaHinweise=[];
  if(!units.length)hinweise.push('Keine aktiven Einheiten vorhanden. Bitte zuerst die Einheiten und ihre Eigentümer zuordnen.');
@@ -59,10 +59,11 @@ async function register(db,v){
   if(shares.length){try{const sum=shares.reduce((s,o)=>Q.add(s,Q.parse(o.anteil)),Q.q(0n));if(shares.length!==owners.length||Q.cmp(sum,Q.q(1n))!==0)hinweise.push('Einheit '+(u.nummer||u.bezeichnung)+': Eigentumsanteile sind nicht vollständig oder nicht als Brüche mit Summe 1 hinterlegt.');}catch{hinweise.push('Einheit '+(u.nummer||u.bezeichnung)+': Eigentumsanteile nicht eindeutig lesbar.');}}
   const key=owners.map(o=>o.adresse_id).sort((a,b)=>a-b).join(':');
   if(!groups.has(key))groups.set(key,{key,name:owners.map(o=>require('./adressen').anzeigename(o)).join(' / '),eigentumer:owners.map(o=>({id:o.adresse_id,name:require('./adressen').anzeigename(o)})),einheiten:[],mea:'0',mea_vollstaendig:true});
-  const g=groups.get(key);g.einheiten.push({id:u.id,nummer:u.nummer,bezeichnung:u.bezeichnung,mea:u.mea});
+  const g=groups.get(key);g.einheiten.push({id:u.id,nummer:u.nummer,bezeichnung:u.bezeichnung,mea:u.mea,...(u.mea_anzeige?{mea_anzeige:u.mea_anzeige}:{})});
   try{const m=Q.parse(u.mea);if(m.n<=0n)throw Error();g.mea=Q.str(Q.add(Q.parse(g.mea,true),m));}catch{g.mea_vollstaendig=false;meaHinweise.push('Einheit '+(u.nummer||u.bezeichnung)+': MEA fehlen oder sind nicht eindeutig.');}
  }
- const gruppen=[...groups.values()],basis={datum:v.datum,objekt_id:v.objekt_id,gruppen,hinweise,meaHinweise};
+ const gruppen=[...groups.values()];if(meaBasis)for(const g of gruppen)g.mea_anzeige=M.darstellen(g.mea,meaBasis,true);
+ const basis={datum:v.datum,objekt_id:v.objekt_id,gruppen,hinweise,meaHinweise,...(meaBasis?{mea_basis:meaBasis}:{})};
  return{...basis,basis_hash:hash(basis)};
 }
 function topHash(t){return hash([t.id,t.versammlung_id,t.objekt_id,t.datum,t.titel,t.art,t.erlaeuterung,t.beschlussvorschlag]);}
@@ -111,9 +112,9 @@ function zaehlen(reg,c,r,stimmen,geprueft){
  else if(r.mehrheit==='allstimmig'){basis=sums.berechtigt;bestanden=basis.n>0n&&Q.cmp(sums.ja,basis)===0;berechnung='Alle berechtigten Stimmrechte müssen zustimmen, auch nicht vertretene.';}
  else{
   const n=r.mehrheit==='drei_viertel'?3:r.mehrheit==='zwei_drittel'?2:r.zaehler,d=r.mehrheit==='drei_viertel'?4:r.mehrheit==='zwei_drittel'?3:r.nenner,op=r.mehrheit==='drei_viertel'?'gte':r.mehrheit==='zwei_drittel'?'gt':r.vergleich;
-  basis=r.mehrheit==='individuell'?(r.basis==='alle'?sums.berechtigt:r.basis==='vertreten'?sums.vertreten:abgegeben):abgegeben;
+  basis=r.basis==='gesamt'?Q.add(sums.berechtigt,sums.ausgeschlossen):r.basis==='alle'?sums.berechtigt:r.basis==='vertreten'?sums.vertreten:abgegeben;
   const cmp=Q.cmp(Q.mul(sums.ja,BigInt(d)),Q.mul(basis,BigInt(n)));bestanden=basis.n>0n&&(op==='gt'?cmp>0:cmp>=0);
-  berechnung='Ja '+(op==='gt'?'>':'≥')+' '+n+'/'+d+' × '+(r.mehrheit==='individuell'?r.basis:'abgegeben')+'.';
+  berechnung='Ja '+(op==='gt'?'>':'≥')+' '+n+'/'+d+' × '+({alle:'alle stimmberechtigten Stimmrechte',gesamt:'alle vorhandenen Stimmrechte einschließlich ausgeschlossener',vertreten:'vertretene Stimmrechte',abgegeben:'abgegebene Ja-/Nein-Stimmen'}[r.basis]||'abgegebene Ja-/Nein-Stimmen')+'.';
  }
  let mea_quorum=null;
  if(r.zusatz_mea!=='keines'){
@@ -121,7 +122,9 @@ function zaehlen(reg,c,r,stimmen,geprueft){
   berechnung+=' Zusätzlich Ja-MEA '+(r.zusatz_mea==='mehr_haelfte'?'>':'≥')+' 1/2 aller MEA. Dies prüft nur die hinterlegte Rechenregel, nicht weitere gesetzliche Voraussetzungen einer Kostenfolge.';
  }
  const status=abgegeben.n===0n?'keine_gueltige_stimme':bestanden?'angenommen':'abgelehnt';
- return{status,prinzip:c.prinzip,mehrheit:r.mehrheit,verfahren:r.verfahren,berechnung,grundlage:r.grundlage,basis:Q.str(basis),summen:Object.fromEntries(Object.entries(sums).map(([k,v])=>[k,Q.str(v)])),abgegeben:Q.str(abgegeben),mea_quorum,details};
+ const summen=Object.fromEntries(Object.entries(sums).map(([k,v])=>[k,Q.str(v)])),M=require('../lib/meaAnzeige');
+ const display=reg.mea_basis?{mea_bezug:BigInt(reg.mea_basis).toLocaleString('de-DE'),summen_anzeige:Object.fromEntries(Object.entries(summen).map(([k,v])=>[k,c.prinzip==='mea'||['alle_mea','ja_mea'].includes(k)?M.darstellen(v,reg.mea_basis):v])),basis_anzeige:c.prinzip==='mea'?M.darstellen(Q.str(basis),reg.mea_basis):Q.str(basis)}:{};
+ return{status,prinzip:c.prinzip,mehrheit:r.mehrheit,verfahren:r.verfahren,berechnung,grundlage:r.grundlage,basis:Q.str(basis),summen,abgegeben:Q.str(abgegeben),mea_quorum,details,...display};
 }
 async function auszaehlen(db,vid,tid,b,owner,speichern=false){
  return db.transaktion(async tx=>{
