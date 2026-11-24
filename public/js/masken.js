@@ -626,6 +626,7 @@ async function einheitMaske(id, params) {
   ];
   const seite = seitenleiste([
     { text: 'Bearbeiten', onclick: () => einheitFormular(e.objekt_id, e), gesperrt: schreibSperre() },
+    { text: 'Zähler', schnell: true, titel: 'Zählerverwaltung dieser Wohnung', onclick: () => geheZu('#/zaehler/' + o.id + '?einheit=' + e.id) },
     { text: 'W.Soll', schnell: true, titel: 'Sollwerte (Hausgeld/Miete) des Personenkontos', onclick: () => wSollWohnung(pktos) },
     { text: 'Vschl.', titel: 'Verteilerschlüssel des Objekts', onclick: () => verteilerDialog(o) },
     { text: 'Zuordnung', schnell: true, titel: 'Eigentümer/Mieter zuordnen', onclick: () => zuordnungFormular({ einheit_id: e.id }, neuLaden), gesperrt: schreibSperre() },
@@ -1190,6 +1191,7 @@ async function adresseMaske(id, params) {
     { text: 'E-Mail', schnell: true, titel: 'E-Mail-Adressen (Versand laut Portooptimierung, Info für den Sachbearbeiter)', onclick: () => emailListeDialog(a) },
     { text: 'Wählen', schnell: true, titel: ersteNummer ? `${ersteNummer.nummer} anrufen` : 'Keine Telefonnummer hinterlegt', href: ersteNummer ? telHref(ersteNummer.nummer) : null, gesperrt: !ersteNummer, grund: 'Keine Telefonnummer hinterlegt.' },
     { text: 'Pers.-Kto', titel: 'Personenkonto(en) dieser Adresse (Strg+P)', onclick: () => pktoSprung(S.kontext) },
+    { text: 'Zähler', schnell: true, titel: 'Zählerverwaltung der zugeordneten Objekte und Wohnungen', onclick: () => zaehlerAdresse(a,zuord) },
     { abstand: true },
     { text: 'Änderungshistorie', titel: 'Wer hat wann was an dieser Adresse geändert?', onclick: () => geheZu(basis + '?tab=historie') },
     { text: 'Export', titel: 'Adresse als vCard (Outlook/Handy) exportieren', href: `/api/adressen/${a.id}/vcard` },
