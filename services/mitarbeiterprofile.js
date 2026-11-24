@@ -9,8 +9,8 @@ async function eigenes(db,id){
  return {...p,bild_url:bildUrl(p)};
 }
 async function liste(db,now=Date.now()){
- return (await db.all("SELECT b.id AS benutzer_id,b.name,b.kuerzel,p.rufnummer,p.revision,p.bild IS NOT NULL AS hat_bild,EXISTS(SELECT 1 FROM mitarbeiter_aktivitaet a JOIN sitzungen s ON s.token=a.sitzung_token WHERE s.benutzer_id=b.id AND julianday(s.ablauf_am)>julianday('now') AND a.gesehen_ms>=?) AS cura_online FROM benutzer b LEFT JOIN mitarbeiterprofile p ON p.benutzer_id=b.id WHERE b.aktiv=1 AND b.rolle IN ('admin','mitarbeiter') ORDER BY b.name COLLATE NOCASE,b.id",[now-120000]))
- .map(r=>({id:r.benutzer_id,name:r.name,kuerzel:r.kuerzel,rufnummer:r.rufnummer||'',cura_online:!!r.cura_online,telefon_status:'unbekannt',bild_url:bildUrl(r)}));
+ return (await db.all("SELECT b.id AS benutzer_id,b.name,b.kuerzel,p.rufnummer,p.revision,p.bild IS NOT NULL AS hat_bild,CASE WHEN t.ablauf_ms>? AND t.gesehen_ms>=? THEN t.status ELSE 'unbekannt' END AS telefon_status,EXISTS(SELECT 1 FROM mitarbeiter_aktivitaet a JOIN sitzungen s ON s.token=a.sitzung_token WHERE s.benutzer_id=b.id AND julianday(s.ablauf_am)>julianday('now') AND a.gesehen_ms>=?) AS cura_online FROM benutzer b LEFT JOIN mitarbeiterprofile p ON p.benutzer_id=b.id LEFT JOIN telefonie_kopplung t ON t.benutzer_id=b.id WHERE b.aktiv=1 AND b.rolle IN ('admin','mitarbeiter') ORDER BY b.name COLLATE NOCASE,b.id",[now,now-require('./telefonie').FRESH,now-120000]))
+ .map(r=>({id:r.benutzer_id,name:r.name,kuerzel:r.kuerzel,rufnummer:r.rufnummer||'',cura_online:!!r.cura_online,telefon_status:r.telefon_status,bild_url:bildUrl(r)}));
 }
 async function aktivitaet(db,token,now=Date.now()){
  return db.transaktion(async tx=>{
