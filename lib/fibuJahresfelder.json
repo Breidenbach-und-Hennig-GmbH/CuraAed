@@ -1,0 +1,18 @@
+[
+  {"key":"zeitraum_von","label":"Buchungsjahr von","typ":"datum"},
+  {"key":"zeitraum_bis","label":"Buchungsjahr bis","typ":"datum"},
+  {"key":"gebucht_bis","label":"In HP gebucht bis","typ":"datum"},
+  {"key":"letzte_stapelnummer","label":"Letzte HP-Stapelnummer","typ":"nummer"},
+  {"key":"erfassungsobjekt","label":"Erfassungsobjekt","typ":"bool"},
+  {"key":"sev_mv_mg_gzv","label":"SEV / MV / MG / GZV","typ":"text"},
+  {"key":"automatische_leerstandsbuchung","label":"Automatische Leerstandsbuchung","typ":"bool"},
+  {"key":"druck_netto_werte","label":"Druck Netto-Werte","typ":"bool"},
+  {"key":"abweichender_abrechnungszeitraum","label":"Abweichender Abrechnungszeitraum","typ":"bool"},
+  {"key":"sollversteuerung","label":"Sollversteuerung","typ":"bool"},
+  {"key":"waehrung","label":"Währung","typ":"waehrung"},
+  {"key":"sachbearbeiter","label":"HP-Sachbearbeiter","typ":"text"},
+  {"key":"vorsteuer_abzugsquote","label":"Vorsteuer-Abzugsquote (%)","typ":"quote"},
+  {"key":"buchungsperioden_vorhanden","label":"Buchungsperioden vorhanden","typ":"bool"},
+  {"key":"objekt_fremdnummer","label":"Objekt-Fremdnummer","typ":"text"},
+  {"key":"beendet_am","label":"Beendet am","typ":"datum"}
+]
