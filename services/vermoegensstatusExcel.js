@@ -9,7 +9,7 @@ function erstellen(r){
  function value(sheet,cell,v){const old=sheet[cell]||{};sheet[cell]={...old,t:typeof v==='number'?'n':'s',v:v??'nicht belegt'};delete sheet[cell].f;}
  function formula(sheet,cell,f,v){const old=sheet[cell]||{};sheet[cell]={...old,f,t:typeof v==='number'?'n':'s',v:v??'nicht belegt'};}
  const fmt='#,##0.00;[Red](#,##0.00);0.00';
- for(const [i,[key,,typ]]of felder.entries()){const row=i+6;map[key]='B'+row;value(source,'B'+row,w[key]);source['B'+row].z=typ==='konto'?'0':fmt;value(source,'C'+row,typ==='konto'?'Kontozuordnung':'HP-Original / ergänzende Vorlage');}
+ for(const [i,[key,,typ]]of felder.entries()){const row=i+6;map[key]='B'+row;const rollen=r.kontorollen?.[key];value(source,'B'+row,rollen?(rollen.length===1?rollen[0]:rollen.length?rollen.length+' Konten':'nicht vorhanden'):w[key]);source['B'+row].z=typ==='konto'?'0':fmt;value(source,'C'+row,r.nur_hp?(rollen?'HP-Kontorolle; Details im Saldenabgleich':'Nachgewiesener HP-Exportstand'):typ==='konto'?'Kontozuordnung':'HP-Original / ergänzende Vorlage');}
  const sourceLink=(s,cell,k,sign=1)=>{const ref="'HP-Abrechnungsstand'!"+map[k];formula(s,cell,`IF(ISNUMBER(${ref}),${sign<0?'-':''}${ref},"nicht belegt")`,w[k]==null?null:w[k]*sign);};
  for(const s of Object.values(book.Sheets)){value(s,'A3',`Objekt ${r.objekt.hp_nummern?.[0]||r.objekt.nummer} · ${r.objekt.bezeichnung}`);value(s,'A4',`01.01.${r.jahr} bis 31.12.${r.jahr} · EUR · HP-Abrechnungsstand / Version ${r.version}`);}
  for(const [i,q]of r.quellen.entries()){const n=45+i;value(source,'A'+n,q.typ);value(source,'B'+n,q.name);value(source,'C'+n,q.sha256);}
@@ -27,9 +27,9 @@ function erstellen(r){
  value(m,'A44','Der Vorjahrsrest entspricht F24 / E141 der gelieferten Excel-Vorlage.');
  formula(m,'B41',"IF(COUNT('Giroabgleich'!B6:B8)=3,ROUND(SUM('Giroabgleich'!B6:B8),2),\"nicht belegt\")",calc.vorjahrsrest);
  formula(m,'B38',"'Giroabgleich'!B37",calc.ergebnis);formula(m,'B37','IF(COUNT(B7,B24,B38,B41)=4,ROUND(B7+B24+B38+B41,2),"nicht belegt")',Math.round((w.hp_ruecklage+w.verbindlichkeiten+calc.ergebnis+calc.vorjahrsrest)*100)/100);formula(m,'B39',"'Giroabgleich'!B39",calc.verteilungsdifferenz);formula(m,'B40','IF(COUNT(B36:B37)=2,ROUND(B36-B37,2),"nicht belegt")',calc.bilanz_differenz);
- const s=book.Sheets.Saldenabgleich;for(const [i,k]of r.saldenabgleich.entries()){const n=i+6;value(s,'A'+n,String(k.nummer));value(s,'B'+n,k.bezeichnung);value(s,'C'+n,k.hp==null?'nicht aufgeführt':k.hp/100);value(s,'D'+n,k.curaaed==null?'keine Buchungen':k.curaaed/100);
- if(k.hp!=null)formula(s,'E'+n,`ROUND(IF(ISNUMBER(D${n}),D${n},0)-C${n},2)`,k.differenz==null?null:k.differenz/100);else value(s,'E'+n,null);
- value(s,'F'+n,k.hp!=null?(k.differenz===0?'stimmt überein':k.differenz==null?'Konto fehlt':'Abweichung'):k.curaaed==null?'nicht bebucht':k.curaaed===0?'Nullsaldo, nicht in HP-Liste':'HP-Nachweis fehlt');for(const col of ['C','D','E'])s[col+n].z=fmt;
+ const s=book.Sheets.Saldenabgleich;for(const [i,k]of r.saldenabgleich.entries()){const n=i+6,rolle=r.kontorollen?Object.entries(r.kontorollen).find(([,ids])=>ids.includes(k.nummer))?.[0]:null;value(s,'A'+n,String(k.nummer));value(s,'B'+n,(rolle?({giro_konto:'Giro',spar_konto:'Spar-/Festgeld',ruecklage_konto:'Rücklage'}[rolle])+': ':'')+k.bezeichnung);value(s,'C'+n,k.hp==null?'nicht aufgeführt':k.hp/100);value(s,'D'+n,k.curaaed==null?(r.nur_hp?'nicht nachgewiesen':'keine Buchungen'):k.curaaed/100);
+ if(k.hp!=null&&!(r.nur_hp&&k.curaaed==null))formula(s,'E'+n,`ROUND(IF(ISNUMBER(D${n}),D${n},0)-C${n},2)`,k.differenz==null?null:k.differenz/100);else value(s,'E'+n,null);
+ value(s,'F'+n,r.nur_hp&&k.curaaed==null?'Kein CuraAed-Buchungsabgleich':k.hp!=null?(k.differenz===0?'stimmt überein':k.differenz==null?'Konto fehlt':'Abweichung'):k.curaaed==null?'nicht bebucht':k.curaaed===0?'Nullsaldo, nicht in HP-Liste':'HP-Nachweis fehlt');for(const col of ['C','D','E'])s[col+n].z=fmt;
  }s['!ref']='A1:F'+Math.max(6,r.saldenabgleich.length+5);
  book.Workbook=book.Workbook||{};book.Workbook.CalcPr={calcId:'0',fullCalcOnLoad:'1'};
  return require('../lib/xlsxVorlage').schreiben(path.join(__dirname,'../assets/vermoegensstatus.xlsx'),Object.values(book.Sheets));

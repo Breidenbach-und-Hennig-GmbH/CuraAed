@@ -345,6 +345,11 @@ function baueApi(db, uploadDir, options = {}) {
   router.delete('/versammlungen/:vid', auth.erfordereSchreibrecht,
     h(async (req, res) => { await versammlungenSvc.loeschen(db, req.params.vid); res.json({ ok: true }); }));
   // FIBU je Objekt: Grundwerte, Buchungsjahre, Kontenrahmen
+  const hpVermoegen=require('../services/hpVermoegensautomatik');
+  router.get('/vermoegensstatus/hp-staende',h(async(req,res)=>res.set('Cache-Control','no-store').json(await hpVermoegen.liste(db,req.query.jahr))));
+  router.post('/vermoegensstatus/hp-staende',auth.erfordereAdmin,h(async(req,res)=>res.set('Cache-Control','no-store').json(await hpVermoegen.stapel(db,req.body?.staende,req.benutzer.id))));
+  router.get('/vermoegensstatus/hp-staende/excel/:id',h(async(req,res)=>{const f=await hpVermoegen.datei(db,req.params.id);res.set('Cache-Control','no-store').type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').attachment(f.name).send(f.bytes);}));
+  router.get('/vermoegensstatus/hp-staende/paket',h(async(req,res)=>res.set('Cache-Control','no-store').type('application/zip').attachment(`Vermoegensstatus-${Number(req.query.jahr)}.zip`).send(await hpVermoegen.paket(db,req.query.jahr))));
   router.get('/objekte/:id/vermoegensstatus', h(async(req,res)=>{
     res.set('Cache-Control','no-store').json(await require('../services/vermoegensstatus').holen(db,req.params.id,req.query.jahr));
   }));

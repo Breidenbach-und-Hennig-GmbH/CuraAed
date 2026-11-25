@@ -1146,3 +1146,15 @@ CREATE TABLE IF NOT EXISTS vermoegensstatus_historie (
  journal_hash TEXT NOT NULL,version INTEGER NOT NULL,benutzer_id INTEGER,erfasst_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
  UNIQUE(objekt_id,jahr,version)
 );
+
+-- Unveränderliche HP-Exportstände. Unvollständige/neue Quellen löschen keinen fertigen Bericht.
+CREATE TABLE IF NOT EXISTS hp_vermoegensstaende (
+ id TEXT PRIMARY KEY,objekt_id INTEGER NOT NULL REFERENCES objekte(id),jahr INTEGER NOT NULL,
+ verbindung_id TEXT NOT NULL REFERENCES hp_adress_verbindungen(id),laufnummer INTEGER NOT NULL,
+ stand_am TEXT NOT NULL,hash TEXT NOT NULL,version INTEGER NOT NULL,
+ status TEXT NOT NULL CHECK(status IN ('erstellt','unvollstaendig','nicht_abgeschlossen','abweichung','veraltet','konflikt')),
+ meldungen TEXT NOT NULL,quelle TEXT NOT NULL,bericht TEXT,xlsx BLOB,
+ benutzer_id INTEGER REFERENCES benutzer(id),erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE(objekt_id,jahr,hash),UNIQUE(objekt_id,jahr,version)
+);
+CREATE INDEX IF NOT EXISTS hp_vermoegen_jahr_objekt ON hp_vermoegensstaende(jahr,objekt_id,version DESC);
