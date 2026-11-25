@@ -345,6 +345,22 @@ function baueApi(db, uploadDir, options = {}) {
   router.delete('/versammlungen/:vid', auth.erfordereSchreibrecht,
     h(async (req, res) => { await versammlungenSvc.loeschen(db, req.params.vid); res.json({ ok: true }); }));
   // FIBU je Objekt: Grundwerte, Buchungsjahre, Kontenrahmen
+  router.get('/objekte/:id/vermoegensstatus', h(async(req,res)=>{
+    res.set('Cache-Control','no-store').json(await require('../services/vermoegensstatus').holen(db,req.params.id,req.query.jahr));
+  }));
+  router.put('/objekte/:id/vermoegensstatus',auth.erfordereSchreibrecht,h(async(req,res)=>{
+    res.set('Cache-Control','no-store').json(await require('../services/vermoegensstatus').speichern(db,req.params.id,req.query.jahr,req.body||{},req.benutzer.id));
+  }));
+  router.post('/objekte/:id/vermoegensstatus/quelle',auth.erfordereSchreibrecht,multer({storage:multer.memoryStorage(),limits:{fileSize:10*1024*1024,files:1}}).single('datei'),h(async(req,res)=>{
+    const r=await require('../services/vermoegensstatus').holen(db,req.params.id,req.query.jahr);
+    if(!req.file)throw new ValidationError('Bitte eine HP-PDF auswählen.');
+    const result=await require('../services/hpVermoegensbericht').lesen(req.file.buffer,req.query.typ,r.objekt.hp_nummern,r.jahr);
+    res.set('Cache-Control','no-store').json({...result,name:path.basename(req.file.originalname).slice(0,200)});
+  }));
+  router.get('/objekte/:id/vermoegensstatus/excel',h(async(req,res)=>{
+    const r=await require('../services/vermoegensstatus').holen(db,req.params.id,req.query.jahr),buf=require('../services/vermoegensstatusExcel').erstellen(r);
+    res.set('Cache-Control','no-store').type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').attachment(`Vermoegensstatus-${r.objekt.hp_nummern[0]||r.objekt.id}-${r.jahr}.xlsx`).send(buf);
+  }));
   router.get('/objekte/:id/fibu-jahresdaten', h(async (req,res) => {
     res.set('Cache-Control','no-store').json(await require('../services/fibuJahresdaten').holen(db,req.params.id,req.query.jahr));
   }));
