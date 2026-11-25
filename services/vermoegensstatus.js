@@ -2,7 +2,7 @@
 const crypto=require('node:crypto');
 const {ValidationError}=require('../lib/validation'),{deZahl}=require('../lib/zahl');
 const gruppen=require('../lib/vermoegensstatusFelder.json'),felder=gruppen.flatMap(g=>g.felder);
-const rund=n=>Math.round(n*100)/100;
+const rund=n=>Math.round(n*100)/100||0;
 function jahr(v){if(!/^\d{4}$/.test(String(v))||v<1990||v>2100)throw new ValidationError('Bitte ein gültiges Buchungsjahr wählen.');return Number(v);}
 function wertePruefen(w){
  if(!w||typeof w!=='object'||Array.isArray(w))throw new ValidationError('Abrechnungswerte fehlen.');
@@ -27,12 +27,15 @@ function rechnen(w,salden){
  const einnahmen=sum('hausgeld','ruecklage_zufuehrung','sonstige_einnahmen','entnahme_ruecklage','sonderkosten_einnahmen');
  const ausgaben=sum('bewirtschaftung','ruecklage_zufuehrung','sonderkosten_ausgaben');
  const ergebnis=einnahmen==null||ausgaben==null?null:rund(einnahmen-ausgaben);
+ // Originalvorlage: F24 enthält den Rest des Vorjahrsabgleichs; E141 übernimmt ihn bereits.
+ // Dieser Ausweis erzeugt keine Buchung und darf nicht als erneut offene Differenz erscheinen.
+ const vorjahrsrest=sum('giro_anfang','abgrenzung_vorjahr','abrechnung_vorjahr');
  const saldo=k=>w[k]==null||salden[w[k]]===undefined?null:salden[w[k]]/100;
  const giro=saldo('giro_konto'),spar=saldo('spar_konto'),rl=saldo('ruecklage_konto');
  const vergleiche=[['Girokonto',giro,w.hp_giro],['Spar-/Festgeldkonto',spar,w.hp_spar],['Erhaltungsrücklage',rl==null?null:-rl,w.hp_ruecklage]].map(([titel,curaaed,hp])=>({titel,curaaed,hp:hp??null,differenz:curaaed==null||hp==null?null:rund(curaaed-hp)}));
  const giroKeys=['giro_anfang','abgrenzung_vorjahr','abrechnung_vorjahr','verbindlichkeiten','forderungen','hp_ruecklage','hp_spar','offene_ruecklage_vorjahr','offene_ruecklage_jahr'];
  const giroSoll=ergebnis==null||giroKeys.some(k=>w[k]==null)?null:rund(w.giro_anfang+w.abgrenzung_vorjahr+w.abrechnung_vorjahr+ergebnis+w.verbindlichkeiten-w.forderungen+w.hp_ruecklage-w.hp_spar-w.offene_ruecklage_vorjahr-w.offene_ruecklage_jahr);
- return {fehlend,einnahmen,ausgaben,ergebnis,vergleiche,giro_soll:giroSoll,giro_differenz:giroSoll==null||giro==null?null:rund(giroSoll-giro),verteilungsdifferenz:ergebnis==null||w.eigentuemer_guthaben==null?null:rund(w.eigentuemer_guthaben-ergebnis),bilanz_differenz:[w.hp_giro,w.hp_spar,w.forderungen,w.hp_ruecklage,w.verbindlichkeiten,ergebnis].some(v=>v==null)?null:rund(w.hp_giro+w.hp_spar+w.forderungen-w.hp_ruecklage-w.verbindlichkeiten-ergebnis)};
+ return {fehlend,einnahmen,ausgaben,ergebnis,vorjahrsrest,vergleiche,giro_soll:giroSoll,giro_differenz:giroSoll==null||giro==null?null:rund(giroSoll-giro),verteilungsdifferenz:ergebnis==null||w.eigentuemer_guthaben==null?null:rund(w.eigentuemer_guthaben-ergebnis),bilanz_differenz:[w.hp_giro,w.hp_spar,w.forderungen,w.hp_ruecklage,w.verbindlichkeiten,ergebnis,vorjahrsrest].some(v=>v==null)?null:rund(w.hp_giro+w.hp_spar+w.forderungen-w.hp_ruecklage-w.verbindlichkeiten-ergebnis-vorjahrsrest)};
 }
 async function holen(db,id,bj){const j=jahr(bj),o=await objekt(db,id),row=await db.get('SELECT * FROM vermoegensstatus WHERE objekt_id=? AND jahr=?',[id,j]),buch=await journal(db,id,j),werte=row?JSON.parse(row.werte):{},hp_salden=row?JSON.parse(row.hp_salden):[],konten=await db.all('SELECT nummer,bezeichnung FROM sachkonten WHERE objekt_id=? ORDER BY nummer',[id]);
  const saldenabgleich=konten.map(k=>{const hp=hp_salden.find(h=>h.konto===k.nummer),c=buch.salden[k.nummer];return {...k,hp:hp?.saldo_cents??null,curaaed:c??null,differenz:hp?(c??0)-hp.saldo_cents:null};});
