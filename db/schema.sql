@@ -1111,3 +1111,15 @@ CREATE TRIGGER IF NOT EXISTS fibu_bebuchtes_konto_loeschen BEFORE DELETE ON sach
 CREATE TRIGGER IF NOT EXISTS fibu_bebuchtes_konto_aendern BEFORE UPDATE OF nummer,art ON sachkonten
  WHEN (NEW.nummer<>OLD.nummer OR NEW.art<>OLD.art) AND EXISTS(SELECT 1 FROM fibu_buchungen WHERE objekt_id=OLD.objekt_id AND (konto=CAST(OLD.nummer AS TEXT) OR gegenkonto=CAST(OLD.nummer AS TEXT)))
  BEGIN SELECT RAISE(ABORT,'Nummer und Art eines bebuchten Kontos sind geschuetzt'); END;
+
+-- Jahresbezogene Festkonten; leere und ausdrücklich auf 0 gesetzte Felder bleiben unterscheidbar.
+CREATE TABLE IF NOT EXISTS fibu_festkonten (
+ objekt_id INTEGER NOT NULL REFERENCES objekte(id),jahr INTEGER NOT NULL,
+ werte TEXT NOT NULL,version INTEGER NOT NULL,
+ geaendert_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(objekt_id,jahr)
+);
+CREATE TABLE IF NOT EXISTS fibu_festkonten_historie (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,objekt_id INTEGER NOT NULL REFERENCES objekte(id),jahr INTEGER NOT NULL,
+ werte TEXT NOT NULL,version INTEGER NOT NULL,benutzer_id INTEGER,
+ erfasst_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(objekt_id,jahr,version)
+);
