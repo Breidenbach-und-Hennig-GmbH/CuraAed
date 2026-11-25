@@ -12,6 +12,8 @@ function pruefeKopf(lines,typ,nummern,jahr){
  if(!nums.length||nums.some(n=>!nummern.includes(n)))throw new ValidationError('Der Bericht gehört nicht eindeutig zu diesem Objekt.');
  const jahre=[...text.matchAll(/(?:Buchungsjahr\s*:?|BJ\s*:)\s*(\d{4})/g)].map(m=>Number(m[1]));
  if(!jahre.length||jahre.some(j=>j!==jahr))throw new ValidationError('Das Buchungsjahr des HP-Berichts stimmt nicht überein.');
+ const y=String(jahr),yy=y.slice(2),periode=new RegExp(`01\\.01\\.(?:${y}|${yy})\\s*[-–]\\s*31\\.12\\.(?:${y}|${yy})(?!\\d)`);
+ if(!periode.test(text))throw new ValidationError('Bitte einen HP-Bericht für das vollständige Kalenderjahr auswählen (01.01.–31.12.).');
  return text;
 }
 function parse(seiten,typ,nummern,jahr){
