@@ -1,0 +1,4 @@
+.cu-fest-zeile{display:grid;grid-template-columns:minmax(0,1.15fr) 7em minmax(0,1fr);align-items:center;gap:6px;margin:4px 0}
+.cu-fest-zeile label,.cu-fest-zeile span{min-width:0;overflow-wrap:anywhere}
+.cu-fest-zeile input{width:100%!important;min-width:0;max-width:100%}
+@media(max-width:480px){.cu-fest-zeile{grid-template-columns:minmax(0,1fr) 7em}.cu-fest-zeile span{grid-column:1/-1;margin-left:0!important}}
