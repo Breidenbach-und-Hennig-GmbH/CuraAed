@@ -93,6 +93,9 @@ async function importieren(db, objektId, buf, { ausfuehren = false } = {}) {
           [objektId, k.nummer, k.art, k.bezeichnung, k.referenz_konto, k.vs_eg, k.vs_mi, k.hp_attribute]);
       }
       for (const k of geaendert) {
+        if (vorhanden.get(k.nummer).art !== k.art && await require('./festkonten').verwendet(tx,objektId,k.nummer)) {
+          throw new V.ValidationError(`Konto ${k.nummer} ist als Festkonto zugeordnet. Die abweichende Kontoart aus der Datei kann nicht übernommen werden.`,409);
+        }
         await tx.run('UPDATE sachkonten SET art=?, bezeichnung=?, referenz_konto=?, vs_eg=?, vs_mi=?, hp_attribute=? WHERE objekt_id=? AND nummer=?',
           [k.art, k.bezeichnung, k.referenz_konto, k.vs_eg, k.vs_mi, k.hp_attribute, objektId, k.nummer]);
       }

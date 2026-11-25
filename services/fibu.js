@@ -134,6 +134,7 @@ async function kontoAendern(db, id, data) {
   const w = kontoWerte(data);
   const wp = betrag(data.wp_ansatz);
   await db.transaktion(async (tx) => {
+    if ((w.nummer !== k.nummer || w.art !== k.art) && await require('./festkonten').verwendet(tx,k.objekt_id,k.nummer)) throw new V.ValidationError('Dieses Konto ist als Festkonto zugeordnet. Bitte zuerst die Festkontenzuordnung ändern.',409);
     if ((w.nummer !== k.nummer || w.art !== k.art) && await tx.get('SELECT 1 FROM fibu_buchungen WHERE objekt_id=? AND (konto=? OR gegenkonto=?) LIMIT 1', [k.objekt_id, String(k.nummer), String(k.nummer)])) throw new V.ValidationError('Kontonummer und Kontoart eines bebuchten Kontos dürfen nicht geändert werden.', 409);
     await tx.run('UPDATE sachkonten SET nummer=?, art=?, bezeichnung=?, referenz_konto=?, aktiv=?, notiz=? WHERE id=?',
       [w.nummer, w.art, w.bezeichnung, w.referenz_konto, w.aktiv, w.notiz, id]).catch(eindeutig);
@@ -146,6 +147,7 @@ async function kontoLoeschen(db, id) {
   await db.transaktion(async (tx) => {
     const k = await tx.get('SELECT objekt_id,nummer FROM sachkonten WHERE id=?', [id]);
     if (!k) throw new V.ValidationError('Konto nicht gefunden.', 404);
+    if (await require('./festkonten').verwendet(tx,k.objekt_id,k.nummer)) throw new V.ValidationError('Dieses Konto ist als Festkonto zugeordnet und kann nicht gelöscht werden.',409);
     if (await tx.get('SELECT 1 FROM fibu_buchungen WHERE objekt_id=? AND (konto=? OR gegenkonto=?) LIMIT 1', [k.objekt_id, String(k.nummer), String(k.nummer)])) throw new V.ValidationError('Konto hat Buchungen und kann nur deaktiviert werden.', 409);
     await tx.run('DELETE FROM sachkonten WHERE id=?', [id]);
   });
