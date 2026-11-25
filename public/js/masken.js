@@ -1603,7 +1603,7 @@ async function kontenrahmenAnsicht(o, ziel, lauf, bjParam) {
       schreiben ? knopf('Standard-Kontenrahmen', () => kontenrahmenVorlage(o, laden), 'Standard-Kontenrahmen einer WEG übernehmen (43 Konten)') : null,
       schreiben ? knopf('Kontenrahmen kopieren', () => kontenKopierenDialog(o, laden), 'Konten aus einem anderen Objekt übernehmen') : null,
       knopf('Drucken', () => window.print()),
-      folgt('Festkonten', 'Festkonten'), folgt('KAusz', 'Kontoauszug des Kontos'), folgt('V-/USt', 'Vor-/Umsatzsteuer'), folgt('Pläne', 'Wirtschaftspläne'),
+      knopf('Festkonten', () => festkontenDialog(o,jahr), 'Festkonten und Rücklastschriftarten je Buchungsjahr'), folgt('KAusz', 'Kontoauszug des Kontos'), folgt('V-/USt', 'Vor-/Umsatzsteuer'), folgt('Pläne', 'Wirtschaftspläne'),
       folgt('EB-W', 'Eröffnungswerte'), folgt('HNDL', 'Haushaltsnahe Dienstleistungen'), folgt('Anz Abz Vst', 'Anzeige abziehbare Vorsteuer'),
       knopf('Zurück (Strg+O)', () => geheZu(basis)),
     ]),
