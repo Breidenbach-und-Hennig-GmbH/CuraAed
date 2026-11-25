@@ -345,6 +345,12 @@ function baueApi(db, uploadDir, options = {}) {
   router.delete('/versammlungen/:vid', auth.erfordereSchreibrecht,
     h(async (req, res) => { await versammlungenSvc.loeschen(db, req.params.vid); res.json({ ok: true }); }));
   // FIBU je Objekt: Grundwerte, Buchungsjahre, Kontenrahmen
+  router.get('/objekte/:id/fibu-jahresdaten', h(async (req,res) => {
+    res.set('Cache-Control','no-store').json(await require('../services/fibuJahresdaten').holen(db,req.params.id,req.query.jahr));
+  }));
+  router.put('/objekte/:id/fibu-jahresdaten', auth.erfordereSchreibrecht, h(async (req,res) => {
+    res.set('Cache-Control','no-store').json(await require('../services/fibuJahresdaten').speichern(db,req.params.id,req.query.jahr,req.body||{},req.benutzer.id));
+  }));
   router.get('/objekte/:id/festkonten', h(async (req,res) => {
     res.set('Cache-Control','no-store').json(await require('../services/festkonten').holen(db,req.params.id,req.query.jahr));
   }));
