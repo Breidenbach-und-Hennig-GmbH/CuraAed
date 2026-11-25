@@ -70,6 +70,7 @@ async function speichern(db,id,bj,data,benutzerId) {
   return holen(db,id,j);
 }
 async function verwendet(db,id,nummer) {
+  if(await require('./fibuJahresdaten').verwendet(db,id,nummer))return true;
   const rows=await db.all('SELECT werte FROM fibu_festkonten WHERE objekt_id=?',[id]);
   return rows.some(r=>{const w=JSON.parse(r.werte);return felder.some(f=>f.typ==='konto' && w[f.key]===nummer);});
 }
