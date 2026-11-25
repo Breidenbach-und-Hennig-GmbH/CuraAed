@@ -73,13 +73,13 @@ internal sealed class HPAbrechnungsPruefung : Form
  string Hash(object x){using(var h=SHA256.Create())return BitConverter.ToString(h.ComputeHash(Encoding.UTF8.GetBytes(json.Serialize(x)))).Replace("-","").ToLowerInvariant();}
  internal object Pruefen(string dsn,int nr,int bj){
   var b=new OdbcConnectionStringBuilder();b.Dsn=dsn;var tables=new List<object>();
-  using(var c=new OdbcConnection(b.ConnectionString)){
-   c.Open();if(!String.Equals(c.Database,"HPSERVSD",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("Die Quelle zeigt nicht auf HPSERVSD.");
-   foreach(var s in Specs){
-    try{var first=Lesen(c,s,nr,bj);var second=Lesen(c,s,nr,bj);string hash=Hash(first);bool stable=hash==Hash(second);tables.Add(new {bereich=s.Name,lesbar=true,stabil=stable,anzahl=first.Count,sha256=hash,zeilen=stable?first:null});}
+  foreach(var s in Specs){
+    // Btrieve 51 deaktiviert die Verbindung: Fehler einer Tabelle dürfen die nächste nicht verdecken.
+    try{using(var c=new OdbcConnection(b.ConnectionString)){
+     c.Open();if(!String.Equals(c.Database,"HPSERVSD",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("Die Quelle zeigt nicht auf HPSERVSD.");
+     var first=Lesen(c,s,nr,bj);var second=Lesen(c,s,nr,bj);string hash=Hash(first);bool stable=hash==Hash(second);tables.Add(new {bereich=s.Name,lesbar=true,stabil=stable,anzahl=first.Count,sha256=hash,zeilen=stable?first:null});}}
     catch(OdbcException e){var errors=new List<object>();foreach(OdbcError err in e.Errors)errors.Add(new {sqlstate=err.SQLState,nummer=err.NativeError,meldung=err.Message});tables.Add(new {bereich=s.Name,lesbar=false,fehler=errors});}
     catch(Exception e){tables.Add(new {bereich=s.Name,lesbar=false,meldung=e.Message});}
-   }
   }
   return new {format="curaaed-hp-abrechnungspruefung-v1",datenbank="HPSERVSD",objekt=nr,jahr=bj,nur_lesend=true,erstellt_utc=DateTime.UtcNow.ToString("o"),tabellen=tables};
  }
