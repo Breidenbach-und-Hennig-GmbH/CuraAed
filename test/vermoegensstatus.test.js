@@ -22,6 +22,13 @@ test('HP-Berichtsprüfung weist fremde Objekte und Jahre zurück; Kontrollblatt 
  const r=parser.parse(p,'kontrollblatt',['7001'],2025);assert.equal(r.werte.hausgeld,15);assert.equal(r.werte.bewirtschaftung,10.01);assert.equal(r.werte.eigentuemer_guthaben,5);assert.throws(()=>parser.parse(p,'kontrollblatt',['7002'],2025),/Objekt/);assert.throws(()=>parser.parse(p,'kontrollblatt',['7001'],2024),/Buchungsjahr/);
  const s=pages([[['Summen- und Saldenliste',20]],[['Objekt 7001 TEST BJ: 2025 01.01.25 - 31.12.25',20]],[['8100',46.8,64.6],['B',72.1],['Testbank',97.6],['10,00',270,297.1],['5,00',540,568.8],['1,00',610,636.8],['14,00',675,704.7]]]);const b=parser.parse(s,'salden',['7001'],2025);assert.equal(b.konten[0].saldo_cents,1400);assert.equal(b.konten[0].eb_cents,1000);
 });
+test('Ein bereits berücksichtigter Vorjahrsrest bleibt sichtbar, während die Abstimmung wie in der Vorlage null ist',async t=>{
+ const {db,o}=await setup(t),d=daten();Object.assign(d.werte,{hp_giro:11.4,hp_spar:20,hp_ruecklage:30,giro_anfang:1.4,abgrenzung_vorjahr:-1,abrechnung_vorjahr:0});
+ const r=await svc.speichern(db,o.id,2025,d,null);assert.equal(r.berechnung.vorjahrsrest,.4);assert.equal(r.berechnung.giro_soll,11.4);assert.equal(r.berechnung.bilanz_differenz,0);
+ const bytes=excel.erstellen(r);assert.equal(cell(bytes,1,'B41').v,'0.4');assert.equal(cell(bytes,1,'B40').v,'0');assert.equal(cell(bytes,1,'B37').v,'31.4');assert.match(cell(bytes,1,'B41').f,/Giroabgleich/);
+ assert.equal((await db.get('SELECT COUNT(*) n FROM fibu_buchungen')).n,0);
+ const unvollstaendig=svc.rechnen({...d.werte,abgrenzung_vorjahr:null},{});assert.equal(unvollstaendig.vorjahrsrest,null);assert.equal(unvollstaendig.bilanz_differenz,null);
+});
 test('HTTP schützt Lesen, Schreiben und Excel-Ausgabe mit den bestehenden Benutzerrechten',async t=>{
  const {db,o}=await setup(t),users=require('../services/benutzer');for(const [name,rolle]of [['admin','admin'],['leser','leser']])await users.anlegen(db,{benutzername:name,name,rolle,passwort:'Vermoegen-Test-2026'});
  const app=require('../lib/appFactory').baueApp(db,{uploadDir:require('os').tmpdir()}),server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});t.after(()=>new Promise(resolve=>server.close(resolve)));const base=`http://127.0.0.1:${server.address().port}/api`,url=base+`/objekte/${o.id}/vermoegensstatus?jahr=2025`;
