@@ -1,0 +1,37 @@
+[
+  {"titel":"Festkonten 1","felder":[
+    {"key":"SammelKtoDebiKunde","label":"Sammelkonto Debitor / Kunde","typ":"konto"},
+    {"key":"SammelKtoKrediInt","label":"Sammelkonto Kreditor intern","typ":"konto"},
+    {"key":"SammelKtoKrediEx","label":"Sammelkonto Kreditor extern","typ":"konto"},
+    {"key":"SV_Debi","label":"Saldovortrag Debitor / Kunde","typ":"konto"},
+    {"key":"SV_Kredi","label":"Saldovortrag Kreditor / Lieferant","typ":"konto"},
+    {"key":"SaldoVortrSachKtn","label":"Saldovortrag Sachkonten","typ":"konto"},
+    {"key":"DiffAbr","label":"Differenzen aus Abrechnungen","typ":"konto"},
+    {"key":"SammelktoGuV","label":"Sammelkonto GuV","typ":"konto"},
+    {"key":"SkontoErl","label":"Skonto-Erlöse","typ":"konto"}
+  ]},
+  {"titel":"Festkonten 2","felder":[
+    {"key":"ObjNrBank1","label":"Objekt-Nr. Bank 1","typ":"objekt"},
+    {"key":"BankkKto1","label":"Bankkonto 1","typ":"konto","bank":true},
+    {"key":"BankKto2","label":"Bankkonto 2","typ":"konto","bank":true},
+    {"key":"Dispo_Bankkonto1","label":"Dispo Bankkonto 1","typ":"betrag"},
+    {"key":"Dispo_Bankkonto2","label":"Dispo Bankkonto 2","typ":"betrag"},
+    {"key":"ObjNrSplit","label":"Objekt-Nr. Splitting","typ":"objekt"},
+    {"key":"SplittingBuch","label":"Splittingbuchungen","typ":"konto"},
+    {"key":"ObjNrUberLast","label":"Objekt-Nr. Überweisung / Lastschrift","typ":"objekt"},
+    {"key":"UberLast","label":"Überweisungen / Lastschriften","typ":"konto"},
+    {"key":"AutoSammelbuchPKtn","label":"Autosammelbuchung Debitor","typ":"konto"},
+    {"key":"VerwAuslagen","label":"Verwaltungsauslagen","typ":"konto"}
+  ]},
+  {"titel":"Festkonten 3","felder":[
+    {"key":"Clearing2","label":"Clearing 2","typ":"konto"},
+    {"key":"Autosammelbuchung2","label":"Autosammelbuchung 2","typ":"konto"},
+    {"key":"AbgrKtoVJ","label":"Abgrenzungskonto Vorjahr","typ":"konto"},
+    {"key":"AbgrKtoFJ","label":"Abgrenzungskonto Folgejahr","typ":"konto"}
+  ]},
+  {"titel":"AArten Rücklast","felder":[
+    {"key":"AARuecklastBank","label":"Abrechnungsart Bank-Rücklastschrift","typ":"aa"},
+    {"key":"AARuecklastEigene","label":"Abrechnungsart eigene Rücklastschrift","typ":"aa"},
+    {"key":"BetragRuecklastEigen","label":"Eigene Rücklastschriftgebühr (€)","typ":"betrag"}
+  ]}
+]
