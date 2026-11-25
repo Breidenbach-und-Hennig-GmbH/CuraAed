@@ -1133,3 +1133,16 @@ CREATE TABLE IF NOT EXISTS fibu_festkonten_historie (
  werte TEXT NOT NULL,version INTEGER NOT NULL,benutzer_id INTEGER,
  erfasst_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(objekt_id,jahr,version)
 );
+
+-- Nachvollziehbarer HP-Abrechnungsstand; erzeugt keine neuen Buchungen in HP oder CuraAed.
+CREATE TABLE IF NOT EXISTS vermoegensstatus (
+ objekt_id INTEGER NOT NULL REFERENCES objekte(id),jahr INTEGER NOT NULL,
+ werte TEXT NOT NULL,quellen TEXT NOT NULL,hp_salden TEXT NOT NULL,hinweis TEXT NOT NULL,
+ journal_hash TEXT NOT NULL,version INTEGER NOT NULL,PRIMARY KEY(objekt_id,jahr)
+);
+CREATE TABLE IF NOT EXISTS vermoegensstatus_historie (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,objekt_id INTEGER NOT NULL REFERENCES objekte(id),jahr INTEGER NOT NULL,
+ werte TEXT NOT NULL,quellen TEXT NOT NULL,hp_salden TEXT NOT NULL,hinweis TEXT NOT NULL,
+ journal_hash TEXT NOT NULL,version INTEGER NOT NULL,benutzer_id INTEGER,erfasst_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE(objekt_id,jahr,version)
+);
