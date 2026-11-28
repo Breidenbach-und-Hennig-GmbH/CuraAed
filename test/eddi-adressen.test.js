@@ -35,6 +35,10 @@ test('Fehlende Wohnung in einer Eigentümer-Wohnungsliste verhindert eine unvoll
  const f=await fixture(t);await f.svc.analysieren(f.user,'job',true);const d=data();d.adressen[0].wohnung_nummer='';d.adressen[0].funktion='eigentuemer';await assert.rejects(f.svc.vorschau(f.user,'job',{daten:d}),/Wohnungsnummer/);assert.equal((await f.db.get('SELECT count(*) n FROM adressen')).n,0);
 });
 
+test('Umgebrochene Firmen bleiben in getrennten Namenszeilen; eine falsch zusammengesetzte Fundstelle nennt Zeile und Feld',()=>{
+ const source='Firma Wohncarré Gronau GmbH & Co. 867 / 010 Johannisberg 6a, 53578 Windhagen\nKG';const raw={objekt:{},adressen:[{adresstyp:'firma',firmenname:'Wohncarré Gronau GmbH & Co.',zusatz:'KG',funktion:'unklar',beleg:{seite:1,zitat:source}}]};assert.equal(daten(raw,[{seite:1,text:source}]).adressen[0].zusatz,'KG');raw.adressen[0].firmenname+=' KG';assert.throws(()=>daten(raw,[{seite:1,text:source}]),/Zeile 1: Firmenname.*Fundstelle/);
+});
+
 test('Dublettenentscheidung verwendet nur angebotene aktive Adressen, schützt vor Änderungen und überschreibt keine Stammdaten',async t=>{
  const f=await fixture(t),a=await require('../services/adressen').anlegen(f.db,{...row(),strasse:'Andere Straße 2'});await f.svc.analysieren(f.user,'job',true);
  const body={dublettenwahl:{0:String(a.id),1:String(a.id)}};
