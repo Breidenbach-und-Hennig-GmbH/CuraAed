@@ -16,6 +16,10 @@
 .cu-eddi-zustimmung{display:flex;align-items:center;gap:6px;margin-top:6px}
 .cu-eddi-zustimmung input{min-height:0}
 .cu-eddi-status{color:#665a75}
+.cu-eddi-starthilfe{font-size:12px;margin:0 7px 5px;padding:5px 7px;border:1px solid #b58a43;background:#fff8e8;color:#523909}
+.cu-eddi-starthilfe[hidden]{display:none}
+.cu-eddi-starthilfe button{margin-left:6px}
+.cu-eddi-dateiname{font-weight:600}
 .cu-eddi-dateihinweis{font-size:11px;color:#665a75}
 .cu-eddi-drop-aktiv{outline:2px dashed #245894;outline-offset:2px;background:#e8f0ff}
 .cu-eddi-drop-aktiv .cu-eddi-zeile{background:#e8f0ff}

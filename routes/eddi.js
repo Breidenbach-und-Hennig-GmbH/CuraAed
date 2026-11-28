@@ -15,7 +15,14 @@ module.exports = (db, publicUrl, options, uploadDir) => {
     if (!origin || req.get('origin') !== origin || (!req.is('application/json') && !pdfUpload)) return next(new ValidationError('Bitte Eddi in CuraAed verwenden.', 403));
     next();
   });
-  r.get('/status', h(async (req, res) => res.json(await eddi.status())));
+  const freigabe=async user=>({anbieter:'OpenAI',dauerhaft:!!(await db.get("SELECT dauerhaft FROM eddi_freigaben WHERE benutzer_id=? AND anbieter='OpenAI'",[user.id]))?.dauerhaft});
+  r.get('/status', h(async (req, res) => res.json({...await eddi.status(),freigabe:await freigabe(req.benutzer)})));
+  r.put('/freigabe',h(async(req,res)=>{
+    const b=req.body||{};
+    if(b.anbieter!=='OpenAI'||typeof b.dauerhaft!=='boolean'||Object.keys(b).some(k=>!['anbieter','dauerhaft'].includes(k)))throw new ValidationError('Bitte die persönliche OpenAI-Freigabe prüfen.');
+    await db.run("INSERT INTO eddi_freigaben(benutzer_id,anbieter,dauerhaft) VALUES(?,'OpenAI',?) ON CONFLICT(benutzer_id,anbieter) DO UPDATE SET dauerhaft=excluded.dauerhaft,geaendert_am=CURRENT_TIMESTAMP",[req.benutzer.id,b.dauerhaft?1:0]);
+    res.json(await freigabe(req.benutzer));
+  }));
   r.get('/modell',auth.erfordereAdmin,h(async(req,res)=>res.json(await model.settings())));
   r.put('/modell',auth.erfordereAdmin,h(async(req,res)=>res.json(await model.save(req.benutzer,req.body||{}))));
   r.post('/modell/test',auth.erfordereAdmin,h(async(req,res)=>{const answer=await model.complete([{role:'user',content:'Antworte nur mit OK.'}],[],20000);res.json({verbunden:!!answer.content});}));

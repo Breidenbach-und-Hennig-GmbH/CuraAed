@@ -9,12 +9,24 @@ function eddiLeiste() {
   const transcript = el('div', { class: 'cu-eddi-verlauf', role: 'log', 'aria-label': 'Gespräch mit Eddi' });
   const state = el('p', { class: 'cu-eddi-status', role: 'status', 'aria-live': 'polite' });
   const consent = el('input', { type: 'checkbox', 'aria-label': 'Verarbeitung durch das Sprachmodell erlauben' });
+  const remember=el('input',{type:'checkbox','aria-label':'OpenAI-Freigabe für meine Kennung dauerhaft merken'});
   const consentText = el('span', { text: 'Sprachmodell wird geprüft …' });
+  const startHint=el('div',{class:'cu-eddi-starthilfe',role:'status','aria-live':'polite',hidden:true});
   const suggestions = el('div', { class: 'cu-eddi-vorschlaege' });
   let model, busy = false, chat = null;
+  let consentSaving=Promise.resolve(),consentRevision=0;
   const key = 'curaaed-eddi-' + S.benutzer.id;
   try { chat = sessionStorage.getItem(key); } catch {}
   const row = (who, content) => el('div', { class: 'cu-eddi-nachricht' }, [el('strong', { text: who }), el('p', { text: content })]);
+  function freigabeFehlt(text){state.textContent=text;startHint.hidden=false;startHint.replaceChildren(document.createTextNode(text+' '),el('button',{type:'button',text:'Freigabe anzeigen',onclick:()=>{panel.hidden=false;consent.focus();consent.scrollIntoView({block:'center'});}}));}
+  async function freigabeSpeichern(dauerhaft){
+    const revision=++consentRevision;
+    const pending=consentSaving.then(()=>API.put('/eddi/freigabe',{anbieter:'OpenAI',dauerhaft}));consentSaving=pending.catch(()=>{});
+    try{const saved=await pending;if(revision!==consentRevision)return;remember.checked=saved.dauerhaft;state.textContent=saved.dauerhaft?'OpenAI-Freigabe dauerhaft für deine Kennung gespeichert.':'Dauerhafte OpenAI-Freigabe ausgeschaltet.';}
+    catch(e){if(revision!==consentRevision)return;remember.checked=false;freigabeFehlt('Die dauerhafte Freigabe konnte nicht gespeichert werden: '+e.message);}
+  }
+  consent.addEventListener('change',()=>{if(consent.checked)startHint.hidden=true;else if(remember.checked){remember.checked=false;freigabeSpeichern(false);}});
+  remember.addEventListener('change',()=>{if(remember.checked&&!consent.checked){remember.checked=false;freigabeFehlt('Bitte zuerst die Verarbeitung durch OpenAI erlauben.');consent.focus();return;}freigabeSpeichern(remember.checked);});
   function proposal(p) {
     const d = typeof p.daten === 'string' ? JSON.parse(p.daten) : p.daten;
     const box = el('section', { class: 'cu-eddi-vorschlag' });
@@ -40,7 +52,9 @@ function eddiLeiste() {
     try {
       model = await API.get('/eddi/status');
       if (!root.isConnected) return;
-      consentText.textContent = 'Meine Anfrage, die dafür gesuchten CuraAed-Daten und die von mir zur Auswertung gewählten Dokumenttexte dürfen für dieses Gespräch von ' + model.sprachmodell + ' verarbeitet werden.';
+      consentText.textContent = 'Meine Anfrage, die dafür gesuchten CuraAed-Daten und die von mir zur Auswertung gewählten Dokumenttexte dürfen von ' + model.sprachmodell + ' verarbeitet werden.';
+      remember.disabled=model.sprachmodell!=='OpenAI';
+      remember.checked=consent.checked=model.freigabe?.anbieter===model.sprachmodell&&model.freigabe?.dauerhaft===true;
       state.textContent = model.bereit ? 'Bereit · ' + model.anleitungen + ' Arbeitsanleitungen hinterlegt. Änderungen werden vor der Ausführung gezeigt.' : 'Eddis Sprachmodell ist noch nicht verbunden. Die Einrichtung muss zuerst abgeschlossen werden.';
       if (chat) {
         const h = await API.get('/eddi/chats/' + chat);
@@ -51,8 +65,8 @@ function eddiLeiste() {
     } catch (e) { model = null; state.textContent = e.message; }
   }
   const close = el('button', { type: 'button', text: 'Zuklappen', onclick: () => { panel.hidden = true; send.focus(); } });
-  const fresh = el('button', { type: 'button', text: 'Neues Gespräch', onclick: () => { if (busy) return; chat = null; consent.checked = false; transcript.replaceChildren(); suggestions.replaceChildren(); try { sessionStorage.removeItem(key); } catch {} state.textContent = 'Neues Gespräch.'; input.focus(); } });
-  const te = eddiTeilung(root, async () => { await open(); return model; }, consent);
+  const fresh = el('button', { type: 'button', text: 'Neues Gespräch', onclick: () => { if (busy) return; chat = null; consent.checked = remember.checked; transcript.replaceChildren(); suggestions.replaceChildren(); try { sessionStorage.removeItem(key); } catch {} state.textContent = 'Neues Gespräch.'; input.focus(); } });
+  const te = eddiTeilung(root, async () => { await open(); return model; }, consent,freigabeFehlt);
   const dateiHinweis = el('span', { class: 'cu-eddi-dateihinweis', text: 'PDF hierher ziehen · bis 25 MB' });
   const dateiWahl = el('button', { type: 'button', text: 'PDF hinzufügen', onclick: () => { open(); te.button.click(); } });
   form.insertBefore(dateiWahl, send);
@@ -81,19 +95,19 @@ function eddiLeiste() {
     te.laden(dateien[0]);
   });
   panel.append(el('div', { class: 'cu-eddi-werkzeuge' }, [fresh, te.button, istAdmin() ? el('button', { type: 'button', text: 'KI einrichten', onclick: () => eddiModellDialog(() => { model=null;consent.checked=false;open(); }).catch(fehler) }) : null, istAdmin() ? el('button', { type: 'button', text: 'Anleitung hinterlegen', onclick: eddiAnleitungDialog }) : null, close]), transcript, suggestions,
-    el('label', { class: 'cu-eddi-zustimmung' }, [consent, consentText]), state, te.box);
-  root.append(form, panel);
+    el('label', { class: 'cu-eddi-zustimmung' }, [consent, consentText]),el('label',{class:'cu-eddi-zustimmung'},[remember,el('span',{text:'OpenAI-Freigabe für meine Kennung dauerhaft merken · durch Abwählen jederzeit ausschalten'})]), state, te.box);
+  root.append(form,startHint, panel);
   input.addEventListener('focus', open);
   root.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); panel.hidden = true; send.focus(); } });
   form.addEventListener('submit', async e => {
     e.preventDefault(); if (busy || !input.value.trim()) return;
     await open();
-    const question = input.value.trim(); busy = true; send.disabled = input.disabled = fresh.disabled = true;
+    const question = input.value.trim();busy = true;send.disabled = input.disabled = fresh.disabled = true;send.textContent='Arbeitet …';root.setAttribute('aria-busy','true');let nextFocus=input;
     try {
       const local=await te.auftrag(question);
-      if(local){transcript.append(row('Du',question),row('Eddi',local));state.textContent=local;input.value='';return;}
+      if(local){const answer=typeof local==='string'?local:local.text;transcript.append(row('Du',question),row('Eddi',answer));state.textContent=answer;if(!local.behalten)input.value='';if(local.freigabeNoetig)nextFocus=consent;return;}
       if (!model?.bereit) return;
-      if (!consent.checked) { state.textContent = 'Bitte zuerst die Verarbeitung durch das angezeigte Sprachmodell erlauben.'; consent.focus(); return; }
+      if (!consent.checked) { freigabeFehlt('Bitte zuerst die Verarbeitung durch das angezeigte Sprachmodell erlauben.');nextFocus=consent;return; }
       transcript.append(row('Du', question)); state.textContent = 'Eddi bearbeitet deine Anfrage …';
       const r = await API.post('/eddi/fragen', { text: question, chat_id: chat, zustimmung: true });
       if (!root.isConnected) return;
@@ -101,7 +115,7 @@ function eddiLeiste() {
       transcript.append(row('Eddi', r.text)); suggestions.append(...r.vorschlaege.map(proposal));
       state.textContent = r.schritte.length ? r.schritte.join(' · ') : 'Antwort fertig.'; input.value = '';
     } catch (err) { if (root.isConnected) state.textContent = err.message; }
-    finally { busy = false; send.disabled = input.disabled = fresh.disabled = false; if (root.isConnected) input.focus(); }
+    finally { busy = false;send.textContent='Los';root.setAttribute('aria-busy','false');send.disabled = input.disabled = fresh.disabled = false; if (root.isConnected) nextFocus.focus(); }
   });
   return root;
 }

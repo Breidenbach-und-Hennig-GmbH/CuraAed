@@ -1,9 +1,9 @@
 'use strict';
 
-function eddiTeilung(root, modelStatus, consent) {
+function eddiTeilung(root, modelStatus, consent, freigabeFehlt=()=>{}) {
   const box = el('section', { class: 'cu-eddi-teilung', hidden: true, 'aria-label': 'Dokument prüfen' });
   const file = el('input', { type: 'file', accept: '.pdf,application/pdf', hidden: true, 'aria-label': 'Dokument als PDF auswählen' });
-  const state = el('p', { role: 'status', 'aria-live': 'polite' }), details = el('div');
+  const filename=el('p',{class:'cu-eddi-dateiname',hidden:true}),state = el('p', { role: 'status', 'aria-live': 'polite' }), details = el('div');
   const choose = el('button', { type: 'button', text: 'Dokument analysieren', onclick: () => file.click() });
   const prepared=el('input',{type:'file',accept:'.json,application/json',hidden:true,'aria-label':'Vorbereitete Teilungsdaten auswählen'});
   let job, timer, revision = 0, busy = false, adressImport = null;
@@ -21,6 +21,7 @@ function eddiTeilung(root, modelStatus, consent) {
     if (!f) return;
     if (busy) { state.textContent = 'Bitte warten, bis die aktuelle PDF gelesen wurde.'; return; }
     box.hidden = false;
+    filename.textContent=f.name;filename.hidden=false;
     if (f.size > 25 * 1024 * 1024 || !/\.pdf$/i.test(f.name)) { state.textContent = 'Bitte eine PDF bis 25 MB auswählen.'; return; }
     details.replaceChildren(); adressImport=null; clearTimeout(timer); revision++;
     busy = true; choose.disabled = true; state.textContent = 'PDF wird in CuraAed gespeichert und lokal gelesen …';
@@ -37,7 +38,8 @@ function eddiTeilung(root, modelStatus, consent) {
     try {
       const r = await API.get('/eddi/teilungen/' + job);
       if (!root.isConnected || version !== revision) return;
-      state.textContent = r.dateiname + ' · ' + ({ lesen: 'Seite ' + r.fortschritt + ' von ' + (r.gesamt || '?') + ' wird gelesen', gelesen: 'Alle ' + r.gesamt + ' Seiten lokal gelesen', auswerten: 'Objekt, Einheiten und Stimmregeln werden ausgewertet', analysiert: 'Vorschlag fertig · bitte mit dem Original vergleichen', uebernommen: 'Objekt und Einheiten angelegt', fehler: r.meldung || 'Bearbeitung unterbrochen' }[r.status] || r.status);
+      filename.textContent=r.dateiname;filename.hidden=false;
+      state.textContent = ({ lesen: 'Seite ' + r.fortschritt + ' von ' + (r.gesamt || '?') + ' wird gelesen', gelesen: 'Alle ' + r.gesamt + ' Seiten lokal gelesen', auswerten: 'Objekt, Einheiten und Stimmregeln werden ausgewertet', analysiert: 'Vorschlag fertig · bitte mit dem Original vergleichen', uebernommen: 'Objekt und Einheiten angelegt', fehler: r.meldung || 'Bearbeitung unterbrochen' }[r.status] || r.status);
       details.replaceChildren(); adressImport=null;
       details.append(el('button', { type: 'button', text: 'Original-PDF anzeigen', onclick: () => dmsVorschau('/api/eddi/teilungen/' + job + '/datei', { titel: r.dateiname, original_name: r.dateiname }) }));
       if(r.gelesen&&!r.objekt_id){details.append(el('button',{type:'button',text:r.adressliste?'Adressliste erneut auswerten':'Als Adressliste auswerten',onclick:adressenAuswerten}));
@@ -50,7 +52,7 @@ function eddiTeilung(root, modelStatus, consent) {
       if (r.status === 'gelesen' || (r.status === 'fehler'&&r.gelesen)) details.append(el('button', { type: 'button', text: 'Mit Eddi auswerten', onclick: async e => {
         const status = await modelStatus();
         if (!status?.bereit) { state.textContent = 'Bitte zuerst Eddis Sprachmodell verbinden.'; return; }
-        if (!consent.checked) { state.textContent = 'Bitte zuerst die Verarbeitung des ausgewählten Dokumenttexts durch das angezeigte Sprachmodell erlauben.'; consent.focus(); return; }
+        if (!consent.checked) { state.textContent = 'Bitte zuerst die Verarbeitung des ausgewählten Dokumenttexts durch das angezeigte Sprachmodell erlauben.'; freigabeFehlt(state.textContent);consent.focus(); return; }
         e.currentTarget.disabled = true;
         try { await API.post('/eddi/teilungen/' + job + '/auswerten', { zustimmung: true }); await poll(); } catch (err) { state.textContent = err.message; e.currentTarget.disabled = false; }
       } }));
@@ -90,13 +92,13 @@ function eddiTeilung(root, modelStatus, consent) {
       ...d.hinweise.map(text => el('p', { class: 'cu-eddi-warnung', text })), el('label', { class: 'cu-eddi-zustimmung' }, [checked, el('span', { text: 'Angaben mit dem vorliegenden Original verglichen; offene Punkte bleiben als Prüfhinweis erhalten.' })]), take);
     f.form.addEventListener('submit', e => e.preventDefault());
   }
-  box.append(el('p', {text: 'Dokument prüfen · Teilungserklärung oder Adressliste mit Objekt- und Wohnungszuordnung.'}), state, details);
+  box.append(el('p', {text: 'Dokument prüfen · Teilungserklärung oder Adressliste mit Objekt- und Wohnungszuordnung.'}),filename, state, details);
   if (job) { box.hidden = false; setTimeout(() => { if (root.isConnected) poll(); }, 0); }
   async function adressenAuswerten(){
-    const m=await modelStatus();if(!m?.bereit){state.textContent='Bitte Eddis Sprachmodell verbinden.';return;}
-    if(!consent.checked){state.textContent='Bitte die Verarbeitung durch Eddis Sprachmodell erlauben.';consent.focus();return;}
-    if(busy)return;busy=true;state.textContent='Eddi erkennt Adressen, Objekt und Wohnungszuordnungen …';
-    try{await API.post('/eddi/teilungen/'+job+'/adressen/auswerten',{zustimmung:true});await poll();}catch(e){state.textContent=e.message;}finally{busy=false;}
+    const m=await modelStatus();if(!m?.bereit){state.textContent='Bitte Eddis Sprachmodell verbinden.';return{text:state.textContent,behalten:true};}
+    if(!consent.checked){state.textContent='Bitte die Verarbeitung dieser Adressliste durch '+m.sprachmodell+' erlauben.';freigabeFehlt(state.textContent);consent.focus();return{text:state.textContent,behalten:true,freigabeNoetig:true};}
+    if(busy)return{text:'Das Dokument wird gerade bearbeitet. Bitte kurz warten.',behalten:true};busy=true;state.textContent='Eddi erkennt Adressen, Objekt und Wohnungszuordnungen …';
+    try{await API.post('/eddi/teilungen/'+job+'/adressen/auswerten',{zustimmung:true});await poll();if(adressImport?.pruefen)await adressImport.pruefen();return{text:state.textContent};}catch(e){state.textContent=e.message;return{text:state.textContent,behalten:true};}finally{busy=false;}
   }
   return { button: choose, box, laden, auftrag:async text=>{
     const t=String(text||'').normalize('NFKC').toLowerCase().replace(/ü/g,'ue').replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ß/g,'ss').replace(/^eddi[,!:]?\s*/, '').trim();
@@ -108,8 +110,9 @@ function eddiTeilung(root, modelStatus, consent) {
       if(busy)return 'Das Dokument wird gerade bearbeitet. Bitte kurz warten.';
       if(!adressImport)await poll();
       if(adressImport)return adressImport.uebernehmen();
+      if(/adress/.test(t))return adressenAuswerten();
     }
     if(!/adress/.test(t)||!/(anleg|uebernehm|uebernimm|import|auswert|analys)/.test(t))return false;
-    await adressenAuswerten();return state.textContent;
+    return adressenAuswerten();
   } };
 }
