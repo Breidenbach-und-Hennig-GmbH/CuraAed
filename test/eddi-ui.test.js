@@ -7,6 +7,37 @@ function setup(t, role = 'mitarbeiter') {
   for (const f of ['ui', 'kern', 'shell', 'eddi', 'eddi-teilung', 'eddi-modell']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js/' + f + '.js'), 'utf8'), dom.getInternalVMContext());
   w.eval('S.benutzer={id:1,rolle:' + JSON.stringify(role) + ',name:"Test"}'); return w;
 }
+
+test('Eddi nimmt eine abgelegte PDF an, blockiert mehrere/ungeeignete Dateien und startet dabei keine KI', async t => {
+  const w = setup(t); const uploads = []; let modelCalls = 0, finish;
+  w.API = {
+    get: async url => url === '/eddi/status' ? { bereit: true, sprachmodell: 'OpenAI', anleitungen: 0 } : { status: 'gelesen', dateiname: 'Teilung.pdf', gesamt: 2, gelesen: true },
+    upload: async (url, data) => { uploads.push({url, file: data.get('datei')}); return new Promise(resolve => { finish = () => resolve({id:'test-pdf'}); }); },
+    post: async () => { modelCalls++; }
+  };
+  const root = w.eddiLeiste(); w.document.getElementById('hp-desktop').append(root);
+  function drag(type, files = []) {
+    const e = new w.Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(e, 'dataTransfer', {value:{types:['Files'], files, dropEffect:'none'}});
+    root.dispatchEvent(e); return e;
+  }
+  const pdf = new w.File(['%PDF'], 'Teilung.pdf', {type:'application/pdf'});
+  drag('dragenter'); assert.ok(root.classList.contains('cu-eddi-drop-aktiv'));
+  assert.equal(drag('dragover').defaultPrevented, true);
+  assert.equal(drag('drop',[pdf]).defaultPrevented, true); await tick();
+  assert.equal(uploads.length,1); assert.equal(uploads[0].url,'/eddi/teilungen');
+  assert.equal(uploads[0].file.name,'Teilung.pdf'); assert.equal(modelCalls,0);
+  assert.equal(root.classList.contains('cu-eddi-drop-aktiv'),false);
+  drag('drop',[pdf]); await tick(); assert.equal(uploads.length,1); // no competing upload
+  finish(); await tick(); await tick();
+  assert.match(root.textContent,/Alle 2 Seiten lokal gelesen/);
+  drag('drop',[pdf,pdf]); await tick(); assert.match(root.textContent,/genau eine PDF/);
+  drag('drop',[new w.File(['hello'],'Rechnung.exe')]); await tick();
+  assert.match(root.textContent,/PDF bis 25 MB/); assert.equal(uploads.length,1);
+  drag('drop',[{name:'gross.pdf',size:26*1024*1024}]); await tick(); assert.equal(uploads.length,1);
+  assert.equal(modelCalls,0);
+  assert.ok([...root.querySelectorAll('button')].some(b=>b.textContent==='Dokument analysieren'));
+});
 test('Eddi zeigt die gewünschte Zeile, startet ohne Einwilligung keine KI-Anfrage und lässt sich per Esc zuklappen', async t => {
   const w = setup(t); let requests = 0;
   w.API = { get: async () => ({ bereit: true, sprachmodell: 'OpenAI', anleitungen: 0 }), post: async () => { requests++; return { chat_id: 'test', text: '<img src=x onerror=alert(1)>', schritte: [], vorschlaege: [] }; } };

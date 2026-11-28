@@ -125,8 +125,9 @@ function baue(db) {
       const query = [sourceId, term, term, term, term];
       const filter = 'quelle_id=? AND (name LIKE ? OR COALESCE(email,\'\') LIKE ? OR externe_id LIKE ? OR EXISTS(SELECT 1 FROM kunden_konto_adressen a WHERE a.konto_id=kunden_konten.id AND CAST(a.hp_nummer AS TEXT) LIKE ?))';
       const { gesamt } = await db.get('SELECT COUNT(*) AS gesamt FROM kunden_konten WHERE ' + filter, query);
-      const rows = await db.all('SELECT id,externe_id,name,email,status,hinweise,revision,(SELECT group_concat(hp_nummer,\', \') FROM kunden_konto_adressen a WHERE a.konto_id=kunden_konten.id) AS adressnummern FROM kunden_konten WHERE ' + filter + ' ORDER BY name COLLATE NOCASE,id LIMIT 100 OFFSET ?', [...query, (seite - 1) * 100]);
-      return { gesamt, seite, freigeschaltet: 0, konten: rows.map(r => ({ ...r, hinweise: JSON.parse(r.hinweise) })) };
+      const rows = await db.all('SELECT id,externe_id,name,email,status,hinweise,revision,(SELECT aktiviert_ms FROM kunden_zugaenge z WHERE z.konto_id=kunden_konten.id AND z.revision=kunden_konten.revision) AS aktiviert_ms,(SELECT group_concat(hp_nummer,\', \') FROM kunden_konto_adressen a WHERE a.konto_id=kunden_konten.id) AS adressnummern FROM kunden_konten WHERE ' + filter + ' ORDER BY name COLLATE NOCASE,id LIMIT 100 OFFSET ?', [...query, (seite - 1) * 100]);
+      const {n:aktivierte_konten}=await db.get("SELECT COUNT(*) AS n FROM kunden_zugaenge z JOIN kunden_konten k ON k.id=z.konto_id WHERE k.quelle_id=? AND k.status='vorbereitet' AND z.revision=k.revision",[sourceId]);
+      return { gesamt, seite, aktivierte_konten, konten: rows.map(r => ({ ...r, hinweise: JSON.parse(r.hinweise) })) };
     },
   };
 }

@@ -13,8 +13,23 @@ async function kundenMaske() {
   const statusText = { vorbereitet: 'Vorbereitet', pruefen: 'Prüfen', gesperrt: 'Gesperrt' };
   function table(rows) {
     const body = el('tbody');
-    for (const k of rows) body.append(el('tr', {}, [k.externe_id, k.name, k.email || '—', k.adressnummern || (k.adressen || []).map(a => a.hp_nummer).join(', '), statusText[k.status], k.hinweise.join('; ')].map(text => el('td', { text: String(text || '') }))));
-    result.replaceChildren(el('table', {}, [el('thead', {}, [el('tr', {}, ['HP-Konto', 'Name', 'E-Mail', 'HP-Adressen', 'Status', 'Prüfhinweise'].map(text => el('th', { text })))]), body]));
+    for (const k of rows) body.append(el('tr', {}, [...[k.externe_id, k.name, k.email || '—', k.adressnummern || (k.adressen || []).map(a => a.hp_nummer).join(', '), statusText[k.status]+(k.aktiviert_ms?' · Zugang aktiviert':''), k.hinweise.join('; ')].map(text => el('td', { text: String(text || '') })),el('td',{},k.id?[el('button',{type:'button',class:'hp-mini',text:'Zugang',onclick:()=>zugang(k)})]:[])]));
+    result.replaceChildren(el('table', {}, [el('thead', {}, [el('tr', {}, ['HP-Konto', 'Name', 'E-Mail', 'HP-Adressen', 'Status', 'Prüfhinweise', ''].map(text => el('th', { text })))]), body]));
+  }
+  async function zugang(k){
+    try{
+      const p=await API.get('/kunden/'+k.id+'/zuordnung');if(lauf!==S.lauf)return;
+      const link=el('input',{type:'text',readonly:'readonly','aria-label':'Einmaliger Aktivierungslink',style:'width:100%'});
+      const info=el('p',{role:'status'}), body=el('div',{},[
+        el('p',{text:p.firma.name+' · '+p.name+' · '+p.email}),
+        el('p',{text:'Das Kundenportal zeigt derzeit die eigenen Objekt- und Wohnungszuordnungen. Der Einmal-Link ist sieben Tage gültig. Die Zuordnung wird bei jeder Anmeldung erneut geprüft.'}),
+        ...p.objekte.map(o=>el('p',{text:'Objekt '+o.nummer+' · '+o.bezeichnung})),
+        ...p.wohnungen.map(w=>el('p',{text:'Objekt '+w.objekt_nummer+' / Wohnung '+w.nummer+' · '+w.bezeichnung+' · '+(w.rolle==='eigentuemer'?'Eigentümer':'Mieter')})),link,info]);
+      let busy=false;
+      modal({titel:'Kundenzugang prüfen',inhalt:body,onClose:()=>{link.value='';},footer:close=>[
+        el('button',{type:'button',text:'Einmal-Link erstellen',onclick:async()=>{if(busy)return;busy=true;try{const r=await API.post('/kunden/'+k.id+'/aktivierung',{pruefwert:p.pruefwert});link.value=r.link;info.textContent='Gültig bis '+new Date(r.gueltig_bis).toLocaleString('de-DE')+'. Der Link wurde nicht per E-Mail versandt.';}catch(e){info.textContent=e.message;}finally{busy=false;}}}),
+        el('button',{type:'button',text:'Schließen',onclick:close})]});
+    }catch(e){message.textContent=e.message;}
   }
   async function laden(page = 1) {
     if (!source.value) return;
@@ -23,7 +38,7 @@ async function kundenMaske() {
       const r = await API.get('/kunden?quelle=' + encodeURIComponent(source.value) + '&seite=' + page + '&suche=' + encodeURIComponent(suche.value));
       if (lauf !== S.lauf || n !== request) return;
       seite = page; table(r.konten); prev.disabled = page <= 1; next.disabled = page * 100 >= r.gesamt;
-      message.textContent = r.gesamt + ' vorbereitete Konten. Seite ' + page + '. Kein Kundenzugang ist freigeschaltet.';
+      message.textContent = r.gesamt + ' Konten. Seite ' + page + '. ' + (r.aktivierte_konten||0) + ' Konten aktiviert; aktuelle Zugriffe werden bei jeder Anmeldung geprüft.';
     } catch (e) { if (lauf === S.lauf && n === request) message.textContent = e.message; }
   }
   file.onchange = async () => {
@@ -66,7 +81,7 @@ async function kundenMaske() {
     finally { busy = false; }
   }
   if (!arbeitsMaske(lauf, content, { titel: 'Kundenverwaltung – Übernahme', brot: [{ text: 'Einstellungen' }, { text: 'Kundenverwaltung' }],
-    info: [['Zugriff', 'Administrator'], ['Kundenanmeldung', 'Noch nicht freigeschaltet']],
+    info: [['Zugriff', 'Administrator'], ['Kundenanmeldung', 'Getrennte Aktivierung je geprüftem Konto']],
     aktionen: [{ text: 'Firma zuordnen', onclick: async () => {
       if (!source.value || !firma.value) { message.textContent = 'Bitte Firma und Quelle auswählen.'; return; }
       try {
@@ -76,7 +91,7 @@ async function kundenMaske() {
     } }, { text: 'Exportdatei', onclick: () => file.click() }, { text: 'Vorschau', onclick: vorschau }, { text: 'Übernehmen', onclick: uebernehmen }, { text: 'Suche', onclick: () => laden(1) }, { text: 'HP-Verbindungen', onclick: () => geheZu('#/hausperfekt') }] })) return;
   content.append(el('section', { class: 'cu-karte', style: 'padding:8px;margin:8px' }, [
     el('label', {}, ['Firma ', firma]), ' ', el('label', {}, ['HP-Quelle ', source]), ' ', suche, file,
-    el('p', { class: 'hint', text: 'Eigene Kundenkonten ohne Mitarbeiterrechte. Die Übernahme bereitet Zugänge vor; Aktivierung und Kundenportal folgen separat. Gleiche E-Mail-Adressen werden nicht automatisch zusammengeführt.' }),
+    el('p', { class: 'hint', text: 'Eigene Kundenkonten ohne Mitarbeiterrechte. Die Übernahme bereitet Zugänge vor. Prüfen Sie die Zuordnung über „Zugang“, bevor Sie einen Einmal-Link erstellen. Gleiche E-Mail-Adressen werden nicht automatisch zusammengeführt.' }),
     message, el('div', { style: 'overflow:auto' }, [result]), el('div', {}, [prev, next]),
   ]));
   try {
