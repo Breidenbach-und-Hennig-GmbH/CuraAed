@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Node.js 20 LTS (≥ 18 works)
+- Node.js 24 LTS (project range: >=24 <25; Render uses `.node-version`)
 - Persistent writable storage for the SQLite file and the upload directory
 - HTTPS termination in front of the app (required: the session cookie is `Secure`)
 - Build tools (`python3`, `make`, `g++`) only if no `sqlite3` prebuilt binary exists for your platform
@@ -44,7 +44,7 @@ User=hausperfekt
 
 There is no Dockerfile in the export. A minimal approach:
 
-- Base image `node:20-slim`, then `npm ci --omit=dev`, copy the source, and `CMD ["node","server.js"]`
+- Base image `node:24-slim`, then `npm ci --omit=dev`, copy the source, and `CMD ["node","server.js"]`
 - Mount a volume at e.g. `/data` and set `DB_PATH=/data/hausverwaltung.db`, `UPLOAD_DIR=/data/uploads`
 - Keep `replicas: 1` and use the `Recreate` strategy (no rolling overlap on the same DB file)
 - Prefer local/block storage. SQLite on network file systems (NFS/SMB) can have locking problems.

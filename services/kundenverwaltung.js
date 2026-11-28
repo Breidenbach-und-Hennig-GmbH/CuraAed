@@ -37,6 +37,7 @@ async function plan(db, owner, sourceId, data) {
   if (source.subdomain !== input.portal) fail('Der Export gehört nicht zur ausgewählten HP-Quelle.', 409);
   const day = heute();
   const mappings = source.direkt_id ? await db.all(`SELECT m.hp_nummer,m.adresse_id,a.archiviert,
+    COALESCE(NULLIF(trim(a.firmenname),''),NULLIF(trim(COALESCE(a.vorname,'')||' '||COALESCE(a.nachname,'')),'')) AS adressname,
     EXISTS(SELECT 1 FROM rollen_zuordnungen r
       LEFT JOIN einheiten e ON e.id=r.einheit_id JOIN objekte o ON o.id=COALESCE(e.objekt_id,r.objekt_id)
       WHERE r.adresse_id=a.id AND r.rolle IN ('eigentuemer','mieter')
@@ -48,8 +49,7 @@ async function plan(db, owner, sourceId, data) {
   const emails = new Map();
   for (const u of input.users) if (u.email) emails.set(u.email, (emails.get(u.email) || 0) + 1);
   const rows = input.users.map(u => {
-    const hinweise = [], adressen = [];
-    if (!u.name) hinweise.push('Name fehlt');
+    const hinweise = [], adressen = [], adressnamen = [];
     if (!u.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u.email)) hinweise.push('Nutzbare E-Mail-Adresse fehlt');
     if (emails.get(u.email) > 1) hinweise.push('E-Mail wird von mehreren Konten verwendet; keine automatische Zusammenführung');
     if (!u.persons.length) hinweise.push('Keine Person zugeordnet');
@@ -62,10 +62,14 @@ async function plan(db, owner, sourceId, data) {
       if (!m) hinweise.push('HP-Adresse ' + p.hp_id + ' ist noch nicht zugeordnet');
       else {
         adressen.push({ hp_nummer: p.hp_id, adresse_id: m.adresse_id });
+        if (m.adressname && !/^Adresse ohne (?:Name|Namen)$/i.test(m.adressname)) adressnamen.push(m.adressname);
         if (m.archiviert || !m.aktuell) hinweise.push('HP-Adresse ' + p.hp_id + ': keine aktuelle Eigentümer-/Mieterfunktion');
       }
     }
-    return { ...u, status: hinweise.length ? 'pruefen' : 'vorbereitet', hinweise: [...new Set(hinweise)], adressen };
+    const namen = [...new Set(adressnamen)];
+    const name = u.name || (namen.slice(0,3).join(' / ') + (namen.length > 3 ? ' +' + (namen.length - 3) + ' weitere' : '')).slice(0,500);
+    if (!name) hinweise.push('Name fehlt');
+    return { ...u, name, status: hinweise.length ? 'pruefen' : 'vorbereitet', hinweise: [...new Set(hinweise)], adressen };
   });
   const digest = hash({ quelle: source.id, firma: source.firma_id, day, rows, intern: input.intern });
   return { quelle: source.id, portal: source.subdomain, pruefwert: digest, freigeschaltet: 0,
