@@ -6,7 +6,7 @@ function fixture(t,rolle='admin') {
  const dom=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example/'});t.after(()=>dom.window.close());
  const w=dom.window,calls=[],row={externe_id:'12',name:'<img src=x onerror=alert(1)>',email:'kunde@example.test',status:'pruefen',hinweise:['Zuordnung fehlt']};
  w.API={get:async url=>{calls.push({method:'GET',url});return url.endsWith('/quellen')?{quellen:[{id:'s',subdomain:'kunde',direkt_id:'direct'}]}:{gesamt:1,konten:[row]};},post:async(url,body)=>{calls.push({method:'POST',url,body});return url.endsWith('/vorschau')?{pruefwert:'checked',summen:{kunden:1,pruefen:1,intern_ausgeschlossen:0},konten:[row]}:{neu:1,aktualisiert:0,unveraendert:0,nicht_mehr_in_quelle:0};}};
- for(const name of ['ui','kern','shell','kundenverwaltung']) vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js',name+'.js'),'utf8'),dom.getInternalVMContext());
+ for(const name of ['adressdaten','ui','kern','shell','kundenverwaltung']) vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js',name+'.js'),'utf8'),dom.getInternalVMContext());
  vm.runInContext('S.lauf=1;S.benutzer={id:1,rolle:'+JSON.stringify(rolle)+'};',dom.getInternalVMContext());
  return {w,calls,open:async()=>{await w.kundenMaske();await tick();},button:text=>[...w.document.querySelectorAll('button')].find(b=>b.textContent===text),async file(){const f=w.document.querySelector('input[type=file]');Object.defineProperty(f,'files',{configurable:true,value:[{name:'kunden.json',size:100,text:async()=>JSON.stringify({version:1})}]});f.dispatchEvent(new w.Event('change'));await tick();}};
 }

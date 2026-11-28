@@ -5,7 +5,7 @@ async function fixture(t,{fresh=true,role='admin'}={}){
  const dom=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example'});t.after(()=>dom.window.close());const w=dom.window,calls=[];
  const v={id:'own-test',name:'Eigener Test',datenbank:'TESTDB',test_nummer:123,ablauf_ms:Date.now()+100000,zuletzt_gesehen:Date.now(),snapshot:{name:'CURAAED-TEST',titel:'Alt'},version:'fresh-version',gelesen_am:Date.now()-(fresh?0:61000),auftraege:[]};
  w.API={get:async url=>{calls.push({method:'GET',url});return {verbindungen:[v]};},post:async(url,body)=>{calls.push({method:'POST',url,body:JSON.parse(JSON.stringify(body))});return {id:'own-test',token:'synthetic-token',ablauf_ms:Date.now()+100000};}};
- for(const file of ['ui','kern','hp-direkt'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js',file+'.js'),'utf8'),dom.getInternalVMContext());
+ for(const file of ['adressdaten','ui','kern','hp-direkt'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js',file+'.js'),'utf8'),dom.getInternalVMContext());
  vm.runInContext('S.lauf=1;S.benutzer={rolle:'+JSON.stringify(role)+'};',dom.getInternalVMContext());await w.hpDirektBereich(1,w.document.getElementById('hp-desktop'));
  return {w,calls,button:text=>[...w.document.querySelectorAll('button')].find(b=>b.textContent===text)};
 }

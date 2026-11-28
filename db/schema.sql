@@ -233,6 +233,10 @@ CREATE TABLE IF NOT EXISTS adressen (
   nummer        TEXT,                           -- Adress-Nr. (eindeutig, z. B. 10001)
   adresstyp     TEXT NOT NULL DEFAULT 'person', -- person | firma
   anrede        TEXT,                           -- Herr | Frau | Divers | (leer)
+  suchbegriff TEXT,titel TEXT,name3 TEXT,beruf TEXT,briefanrede1 TEXT,briefanrede2 TEXT,geburtsname TEXT,
+  geburtstag2 TEXT,sterbedatum1 TEXT,sterbedatum2 TEXT,
+  sonderfunktion1 TEXT,sonderfunktion2 TEXT,sonderfunktion3 TEXT,sonderfunktion4 TEXT,sonderfunktion5 TEXT,
+  sonderfunktion6 TEXT,sonderfunktion7 TEXT,sonderfunktion8 TEXT,sonderfunktion9 TEXT,sonderfunktion10 TEXT,
   vorname       TEXT,
   nachname      TEXT,
   firmenname    TEXT,

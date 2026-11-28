@@ -3,7 +3,8 @@ const crypto=require('node:crypto'),{ValidationError}=require('../lib/validation
 const D=require('./adressDubletten');
 const fail=(m,s=400)=>{throw new ValidationError(m,s);};
 const hash=x=>crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
-const keys=['adresstyp','anrede','vorname','nachname','firmenname','strasse','plz','ort','email','telefon','mobil'];
+const A=require('./adressStammdaten');
+const keys=['adresstyp','anrede','vorname','nachname','firmenname','zusatz','strasse','plz','ort','land','email','telefon','mobil','geburtstag',...A.felder.map(f=>f.name)];
 const norm=s=>String(s||'').normalize('NFKC').replace(/\s+/g,' ').trim().toLowerCase();
 function daten(raw,pages=null){
  if(!raw||!Array.isArray(raw.adressen)||!raw.adressen.length||raw.adressen.length>500)fail('Keine prüfbare Adressliste erkannt.');
@@ -17,8 +18,12 @@ function daten(raw,pages=null){
   let funktion=['eigentuemer','mieter','sonstiges','unklar'].includes(a.funktion)?a.funktion:'unklar';
   if(pages){const p=pages.find(p=>p.seite===a.beleg?.seite),quote=a.beleg?.zitat;if(!p||typeof quote!=='string'||quote.length<3||quote.length>4000||!norm(p.text).includes(norm(quote)))fail('Eine Adress-Fundstelle fehlt im Original.');
    for(const k of ['vorname','nachname','firmenname','email','telefon','mobil'])if(b[k]&&!norm(quote).includes(norm(b[k])))fail('Erkannte Kontaktdaten fehlen in der angegebenen Fundstelle.');
-   if(funktion==='eigentuemer'&&!/eigent(?:ü|ue)mer/i.test(quote)||funktion==='mieter'&&!/\bmieter\b/i.test(quote))funktion='unklar';}
-  return{...b,wohnung_nummer:einheit.nummer,wohnung_bezeichnung:einheit.bezeichnung,lage:einheit.lage,einheitstyp:einheit.einheitstyp,funktion,beleg:a.beleg||null};
+   const roleWord=funktion==='eigentuemer'?/eigent(?:ü|ue)mer/i:/\bmieter\b/i,header=a.funktionsbeleg,hp=pages.find(p=>p.seite===header?.seite),validHeader=header?.seite===a.beleg?.seite&&typeof header.zitat==='string'&&header.zitat.length<=1000&&norm(hp?.text).includes(norm(header.zitat))&&roleWord.test(header.zitat)&&/Haus|Wohnung|Anschrift/i.test(header.zitat);
+   if(['eigentuemer','mieter'].includes(funktion)&&!roleWord.test(quote)&&!validHeader)funktion='unklar';
+   for(const k of ['titel','name3','geburtsname','beruf'])if(b[k]&&!norm(quote).includes(norm(b[k])))fail('Erkannte Adressdetails fehlen in der angegebenen Fundstelle.');
+   for(const k of ['geburtstag','geburtstag2','sterbedatum1','sterbedatum2'])if(b[k]){const german=b[k].slice(8,10)+'.'+b[k].slice(5,7)+'.'+b[k].slice(0,4);if(!norm(quote).includes(norm(b[k]))&&!norm(quote).includes(norm(german)))fail('Ein erkanntes Datum fehlt in der Fundstelle.');}
+  }
+  return{...A.validieren(b),wohnung_nummer:einheit.nummer,wohnung_bezeichnung:einheit.bezeichnung,lage:einheit.lage,einheitstyp:einheit.einheitstyp,funktion,beleg:a.beleg||null,funktionsbeleg:a.funktionsbeleg||null};
  });
  return{objekt,adressen};
 }
@@ -34,7 +39,7 @@ function baue(db,options={}){
   if(active.has(id))fail('Die Adressauswertung läuft bereits.',409);active.add(id);
   try{
    const pages=JSON.parse(row.seiten),merged={objekt:{},adressen:[]};let chunk=[],size=0;
-   async function read(){if(!chunk.length)return;const answer=await complete([{role:'system',content:PROMPT},{role:'user',content:JSON.stringify(chunk)}],[],55000,{maxTokens:16000});let parsed;try{parsed=JSON.parse(String(answer.content||'').replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));}catch{fail('Eddi hat keine vollständige Adressliste geliefert.',502);}const d=daten(parsed,chunk);for(const [k,v]of Object.entries(d.objekt))if(v){if(merged.objekt[k]&&merged.objekt[k]!==v)fail('Widersprüchliche Objektangaben; bitte die Liste aufteilen.');merged.objekt[k]=v;}merged.adressen.push(...d.adressen);chunk=[];size=0;}
+   async function read(){if(!chunk.length)return;const extra=' Ergänze ausdrücklich vorhandene Anrede, Titel (z. B. Dr.), zusatz als Name2, name3, land, geburtstag (JJJJ-MM-TT), geburtstag2, sterbedatum1, sterbedatum2, geburtsname und beruf. Fehlende Daten leer lassen; Suchbegriff und Briefanrede berechnet CuraAed. Bei mehreren Eigentümern in demselben Tabellenblock gelten die gemeinsame Wohnung und Anschrift für jede Person; zitiere dafür den vollständigen gemeinsamen Block. Die Tabellenüberschrift darf die Funktion belegen: ergänze funktionsbeleg:{seite:1,zitat:"wörtliche Tabellenüberschrift mit Eigentümer/Mieter und Haus/Wohnung oder Anschrift"} auf derselben Seite. Titel vom Vornamen trennen.';const answer=await complete([{role:'system',content:PROMPT+extra},{role:'user',content:JSON.stringify(chunk)}],[],120000,{maxTokens:16000});let parsed;try{parsed=JSON.parse(String(answer.content||'').replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));}catch{fail('Eddi hat keine vollständige Adressliste geliefert.',502);}const d=daten(parsed,chunk);for(const [k,v]of Object.entries(d.objekt))if(v){if(merged.objekt[k]&&merged.objekt[k]!==v)fail('Widersprüchliche Objektangaben; bitte die Liste aufteilen.');merged.objekt[k]=v;}merged.adressen.push(...d.adressen);chunk=[];size=0;}
    for(const p of pages){if(p.text.length>50000)fail('Eine PDF-Seite ist zu umfangreich.');if(size+p.text.length>45000)await read();chunk.push({seite:p.seite,text:p.text});size+=p.text.length;}await read();
    if(!merged.adressen.length||merged.adressen.length>500)fail('Keine vollständige Adressliste mit höchstens 500 Zeilen erkannt.');
    await db.transaktion(async tx=>{const old=await tx.get('SELECT ergebnis FROM eddi_adressimporte WHERE job_id=?',[id]);if(old?.ergebnis)fail('Diese Liste wurde bereits übernommen.',409);await tx.run('INSERT INTO eddi_adressimporte(job_id,daten) VALUES(?,?) ON CONFLICT(job_id) DO UPDATE SET daten=excluded.daten',[id,JSON.stringify(merged)]);});return merged;
@@ -53,6 +58,7 @@ function baue(db,options={}){
   const units=obj?await tx.all('SELECT e.*,h.hp_whgnr FROM einheiten e LEFT JOIN hp_einheit_zuordnung h ON h.einheit_id=e.id WHERE e.objekt_id=?',[obj.id]):[];
   const choices=body.dublettenwahl||{};if(!choices||typeof choices!=='object'||Array.isArray(choices)||Object.keys(choices).some(k=>!/^\d+$/.test(k)||Number(k)>=d.adressen.length))fail('Bitte die Dublettenentscheidung erneut prüfen.');
   const rows=[];const seen=new Map();
+  if(d.adressen.some(a=>a.wohnung_nummer)&&d.adressen.some(a=>['eigentuemer','mieter'].includes(a.funktion)&&!a.wohnung_nummer))fail('Bei einer Eigentümer- oder Mieterzeile fehlt die Wohnung. Bitte die Wohnungsnummer vor der Übernahme ergänzen.');
   for(const [index,a]of d.adressen.entries()){
    const dup=await D.pruefen(tx,a),identity=hash(keys.map(k=>a[k]));let vorhandene=null,pruefen=false;
    if(dup.treffer.length===1){const v=await tx.get('SELECT * FROM adressen WHERE id=?',[dup.treffer[0].id]);const full=x=>D.norm(x.adresstyp==='firma'?x.firmenname:[x.vorname,x.nachname].filter(Boolean).join(' '));if(!v.archiviert&&full(a)===full(v)&&a.strasse&&norm(a.strasse)===norm(v.strasse)&&a.plz===v.plz)vorhandene=v.id;else pruefen=true;}
@@ -87,7 +93,8 @@ function baue(db,options={}){
    if(!unit&&z.daten.funktion==='mieter'){result.hinweise.push('Zeile '+(z.index+1)+': Mieter ohne Wohnungsnummer – keine Zuordnung.');continue;}
    if(!await tx.get('SELECT 1 FROM rollen_zuordnungen WHERE adresse_id=? AND rolle=? AND einheit_id IS ? AND objekt_id IS ?',[aid,z.daten.funktion,unit||null,unit?null:o.id])){await tx.run('INSERT INTO rollen_zuordnungen(adresse_id,rolle,einheit_id,objekt_id) VALUES(?,?,?,?)',[aid,z.daten.funktion,unit||null,unit?null:o.id]);result.zuordnungen++;}
   }
-  await tx.run('UPDATE eddi_adressimporte SET ergebnis=? WHERE job_id=?',[JSON.stringify(result),id]);return result;
+  result.hinweise.push('Objekte und Wohnungen wurden in CuraAed angelegt bzw. zugeordnet. Ihre Neuanlage in HausPerfekt ist noch nicht angebunden. Neue Adressen werden über den freigegebenen HP-Adressconnector übertragen.');
+  await tx.run('UPDATE eddi_adressimporte SET daten=?,ergebnis=? WHERE job_id=?',[JSON.stringify(p.daten),JSON.stringify(result),id]);return result;
  });}
  return{analysieren,stand,vorschau,uebernehmen};
 }

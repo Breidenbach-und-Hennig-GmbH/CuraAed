@@ -60,7 +60,7 @@ test('Kommunikation: vCard-Export mit korrekter Maskierung', async () => {
   assert.match(v.text, /^BEGIN:VCARD\r\nVERSION:3\.0\r\n/);
   assert.ok(v.text.includes('ORG:Süße GmbH\\; & Co\\, KG'));
   assert.ok(v.text.includes('TEL;TYPE=VOICE:0214/68900'));
-  assert.ok(v.text.includes('ADR;TYPE=WORK:;;Alte Landstraße 209;Leverkusen;;51373;Deutschland'));
+  assert.ok(v.text.includes('ADR;TYPE=WORK:;;Alte Landstraße 209;Leverkusen;;51373;DE'));
   assert.equal(v.dateiname, `Adresse_${a.nummer}.vcf`);
   await db.close();
 });

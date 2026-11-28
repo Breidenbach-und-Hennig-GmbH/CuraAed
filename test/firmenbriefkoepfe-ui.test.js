@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),{JSDOM}=require('jsdom');const tick=()=>new Promise(r=>setImmediate(r));
 const profile={id:1,revision:2,logo_url:'/api/firmenbriefkoepfe/1/logo?v=2',daten:{name:'Musterfirma',anschrift:'Musterweg 1',telefon:'123',email:'test@example.test',website:'example.test',fusszeile:'Registerangabe'}};
-function setup(t,files){const d=new JSDOM('<div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.test'});t.after(()=>d.window.close());for(const f of ['ui','kern','shell','hwa-status',...files])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),d.getInternalVMContext());d.window.eval('S.benutzer={rolle:"admin"}');return d.window;}
+function setup(t,files){const d=new JSDOM('<div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.test'});t.after(()=>d.window.close());for(const f of ['adressdaten','ui','kern','shell','hwa-status',...files])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),d.getInternalVMContext());d.window.eval('S.benutzer={rolle:"admin"}');return d.window;}
 const button=(w,text)=>[...w.document.querySelectorAll('button')].find(b=>b.textContent===text);
 test('Verwaltung speichert getrennte Statusvorlagen zusammen mit den Stammdaten',async t=>{
  const w=setup(t,['firmenbriefkoepfe']);let sent;

@@ -59,6 +59,13 @@
  .cu-adressformular .field:has(#f_anrede){display:grid;grid-template-columns:minmax(0,1fr) 26px;gap:2px}
  .cu-adressformular .field:has(#f_anrede) label{grid-column:1/-1}
  .cu-adressformular .field:has(#f_anrede) button{padding:0;min-height:25px;border-radius:1px}
+ .cu-adressformular .grid-5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+ .cu-adressformular .field{margin-bottom:4px}
+ .cu-adressformular input,.cu-adressformular select{min-height:25px;height:25px;padding:2px 5px;font-size:12px}
+ .cu-adressformular textarea{min-height:42px;font-size:12px}
+ .cu-adressformular .grid-5 .field label{font-size:11px}
+ .cu-adress-vorschau{border:1px solid var(--cu-rand,#d5cde4);padding:5px 7px;font-size:12px;margin:4px 0;line-height:1.25}
+ @media(max-width:600px){.cu-adressformular .grid-5{grid-template-columns:repeat(2,minmax(0,1fr))}}
  .cu-hp-frame[data-maskentyp=einheit] .hp-oben{display:grid;grid-template-columns:minmax(0,3fr) minmax(150px,1fr)}
  /* DMS-Aktionen werden als dieselben DOM-Knöpfe in die gemeinsame Leiste verschoben. */
  .cu-hp-frame .cu-dms-oben{grid-template-columns:minmax(0,1fr);gap:6px}
@@ -100,6 +107,13 @@
  .modal.cu-hp-eingabe input:not([type=checkbox]):not([type=radio]),.modal.cu-hp-eingabe select{min-height:25px;padding:2px 5px;font-size:12px;border-radius:1px}
  .modal.cu-hp-eingabe textarea{font-size:12px;min-height:54px;padding:4px 6px}
  .modal.cu-hp-eingabe .grid-2,.modal.cu-hp-eingabe .grid-3{gap:5px 10px}
+ .modal.cu-adress-dialog .field{display:grid;grid-template-columns:102px minmax(0,1fr);align-items:center;gap:4px;margin-bottom:3px}
+ .modal.cu-adress-dialog .field label{margin:0;line-height:1.15}
+ .modal.cu-adress-dialog .field:has(#f_anrede){grid-template-columns:56px minmax(0,1fr) 25px}
+ .modal.cu-adress-dialog .field:has(#f_anrede) label{grid-column:auto}
+ .modal.cu-adress-dialog .grid-5 .field{grid-template-columns:30px minmax(0,1fr)}
+ .modal.cu-adress-dialog input[readonly]{background:#f2eff5;color:#625b70}
+ @media(max-width:700px){.modal.cu-adress-dialog .grid-2,.modal.cu-adress-dialog .grid-3{grid-template-columns:1fr}.modal.cu-adress-dialog .field{grid-template-columns:102px minmax(0,1fr)}}
  .modal.cu-hp-eingabe .cu-rechnung-bereich,.modal.cu-hp-eingabe .cu-rechnung-freigabe{padding:7px!important;gap:12px;margin-bottom:5px;border-radius:1px}
  .modal.cu-hp-eingabe .cu-rechnung-zeile{grid-template-columns:140px minmax(0,1fr);gap:5px}
  .modal.cu-hp-eingabe .cu-rechnung-kopf{padding-bottom:5px;margin-bottom:5px}

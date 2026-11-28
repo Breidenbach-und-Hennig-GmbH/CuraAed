@@ -6,7 +6,7 @@ const entry={id:9,titel:'<img src=x onerror=alert(1)>',dateiname:'test.pdf',doku
 function setup(t, get){
  const dom=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example/'});t.after(()=>dom.window.close());
  const w=dom.window;w.API={get,qs:o=>'?'+new URLSearchParams(o)};
- for(const file of ['ui','kern','rechnungen','shell','dms-upload','dms-posteingang','dms'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());
+ for(const file of ['adressdaten','ui','kern','rechnungen','shell','dms-upload','dms-posteingang','dms'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());
  vm.runInContext('S.lauf=1;S.benutzer={rolle:"admin"};',dom.getInternalVMContext());return w;
 }
 test('DMS-UI: persönliche Quelle, serverseitige Suche, Dateiliste und sichere Zuordnungsanzeige',async t=>{

@@ -3,13 +3,13 @@ const crypto=require('node:crypto'),H=require('./hpAdressSync'),D=require('./adr
 const fail=(m,s=409)=>{throw new V.ValidationError(m,s);},hash=v=>crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex');
 const HP_ANLAGE_KUERZEL='CA';
 function text(v,max,label){v=String(v||'');if(v.length>max||/[\x00-\x1f\x7f]/.test(v)||v!==v.trimEnd()||enc.decode(enc.encode(v,'cp850'),'cp850')!==v)fail(label+' passt nicht in das HP-Feld (maximal '+max+' Zeichen, HP-Zeichensatz).',400);return v;}
-function snapshot(a,sb,bekannt=[]){if(a.email&&!/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(a.email))fail('Bitte eine gültige E-Mail-Adresse für die HP-Neuanlage angeben.',400);const record=H.record(H.local(a,1));if(!record.name1.trim())fail('Für die HP-Neuanlage fehlt der Name.',400);if(!/^[A-Z]{1,3}$/.test(sb||''))fail('Ungültiges HP-Anlagekürzel im Neuanlageauftrag.',400);return{record,sb,telefon:text(a.telefon,25,'Telefonnummer'),mobil:text(a.mobil,25,'Mobilnummer'),email:text(a.email,60,'E-Mail-Adresse'),bekannte_hp:bekannt};}
+function snapshot(a,sb,bekannt=[],mitStamm=false){if(a.email&&!/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(a.email))fail('Bitte eine gültige E-Mail-Adresse für die HP-Neuanlage angeben.',400);const record=H.record(H.local(a,1));if(!record.name1.trim())fail('Für die HP-Neuanlage fehlt der Name.',400);if(!/^[A-Z]{1,3}$/.test(sb||''))fail('Ungültiges HP-Anlagekürzel im Neuanlageauftrag.',400);const result={record,sb,telefon:text(a.telefon,25,'Telefonnummer'),mobil:text(a.mobil,25,'Mobilnummer'),email:text(a.email,60,'E-Mail-Adresse'),bekannte_hp:bekannt};if(mitStamm){result.stamm=require('./adressStammdaten').hpStamm(a);for(const [key,value]of Object.entries(result.stamm)){const f=require('../lib/hpAdressBereiche.json').stamm.fields.find(f=>f.name===key);if(f.typ===0)text(value,f.max,key);}}return result;}
 async function vorbereiten(tx,owner,b){
  const v=await tx.get('SELECT v.* FROM hp_adress_verbindungen v JOIN hp_adress_vollfreigaben f ON f.verbindung_id=v.id WHERE v.aktiv=1 AND f.neuanlagen=1');if(!v)return null;
  if(v.ablauf_ms!==0&&v.ablauf_ms<=Date.now())fail('Die Freigabe für HP-Neuanlagen ist abgelaufen. Bitte vor der Neuanlage erneuern.');
  const duplicates=await D.pruefen(tx,b),known=[];
  for(const a of duplicates.treffer){const m=await tx.get('SELECT hp_nummer FROM hp_adress_zuordnung WHERE adresse_id=? AND verbindung_id=?',[a.id,v.id]);if(m)known.push(m.hp_nummer);}
- return{verbindung_id:v.id,daten:snapshot(b,HP_ANLAGE_KUERZEL,known)};
+ return{verbindung_id:v.id,daten:snapshot(b,HP_ANLAGE_KUERZEL,known,true)};
 }
 async function einreihen(tx,aid,prepared){if(!prepared)return;await tx.run("INSERT INTO hp_adress_neuanlagen(id,verbindung_id,adresse_id,daten,status) VALUES(?,?,?,?,'wartend')",[crypto.randomUUID(),prepared.verbindung_id,aid,JSON.stringify(prepared.daten)]);}
 async function metadata(db,a){const j=await db.get('SELECT status,meldung,hp_nummer FROM hp_adress_neuanlagen WHERE adresse_id=?',[a.id]);return j?{...a,hp_neuanlage:j}:a;}
@@ -32,12 +32,14 @@ function service(db){
    await auth(tx,id,token,b.datenbank);
    // Only an already reserved operation may be read back. Never reissue a write attempt.
    const unresolved=await tx.get("SELECT * FROM hp_adress_neuanlagen WHERE verbindung_id=? AND status='reserviert' ORDER BY erstellt_am LIMIT 1",[id]);
+   if(unresolved&&JSON.parse(unresolved.daten).stamm&&b.stamm_version!==1)return{};
    if(unresolved&&Date.now()-unresolved.abgeholt_ms<120000)return{};
    if(unresolved)return{pruefen:{id:unresolved.id,daten:JSON.parse(unresolved.daten),reservierung:JSON.parse(unresolved.reservierung)}};
    await tx.run("UPDATE hp_adress_neuanlagen SET status='pruefen',meldung='Abholung ohne bestätigte Reservierung unterbrochen. Kein automatischer Neuversuch.' WHERE verbindung_id=? AND status='abgeholt' AND abgeholt_ms<?",[id,Date.now()-120000]);
    const j=await tx.get("SELECT * FROM hp_adress_neuanlagen WHERE verbindung_id=? AND status='wartend' ORDER BY erstellt_am,id LIMIT 1",[id]);if(!j)return{};
+   const queued=JSON.parse(j.daten);if(queued.stamm&&b.stamm_version!==1){await tx.run('UPDATE hp_adress_neuanlagen SET meldung=? WHERE id=?',['Bitte den HP-Adressconnector aktualisieren, damit alle Adressfelder vollständig angelegt werden.',j.id]);return{};}
    const a=await tx.get('SELECT * FROM adressen WHERE id=?',[j.adresse_id]);if(!a||a.archiviert){await tx.run("UPDATE hp_adress_neuanlagen SET status='pruefen',meldung='Lokale Adresse archiviert oder nicht mehr vorhanden.' WHERE id=?",[j.id]);return{};}
-   let data;try{const old=JSON.parse(j.daten);data=snapshot(a,HP_ANLAGE_KUERZEL,old.bekannte_hp);}catch(e){if(!(e instanceof V.ValidationError))throw e;await tx.run("UPDATE hp_adress_neuanlagen SET status='pruefen',meldung=? WHERE id=?",[e.message,j.id]);return{};}
+   let data;try{const old=JSON.parse(j.daten);data=snapshot(a,HP_ANLAGE_KUERZEL,old.bekannte_hp,b.stamm_version===1);}catch(e){if(!(e instanceof V.ValidationError))throw e;await tx.run("UPDATE hp_adress_neuanlagen SET status='pruefen',meldung=? WHERE id=?",[e.message,j.id]);return{};}
    await tx.run("UPDATE hp_adress_neuanlagen SET daten=?,status='abgeholt',abgeholt_ms=? WHERE id=?",[JSON.stringify(data),Date.now(),j.id]);return{anlegen:{id:j.id,daten:data}};
   });},
   async reservieren(id,token,b){return db.transaktion(async tx=>{
@@ -47,7 +49,7 @@ function service(db){
    if(j.reservierung){if(hash(JSON.parse(j.reservierung))!==hash(canonical))fail('HP-Nummer für diesen Auftrag bereits festgelegt.');return{ok:true};}
    if(j.status!=='abgeholt')fail('HP-Neuanlage wurde nicht zur Ausführung abgeholt.');
    const current=await tx.get('SELECT * FROM adressen WHERE id=?',[j.adresse_id]),data=JSON.parse(j.daten);
-   if(!current||current.archiviert||hash(snapshot(current,data.sb,data.bekannte_hp))!==hash(data))fail('Lokale Adresse wurde während der Vorbereitung geändert. Keine HP-Neuanlage.');
+   if(!current||current.archiviert||hash(snapshot(current,data.sb,data.bekannte_hp,!!data.stamm))!==hash(data))fail('Lokale Adresse wurde während der Vorbereitung geändert. Keine HP-Neuanlage.');
    const record={...JSON.parse(j.daten).record,nummer:r.nummer};
    if(await tx.get('SELECT 1 FROM hp_adress_zuordnung WHERE adresse_id=? OR (verbindung_id=? AND hp_nummer=?)',[j.adresse_id,id,r.nummer]))fail('HP-Nummer oder lokale Adresse ist bereits zugeordnet.');
    await tx.run("INSERT INTO hp_adress_zuordnung(verbindung_id,hp_nummer,adresse_id,basis,status,meldung,gelesen_am) VALUES(?,?,?,?,'neuanlage','HP-Neuanlage läuft; Rückprüfung steht aus.',CURRENT_TIMESTAMP)",[id,r.nummer,j.adresse_id,JSON.stringify(record)]);
@@ -59,6 +61,7 @@ function service(db){
    const digest=hash([b.status,b.record||null,b.diagnose||null]);if(j.result_hash){if(j.result_hash!==digest)fail('Abweichendes Ergebnis für bereits abgeschlossenen Auftrag.');return{ok:true};}
    if(!['abgeholt','reserviert'].includes(j.status))fail('Neuanlageauftrag ist nicht ausführbar.');
    if(b.status==='erfolg'){
+    const wantedData=JSON.parse(j.daten);if(wantedData.stamm&&(b.stamm_geprueft!==true||!b.stamm||Object.keys(b.stamm).length!==Object.keys(wantedData.stamm).length||Object.entries(wantedData.stamm).some(([k,v])=>b.stamm[k]!==v)))fail('Die zusätzlichen HP-Adressfelder sind nicht vollständig rückgeprüft.');
     if(!j.reservierung)fail('HP-Neuanlage wurde nicht reserviert.');const wanted={...JSON.parse(j.daten).record,nummer:j.hp_nummer},actual=H.record(b.record);if(hash(actual)!==hash(wanted)||b.vollstaendig_geprueft!==true)fail('HP-Rückprüfung stimmt nicht mit der Neuanlage überein.');
     await tx.run("UPDATE hp_adress_zuordnung SET basis=?,remote=?,status='synchron',meldung=NULL,gelesen_am=CURRENT_TIMESTAMP WHERE adresse_id=?",[JSON.stringify(actual),JSON.stringify(actual),j.adresse_id]);
     const number='HP-'+j.hp_nummer,other=await tx.get('SELECT id FROM adressen WHERE nummer=? AND id!=?',[number,j.adresse_id]);if(other)fail('HP-Adressnummer lokal bereits vergeben. Bitte Zuordnung prüfen.');

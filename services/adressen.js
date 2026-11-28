@@ -29,10 +29,10 @@ async function liste(db, opts = {}) {
   const suche = V.str(opts.suche);
   if (suche) {
     where.push(
-      "(nummer LIKE ? OR vorname LIKE ? OR nachname LIKE ? OR firmenname LIKE ? OR zusatz LIKE ? OR email LIKE ? OR ort LIKE ? OR telefon LIKE ? OR mobil LIKE ? OR TRIM(COALESCE(vorname,'') || ' ' || COALESCE(nachname,'')) LIKE ? OR TRIM(COALESCE(nachname,'') || ' ' || COALESCE(vorname,'')) LIKE ?)"
+      "(nummer LIKE ? OR vorname LIKE ? OR nachname LIKE ? OR firmenname LIKE ? OR zusatz LIKE ? OR email LIKE ? OR ort LIKE ? OR telefon LIKE ? OR mobil LIKE ? OR TRIM(COALESCE(vorname,'') || ' ' || COALESCE(nachname,'')) LIKE ? OR TRIM(COALESCE(nachname,'') || ' ' || COALESCE(vorname,'')) LIKE ? OR suchbegriff LIKE ?)"
     );
     const like = `%${suche}%`;
-    params.push(like, like, like, like, like, like, like, like, like, like, like);
+    params.push(like, like, like, like, like, like, like, like, like, like, like,like);
   }
   const rows = await db.all(
     `SELECT * FROM adressen WHERE ${where.join(' AND ')}
@@ -47,7 +47,7 @@ async function holen(db, id) {
     'SELECT a.*, b.name AS ampel_von_name FROM adressen a LEFT JOIN benutzer b ON b.id = a.ampel_von WHERE a.id = ?',
     [id]
   );
-  return a ? require('./hpAdressNeuanlage').metadata(db,await require('./hpAdressSync').metadata(db, { ...require('./adressBedienung').normalisieren(a), anzeigename: anzeigename(a), geburtstage:await require('./adressBedienung').geburtstage(db,a) })) : undefined;
+  return a ? require('./hpAdressNeuanlage').metadata(db,await require('./hpAdressSync').metadata(db, { ...require('./adressBedienung').normalisieren(await require('./adressStammdaten').ausHP(db,a)), anzeigename: anzeigename(a), geburtstage:await require('./adressBedienung').geburtstage(db,a) })) : undefined;
 }
 
 function validiereNamen(data, adresstyp) {
@@ -65,6 +65,7 @@ const ADRESS_FELDER = [
   'adresstyp', 'anrede', 'vorname', 'nachname', 'firmenname', 'zusatz', 'ansprechpartner',
   'strasse', 'plz', 'ort', 'land', 'email', 'telefon', 'mobil', 'notizen',
   'geburtstag', 'lkto_nr', 'datenschutz_datum',
+  ...require('./adressStammdaten').felder.map(f=>f.name),
 ];
 
 function adressWerte(data, adresstyp) {
@@ -87,10 +88,12 @@ function adressWerte(data, adresstyp) {
     V.isoDate(data.geburtstag, 'Geburtstag'),
     V.str(data.lkto_nr, 30),
     V.isoDate(data.datenschutz_datum, 'Datenschutz-Einwilligung'),
+    ...require('./adressStammdaten').felder.map(f=>data[f.name]??null),
   ];
 }
 
 async function anlegen(db, data) {
+  data=require('./adressStammdaten').validieren(data);
   const adresstyp = V.oneOf(data.adresstyp, V.ADRESSTYPEN, 'Adresstyp', 'person');
   validiereNamen(data, adresstyp);
   const werte = adressWerte(data, adresstyp);
@@ -116,6 +119,9 @@ async function aktualisierenIntern(db, id, data) {
   // Nicht mitgesendete Felder bleiben unverändert (z. B. Telefon/E-Mail, die
   // über die Kommunikationslisten gepflegt werden).
   data = { ...vorhanden, ...Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined)) };
+  const mapped=await db.get('SELECT hp_nummer FROM hp_adress_zuordnung WHERE adresse_id=?',[id]);
+  if(mapped){const base=await require('./adressStammdaten').ausHP(db,vorhanden);for(const f of require('./adressStammdaten').felder){if(Object.hasOwn(data,f.name)&&data[f.name]!==null&&String(data[f.name]||'')!==String(base[f.name]||''))throw new V.ValidationError('Bitte zusätzliche Stammdaten bestehender HP-Adressen derzeit in HausPerfekt ändern.',409);data[f.name]=base[f.name];}}
+  data=require('./adressStammdaten').validieren(mapped?data:require('./adressStammdaten').vorbereiten(data,vorhanden));
   const adresstyp = V.oneOf(data.adresstyp, V.ADRESSTYPEN, 'Adresstyp', vorhanden.adresstyp);
   validiereNamen(data, adresstyp);
   const nummer = N.pruefeNummer(data.nummer, 'Adress-Nr.') || vorhanden.nummer;

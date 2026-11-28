@@ -6,7 +6,7 @@ function eddiAdressvorschlag(details,state,job,result){
   details.append(el('section',{class:'cu-eddi-adressen'},[el('h3',{text:'Adressliste · Übernahme abgeschlossen'}),message,...(r.hinweise||[]).map(text=>el('p',{text})),el('a',{href:'#/objekte/'+r.objekt_id,text:'Angelegtes Objekt öffnen'})]));
   state.textContent=text;return{uebernehmen:async()=>{state.textContent=message.textContent=text;return text;}};
  }
- const data=JSON.parse(JSON.stringify(result.daten)),form=formular([
+ const data=JSON.parse(JSON.stringify(result.daten));data.adressen=data.adressen.map(a=>Adressdaten.vorbereiten(a));const form=formular([
   [{name:'objektnummer',label:'Objekt-Nr. (vorhanden oder neu)',value:data.objekt.nummer,required:true}],
   [{name:'bezeichnung',label:'Objektbezeichnung',value:data.objekt.bezeichnung,required:true},{name:'strasse',label:'Objektstraße',value:data.objekt.strasse,required:true}],
   [{name:'plz',label:'Objekt-PLZ',value:data.objekt.plz,required:true},{name:'ort',label:'Objekt-Ort',value:data.objekt.ort,required:true}]
@@ -14,15 +14,16 @@ function eddiAdressvorschlag(details,state,job,result){
  const show=text=>{state.textContent=message.textContent=text;};
  const table=el('table',{'aria-label':'Erkannte Adressen'},[el('thead',{},[el('tr',{},['Name / Firma','Postanschrift','Kontakt','Wohnung','Funktion','Fundstelle'].map(text=>el('th',{text})))]),rows]);
  for(const [i,a]of data.adressen.entries()){
-  const item={};const input=(key,label)=>item[key]=el('input',{'aria-label':label+' · Zeile '+(i+1),value:a[key]||''});
+  const item={};const input=(key,label)=>item[key]=el('input',{'aria-label':label+' · Zeile '+(i+1),type:key==='geburtstag'?'date':Adressdaten.felder.find(f=>f.name===key)?.type||'text',value:a[key]||''});
+  const extra=el('details',{},[el('summary',{text:'Weitere Adressfelder'}),...['suchbegriff','titel','anrede','zusatz','name3','beruf','briefanrede1','briefanrede2','geburtstag','geburtstag2','geburtsname','sterbedatum1','sterbedatum2',...Adressdaten.felder.filter(f=>f.name.startsWith('sonderfunktion')).map(f=>f.name)].map(key=>{const f=Adressdaten.felder.find(f=>f.name===key),label=f?.label||({anrede:'Anrede',zusatz:'Name 2 / Zusatz',geburtstag:'Geburtstag'}[key]);const control=input(key,label);if(f)control.maxLength=f.max;return el('label',{},[document.createTextNode(label),control]);})]);
   const role=item.funktion=el('select',{'aria-label':'Funktion · Zeile '+(i+1)},[['unklar','Bitte prüfen'],['eigentuemer','Eigentümer'],['mieter','Mieter'],['sonstiges','Sonstiges']].map(([value,text])=>el('option',{value,text})));role.value=a.funktion;
   rows.append(el('tr',{},[
-   el('td',{},[input('vorname','Vorname'),input('nachname','Nachname'),input('firmenname','Firma')]),
-   el('td',{},[input('strasse','Straße'),input('plz','PLZ'),input('ort','Ort')]),
+   el('td',{},[input('vorname','Vorname'),input('nachname','Nachname'),input('firmenname','Firma'),extra]),
+   el('td',{},[input('strasse','Straße'),input('plz','PLZ'),input('ort','Ort'),input('land','Land')]),
    el('td',{},[input('email','E-Mail'),input('telefon','Telefon'),input('mobil','Mobil')]),
    el('td',{},[input('wohnung_nummer','Wohnungsnummer'),input('wohnung_bezeichnung','Wohnungsbezeichnung'),input('lage','Lage')]),
    el('td',{},[role]),el('td',{},[el('details',{},[el('summary',{text:'Seite '+(a.beleg?.seite||'?')}),el('p',{text:a.beleg?.zitat||'Keine Fundstelle'})])])
-  ]));fields.push(item);
+  ]));fields.push(item);Adressdaten.binden(item,a);
  }
  function body(){const f=form.werte();return{objektnummer:f.objektnummer,dublettenwahl:{...choices},daten:{objekt:{...data.objekt,bezeichnung:f.bezeichnung,strasse:f.strasse,plz:f.plz,ort:f.ort},adressen:data.adressen.map((a,i)=>({...a,...Object.fromEntries(Object.entries(fields[i]).map(([k,v])=>[k,v.value]))}))}};}
  async function speichern(){
@@ -50,7 +51,7 @@ function eddiAdressvorschlag(details,state,job,result){
  }
  const check=el('button',{type:'button',text:'Vorschau und Dubletten prüfen',onclick:pruefen});
  form.form.addEventListener('submit',e=>e.preventDefault());
- const container=el('div',{class:'cu-eddi-adressen'},[el('h3',{text:'Adressliste · Objekt und Wohnungen zuordnen'}),el('p',{text:'Vorhandene Datensätze werden abgeglichen. Fehlende MEA verhindern diesen Import nicht; es werden keine MEA oder Stimmregeln erfunden.'}),form.form,el('div',{class:'cu-eddi-einheiten'},[table]),check,preview,message,take]);
+ const container=el('div',{class:'cu-eddi-adressen'},[el('h3',{text:'Adressliste · Objekt und Wohnungen zuordnen'}),el('p',{text:'Vorhandene Datensätze werden abgeglichen. Fehlende MEA verhindern diesen Import nicht; es werden keine MEA oder Stimmregeln erfunden.'}),el('p',{text:'Objekt und Wohnungen werden in CuraAed angelegt. Eine Neuanlage dieser Datensätze in HausPerfekt ist noch nicht angebunden. Adressen werden über den freigegebenen HP-Adressconnector übertragen.'}),form.form,el('div',{class:'cu-eddi-einheiten'},[table]),check,preview,message,take]);
  const invalidate=e=>{digest=null;take.disabled=true;if(!preview.contains(e.target))for(const key of Object.keys(choices))delete choices[key];};container.addEventListener('input',invalidate);container.addEventListener('change',invalidate);details.append(container);
  return{uebernehmen:speichern,pruefen};
 }

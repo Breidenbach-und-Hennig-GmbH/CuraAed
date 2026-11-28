@@ -4,7 +4,7 @@ const tick = () => new Promise(r => setImmediate(r));
 function setup(t, role = 'mitarbeiter') {
   const dom = new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>', { runScripts: 'outside-only', url: 'https://curaaed.test/#/' });
   t.after(() => dom.window.close()); const w = dom.window;
-  for (const f of ['ui', 'kern', 'shell', 'eddi', 'eddi-adressen', 'eddi-teilung', 'eddi-modell']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js/' + f + '.js'), 'utf8'), dom.getInternalVMContext());
+  for (const f of ['adressdaten','ui', 'kern', 'shell', 'eddi', 'eddi-adressen', 'eddi-teilung', 'eddi-modell']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js/' + f + '.js'), 'utf8'), dom.getInternalVMContext());
   w.eval('S.benutzer={id:1,rolle:' + JSON.stringify(role) + ',name:"Test"}'); return w;
 }
 

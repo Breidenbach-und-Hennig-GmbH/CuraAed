@@ -25,6 +25,16 @@ test('Erkennung akzeptiert nur belegte Kontakte; eine nicht belegte Eigentümerf
  d.adressen[0].email='erfunden@example.test';assert.throws(()=>daten(d,p),/Fundstelle/);
 });
 
+test('Eigentümer-Tabellenüberschrift belegt die Funktion auf derselben Seite; vorhandene Titel werden vollständig weitergegeben',()=>{
+ const raw=data(),head='Haus Wohnung Eigentümer Anschrift';for(const a of raw.adressen){a.funktion='eigentuemer';a.titel='Dr.';a.beleg.zitat='Dr. Anna Mustermann anna@example.test';a.funktionsbeleg={seite:1,zitat:head};}
+ const pages=[{seite:1,text:head+' Dr. Anna Mustermann anna@example.test'}];const d=daten(raw,pages);assert.equal(d.adressen[0].funktion,'eigentuemer');assert.equal(d.adressen[0].titel,'Dr.');assert.equal(d.adressen[0].suchbegriff,'MUSTERMANN, ANNA');assert.equal(d.adressen[0].briefanrede1,'Guten Tag Dr. Anna Mustermann,');
+ raw.adressen[0].funktionsbeleg.seite=2;assert.equal(daten(raw,[...pages,{seite:2,text:head}]).adressen[0].funktion,'unklar');raw.adressen[0].titel='Prof.';assert.throws(()=>daten(raw,pages),/Fundstelle/);
+});
+
+test('Fehlende Wohnung in einer Eigentümer-Wohnungsliste verhindert eine unvollständige Zuordnung',async t=>{
+ const f=await fixture(t);await f.svc.analysieren(f.user,'job',true);const d=data();d.adressen[0].wohnung_nummer='';d.adressen[0].funktion='eigentuemer';await assert.rejects(f.svc.vorschau(f.user,'job',{daten:d}),/Wohnungsnummer/);assert.equal((await f.db.get('SELECT count(*) n FROM adressen')).n,0);
+});
+
 test('Dublettenentscheidung verwendet nur angebotene aktive Adressen, schützt vor Änderungen und überschreibt keine Stammdaten',async t=>{
  const f=await fixture(t),a=await require('../services/adressen').anlegen(f.db,{...row(),strasse:'Andere Straße 2'});await f.svc.analysieren(f.user,'job',true);
  const body={dublettenwahl:{0:String(a.id),1:String(a.id)}};

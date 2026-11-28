@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),{JSDOM}=require('jsdom');
 const codes=[{code:'002',rolle:'eigentuemer',bezeichnung:'Eigentümer fremdvermietet'},{code:'005',rolle:'mieter',bezeichnung:'Mieter'},{code:'00X',rolle:'eigentuemer',bezeichnung:'Sonstiges Abr.'},{code:'$',rolle:'handwerker',bezeichnung:'Sonderfunktion'}];
-function setup(t){const d=new JSDOM('<div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.test/#/einheiten/1'});t.after(()=>d.window.close());for(const f of ['ui','kern','shell','dialoge','masken'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),d.getInternalVMContext());d.window.eval('S.lauf=1;S.benutzer={id:1,rolle:"mitarbeiter"}');d.window.API={qs:o=>'?',get:async url=>url==='/pfkt-codes'?codes:[]};return d.window;}
+function setup(t){const d=new JSDOM('<div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.test/#/einheiten/1'});t.after(()=>d.window.close());for(const f of ['adressdaten','ui','kern','shell','dialoge','masken'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),d.getInternalVMContext());d.window.eval('S.lauf=1;S.benutzer={id:1,rolle:"mitarbeiter"}');d.window.API={qs:o=>'?',get:async url=>url==='/pfkt-codes'?codes:[]};return d.window;}
 const type=(w,input,value)=>{input.value=value;input.dispatchEvent(new w.Event('input',{bubbles:true}));};
 const save=w=>[...w.document.querySelectorAll('footer button')].find(b=>b.textContent==='Speichern').click();
 const tick=()=>new Promise(r=>setTimeout(r,10));

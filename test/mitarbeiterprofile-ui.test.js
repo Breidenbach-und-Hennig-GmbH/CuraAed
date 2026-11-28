@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 test('Mitarbeiter-Symbole und Profil: eigene Login-ID speichern, Formular erneut laden',async t=>{
  const d=new JSDOM('<div id="cu-team"></div><div id="cu-eigenes-bild"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.test'});
  t.after(()=>d.window.close());const w=d.window;
- for(const f of ['ui','kern','shell','mitarbeiterprofile'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),d.getInternalVMContext());
+ for(const f of ['adressdaten','ui','kern','shell','mitarbeiterprofile'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),d.getInternalVMContext());
  w.eval('S.benutzer={id:1,name:"Test",rolle:"mitarbeiter"}');
  let profile={starface_login_id:'',revision:0,bild_url:'/images/mitarbeiter-platzhalter.svg'};
  w.API={get:async url=>url.endsWith('/ich')?profile:[{id:1,name:'Test',bild_url:profile.bild_url},{id:2,name:'Kollege',bild_url:profile.bild_url}],put:async(url,data)=>{assert.equal(url,'/mitarbeiterprofile/ich');assert.equal(data.revision,0);profile={...profile,...data,revision:1};}};

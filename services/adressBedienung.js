@@ -38,13 +38,13 @@ async function letzte(db) {
   return a?{...normalisieren(a),anzeigename:require('./adressen').anzeigename(a)}:null;
 }
 async function geburtstage(db,a) {
-  const result=a.geburtstag?[{datum:a.geburtstag,label:'Geburtstag'}]:[];
+  const result=[...(a.geburtstag?[{datum:a.geburtstag,label:'Geburtstag'}]:[]),...(a.geburtstag2?[{datum:a.geburtstag2,label:'Geburtstag 2'}]:[])];
   const bereich=await db.get("SELECT b.rohdaten FROM hp_adress_bereiche b JOIN hp_adress_zuordnung m ON m.verbindung_id=b.verbindung_id AND m.hp_nummer=b.hp_nummer WHERE m.adresse_id=? AND b.bereich='stamm'",[a.id]);
   if(!bereich)return result;
   let rows;try{rows=JSON.parse(bereich.rohdaten);}catch{return result;}
   const r=Array.isArray(rows)?rows[0]:null;
   for(const [feld,label]of [['GebDat1','Geburtstag'],['GebDat2','Geburtstag 2']]){
-    if(feld==='GebDat1'&&a.geburtstag)continue;
+    if(feld==='GebDat1'&&a.geburtstag||feld==='GebDat2'&&a.geburtstag2)continue;
     const n=Number(r?.[feld]);if(!Number.isInteger(n)||n<1)continue;
     try{const datum=require('../lib/hpObjektstatus').ordinalDatum(n);if(!result.some(x=>x.datum===datum))result.push({datum,label});}catch{}
   }

@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),{JSDOM}=require('jsdom');
 const tick=()=>new Promise(r=>setImmediate(r));
-function setup(t){const dom=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div>',{runScripts:'outside-only',url:'https://curaaed.test/#/etv/7?schritt=teilnehmer'});t.after(()=>dom.window.close());for(const f of ['ui','kern','shell','etv-ablauf']){vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),dom.getInternalVMContext());if(f==='ui')dom.window.eval('UI.bestaetigen=async()=>window.confirmation===true');}dom.window.eval('S.benutzer={rolle:"admin"};S.lauf=1');return dom.window;}
+function setup(t){const dom=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div>',{runScripts:'outside-only',url:'https://curaaed.test/#/etv/7?schritt=teilnehmer'});t.after(()=>dom.window.close());for(const f of ['adressdaten','ui','kern','shell','etv-ablauf']){vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),dom.getInternalVMContext());if(f==='ui')dom.window.eval('UI.bestaetigen=async()=>window.confirmation===true');}dom.window.eval('S.benutzer={rolle:"admin"};S.lauf=1');return dom.window;}
 test('Schrittleiste zeigt die aktuelle Phase, behält die Versammlung bei und schützt ungespeicherte Änderungen',async t=>{
  const w=setup(t),field=w.document.createElement('input');field.value='Alt';let links=[],confirmation=false;
  w.geheZu=h=>links.push(h);w.confirmation=false;

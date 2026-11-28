@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),{JSDOM}=require('jsdom');
-function setup(t){const d=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.test/#/einheiten/1'});t.after(()=>d.window.close());for(const f of ['ui','kern','shell','dialoge','masken'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),d.getInternalVMContext());d.window.eval('S.lauf=1;S.benutzer={id:1,rolle:"mitarbeiter"}');return d.window;}
+function setup(t){const d=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.test/#/einheiten/1'});t.after(()=>d.window.close());for(const f of ['adressdaten','ui','kern','shell','dialoge','masken'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),d.getInternalVMContext());d.window.eval('S.lauf=1;S.benutzer={id:1,rolle:"mitarbeiter"}');return d.window;}
 const settle=()=>new Promise(r=>setTimeout(r,220));
 test('Neue Personenfunktion: Name statt Dropdown, Suche über API, Pfeile/Enter speichern ausschließlich ausgewählte ID',async t=>{
  const w=setup(t),queries=[],saves=[];w.API={qs:o=>'?'+new URLSearchParams(o),get:async url=>{

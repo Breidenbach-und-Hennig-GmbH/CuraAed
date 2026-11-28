@@ -973,9 +973,10 @@ function anschriftZeilen(a) {
     if (a.ansprechpartner) z.push('z. Hd. ' + a.ansprechpartner);
   } else {
     z.push({ Herr: 'Herrn', Frau: 'Frau' }[a.anrede] || '');
-    z.push([a.vorname, a.nachname].filter(Boolean).join(' '));
+    z.push([a.titel,a.vorname, a.nachname].filter(Boolean).join(' '));
   }
   if (a.zusatz) z.splice(a.adresstyp === 'firma' ? 2 : z.length, 0, a.zusatz);
+  if(a.name3)z.push(a.name3);
   z.push(a.strasse);
   const kz = LAENDER_KZ[String(a.land || '').trim().toLowerCase()];
   const ort = [a.plz, a.ort].filter(Boolean).join(' ');

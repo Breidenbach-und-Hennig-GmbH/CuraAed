@@ -6,7 +6,7 @@ function setup(t){
  const dom=new JSDOM('<button id="start">Suchen</button><div id="modal-container"></div><div id="toast-container"></div>',{url:'https://example.test',runScripts:'outside-only'});t.after(()=>dom.window.close());
  const w=dom.window,calls=[];w.API={qs:p=>'?'+new URLSearchParams(p),get:async url=>{calls.push(url);return [{id:1,nummer:'HP-9',name:'Test, Anna',pf_status:'ohne'}];}};
  w.geheZu=url=>calls.push(url);
- for(const file of ['ui','kern','masken'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());
+ for(const file of ['adressdaten','ui','kern','masken'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());
  return {w,calls,button:text=>[...w.document.querySelectorAll('button')].find(b=>b.textContent===text)};
 }
 test('Gesamtliste kombiniert Filter und Sortierung, Tab/Enter bleiben nutzbar',async t=>{
