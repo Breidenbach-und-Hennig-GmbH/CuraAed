@@ -5,6 +5,7 @@ module.exports = (db, publicUrl, options, uploadDir) => {
   const r = express.Router(), eddi = require('../services/eddi').baue(db, options);
   const te = require('../services/teilungserklaerung').baue(db, uploadDir, options);
   const model = require('../services/eddiModell').baue(db, options);
+  const adressen = require('../services/eddiAdressen').baue(db, options);
   r.use(auth.erfordereSchreibrecht);
   r.use((req, res, next) => {
     res.set('Cache-Control', 'no-store');
@@ -24,7 +25,13 @@ module.exports = (db, publicUrl, options, uploadDir) => {
   const upload = require('multer')({ storage: require('multer').memoryStorage(), limits: { fileSize: 25 * 1024 * 1024, files: 1 } }).single('datei');
   let uploadHolder=null;
   r.post('/teilungen',(req,res,next)=>{if(uploadHolder||te.aktiv())return next(new ValidationError('Eddi bearbeitet gerade ein Dokument. Bitte kurz warten.',409));const holder=uploadHolder=Symbol();res.once('close',()=>{if(uploadHolder===holder)uploadHolder=null;});next();}, (req, res, next) => upload(req, res, e => e ? next(new ValidationError('Bitte eine einzelne PDF bis 25 MB auswählen.')) : next()), h(async (req, res) => res.status(202).json(await te.starten(req.benutzer, req.file))));
-  r.get('/teilungen/:id', h(async (req, res) => res.json(await te.stand(req.benutzer, req.params.id))));
+  r.get('/teilungen/:id', h(async (req, res) => {
+    const result=await te.stand(req.benutzer,req.params.id),row=await te.own(req.benutzer,req.params.id);
+    res.json({...result,adressliste:await adressen.stand(req.benutzer,req.params.id),dokumenttyp:/\badressliste\b/i.test(row.dateiname+' '+String(row.seiten||'').slice(0,1500))?'adressliste':'teilung'});
+  }));
+  r.post('/teilungen/:id/adressen/auswerten',h(async(req,res)=>res.json(await adressen.analysieren(req.benutzer,req.params.id,req.body?.zustimmung))));
+  r.post('/teilungen/:id/adressen/vorschau',h(async(req,res)=>res.json(await adressen.vorschau(req.benutzer,req.params.id,req.body||{}))));
+  r.post('/teilungen/:id/adressen/uebernehmen',h(async(req,res)=>res.json(await adressen.uebernehmen(req.benutzer,req.params.id,req.body||{}))));
   r.post('/teilungen/:id/lesen',h(async(req,res)=>res.status(202).json(await te.erneutLesen(req.benutzer,req.params.id))));
   r.post('/teilungen/:id/auswerten', h(async (req, res) => {
     if (!(await eddi.status()).bereit) throw new ValidationError('Bitte zuerst Eddis Sprachmodell einrichten.', 503);

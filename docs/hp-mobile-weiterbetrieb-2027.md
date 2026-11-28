@@ -102,8 +102,32 @@ Aktivierungen und 24-Stunden-Kundensitzungen sind vollständig von Mitarbeiterko
 getrennt. Im Speicher liegen ausschließlich Hashes der Link- und Sitzungsgeheimnisse.
 Firmenkennung, Kontorevision, aktuelle Adress-/Wohnungszuordnung und Rollengültigkeit
 werden bei jedem Portalzugriff erneut geprüft; Änderungen entziehen den Zugriff.
-Das Portal zeigt derzeit nur die eigenen Objekt- und Wohnungszuordnungen.
-Dokumentabruf, Tickets und die übrigen Mobile-Funktionen sind damit noch nicht ersetzt.
+Das Portal zeigt eigene Objekt-/Wohnungszuordnungen und ausdrücklich freigegebene Dokumente.
+Tickets und die übrigen Mobile-Funktionen sind damit noch nicht vollständig ersetzt.
+
+### Dokumente im Kundenportal
+
+Im Objekt-, Wohnungs- oder Adressarchiv öffnet **Kundenportal** als Administrator
+die Freigabevorschau. Firma, Zuordnungen und Zielgruppe (Eigentümer, Mieter oder beide)
+prüfen; **Freigeben** veröffentlicht genau dieses Dokument für berechtigte angemeldete
+Kunden. **Freigabe entziehen** sperrt auch bereits bekannte Download-URLs.
+Die alte interne Kennzeichnung „öffentlich“ veröffentlicht keine Unterlagen.
+Es erfolgt keine automatische Sammelfreigabe des historischen Archivs.
+
+Eine persönliche Adresszuordnung muss zum Kunden passen. Wohnungszuordnungen
+schränken einen zusätzlichen allgemeinen Objektbezug ein; bei mehreren Wohnungen
+müssen alle dem Kunden zugeordnet sein. Die Zielgruppe wird je Dokument geprüft.
+Firmengrenzen, aktive Verwaltung, aktuelle Personenfunktionen und Kontositzung
+werden auch beim direkten Dateiabruf geprüft. Testkonten erhalten keine Dokumente.
+Eine geänderte Dokumentzuordnung setzt eine neue Freigabe voraus.
+
+Native Dateien und übernommene HP-Archivdateien werden ausschließlich aus der lokalen
+CuraAed-Ablage gelesen. Keine HP-Anmeldung, kein Nachladen vom ERP oder HP Mobile.
+Unvollständige HP-Zuordnungen, fremde Quellen und fehlende Dateien bleiben gesperrt.
+Dateipfade werden begrenzt und der bei Freigabe bestätigte Dateiinhalt vor Download
+erneut gehasht. Nur echte PDFs dürfen inline öffnen, andere Dateien werden mit
+Download-Disposition und ohne aktiven HTML-Inhalt ausgeliefert. Antworten sind nicht
+zwischenspeicherbar. Sitzung und Freigabe werden nach dem Lesen nochmals geprüft.
 Über **Aus Adresse** kann ein Administrator einen separaten Kundenzugang vorbereiten,
 wenn ein Eigentümer zuvor nur als HP-Mobile-Teamkonto geführt wurde. Die ausgewählten
 HP-Adressnummern müssen aus derselben Firmenquelle stammen; die E-Mail muss in einer

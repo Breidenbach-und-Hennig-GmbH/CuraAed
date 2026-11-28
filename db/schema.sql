@@ -1204,3 +1204,14 @@ CREATE TABLE IF NOT EXISTS kunden_sitzungen (
  token_hash TEXT PRIMARY KEY,konto_id INTEGER NOT NULL REFERENCES kunden_konten(id) ON DELETE CASCADE,
  revision INTEGER NOT NULL,ablauf_ms INTEGER NOT NULL,erstellt_ms INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS eddi_adressimporte (
+ job_id TEXT PRIMARY KEY REFERENCES eddi_teilungen(id) ON DELETE CASCADE,
+ daten TEXT NOT NULL,ergebnis TEXT
+);
+CREATE TABLE IF NOT EXISTS kunden_dokumentfreigaben (
+ id TEXT PRIMARY KEY,quelle_id TEXT NOT NULL REFERENCES kunden_firmen_quellen(quelle_id),
+ dokument TEXT NOT NULL,zielgruppe TEXT NOT NULL CHECK(zielgruppe IN ('eigentuemer','mieter','beide')),
+ basis TEXT NOT NULL,datei_hash TEXT NOT NULL,aktiv INTEGER NOT NULL DEFAULT 1,
+ erstellt_von INTEGER NOT NULL REFERENCES benutzer(id),geaendert_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE(quelle_id,dokument)
+);

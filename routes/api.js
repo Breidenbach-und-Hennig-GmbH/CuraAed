@@ -146,7 +146,7 @@ function baueApi(db, uploadDir, options = {}) {
   router.hpArchiv = hpRouter.archiv;
   router.use('/eingangsrechnungen',require('./eingangsrechnungen').baueRouter(db,hpRouter.archiv,options.hausperfekt?.publicUrl,uploadDir));
   router.use('/hausperfekt', hpRouter);
-  router.use('/kunden', require('./kundenverwaltung')(db, options.hausperfekt?.publicUrl));
+  router.use('/kunden', require('./kundenverwaltung')(db, options.hausperfekt?.publicUrl, uploadDir));
   const vorgaengeRouter = require('./vorgaenge').baueRouter(db,{hp:hpRouter.service,archiv:hpRouter.archiv,publicUrl:options.hausperfekt?.publicUrl});
   router.use('/vorgaenge',vorgaengeRouter);
   const posteingang=require('../services/dmsPosteingang').bauePosteingang(db);

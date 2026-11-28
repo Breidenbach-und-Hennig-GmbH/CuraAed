@@ -1,8 +1,8 @@
 'use strict';
 
 function eddiTeilung(root, modelStatus, consent) {
-  const box = el('section', { class: 'cu-eddi-teilung', hidden: true, 'aria-label': 'Teilungserklärung prüfen' });
-  const file = el('input', { type: 'file', accept: '.pdf,application/pdf', hidden: true, 'aria-label': 'Teilungserklärung auswählen' });
+  const box = el('section', { class: 'cu-eddi-teilung', hidden: true, 'aria-label': 'Dokument prüfen' });
+  const file = el('input', { type: 'file', accept: '.pdf,application/pdf', hidden: true, 'aria-label': 'Dokument als PDF auswählen' });
   const state = el('p', { role: 'status', 'aria-live': 'polite' }), details = el('div');
   const choose = el('button', { type: 'button', text: 'Dokument analysieren', onclick: () => file.click() });
   const prepared=el('input',{type:'file',accept:'.json,application/json',hidden:true,'aria-label':'Vorbereitete Teilungsdaten auswählen'});
@@ -40,6 +40,9 @@ function eddiTeilung(root, modelStatus, consent) {
       state.textContent = r.dateiname + ' · ' + ({ lesen: 'Seite ' + r.fortschritt + ' von ' + (r.gesamt || '?') + ' wird gelesen', gelesen: 'Alle ' + r.gesamt + ' Seiten lokal gelesen', auswerten: 'Objekt, Einheiten und Stimmregeln werden ausgewertet', analysiert: 'Vorschlag fertig · bitte mit dem Original vergleichen', uebernommen: 'Objekt und Einheiten angelegt', fehler: r.meldung || 'Bearbeitung unterbrochen' }[r.status] || r.status);
       details.replaceChildren();
       details.append(el('button', { type: 'button', text: 'Original-PDF anzeigen', onclick: () => dmsVorschau('/api/eddi/teilungen/' + job + '/datei', { titel: r.dateiname, original_name: r.dateiname }) }));
+      if(r.gelesen&&!r.objekt_id){details.append(el('button',{type:'button',text:r.adressliste?'Adressliste erneut auswerten':'Als Adressliste auswerten',onclick:adressenAuswerten}));
+        if(r.adressliste){eddiAdressvorschlag(details,state,job,r.adressliste);return;}
+        if(r.dokumenttyp==='adressliste'){state.textContent='Adressliste erkannt. Bitte „Als Adressliste auswerten“ wählen. Adressen, Objekt und Wohnungen werden ohne MEA-Pflicht abgeglichen.';return;}}
       if (r.objekt_id) { details.append(el('a', { href: '#/objekte/' + r.objekt_id, text: 'Angelegtes Objekt öffnen' })); return; }
       if (['lesen', 'auswerten'].includes(r.status)) { timer = setTimeout(poll, 3000); return; }
       if(r.gelesen)details.append(el('button',{type:'button',text:'Vorbereitete Daten laden',onclick:()=>prepared.click()}));
@@ -80,14 +83,20 @@ function eddiTeilung(root, modelStatus, consent) {
       if (!await bestaetigen((d.vorlaeufig?'Vorläufiges lokales Objekt ohne HausPerfekt-Kopplung':'Neues Objekt')+' mit ' + data.wohnungen.length + ' Einheiten jetzt anlegen? Das Stimmprinzip bleibt bis zur Prüfung im ETV-Tool unbestätigt.')) return;
       take.disabled = true;
       try { await API.post('/eddi/teilungen/' + job + '/uebernehmen', { daten: data, objektnummer: v.objektnummer, geprueft: true, vorlaeufig:d.vorlaeufig===true }); await poll(); }
-      catch (e) { state.textContent = e.message; take.disabled = false; }
+      catch (e) { state.textContent = e.message; take.disabled = false; take.insertAdjacentElement('afterend',el('p',{role:'alert',text:e.message})); }
     } });
     details.append(f.form, ...(d.objekt_belege || []).map(x => el('p', { text: 'Objekt-Fundstelle · PDF-Seite ' + x.seite + ': ' + x.zitat })), el('h3', { text: 'Einheiten · Vorschlag' }), el('div', { class: 'cu-eddi-einheiten' }, [table]), el('button', { type: 'button', text: 'Einheit ergänzen', onclick: () => add() }),
       el('h3', { text: 'Stimmregeln · vor ETV fachlich prüfen' }), ...d.stimmregeln.map(r => el('p', { text: (STIMM_PRINZIP[r.prinzip] || 'Unklar') + ' · ' + r.text + '\nPDF-Seite ' + r.beleg.seite + ': ' + r.beleg.zitat })),
       ...d.hinweise.map(text => el('p', { class: 'cu-eddi-warnung', text })), el('label', { class: 'cu-eddi-zustimmung' }, [checked, el('span', { text: 'Angaben mit dem vorliegenden Original verglichen; offene Punkte bleiben als Prüfhinweis erhalten.' })]), take);
     f.form.addEventListener('submit', e => e.preventDefault());
   }
-  box.append(el('p', {text: 'Analysebereich: Teilungserklärung · Objekt, Wohnungen, MEA und Stimmregeln prüfen.'}), state, details);
+  box.append(el('p', {text: 'Dokument prüfen · Teilungserklärung oder Adressliste mit Objekt- und Wohnungszuordnung.'}), state, details);
   if (job) { box.hidden = false; setTimeout(() => { if (root.isConnected) poll(); }, 0); }
-  return { button: choose, box, laden };
+  async function adressenAuswerten(){
+    const m=await modelStatus();if(!m?.bereit){state.textContent='Bitte Eddis Sprachmodell verbinden.';return;}
+    if(!consent.checked){state.textContent='Bitte die Verarbeitung durch Eddis Sprachmodell erlauben.';consent.focus();return;}
+    if(busy)return;busy=true;state.textContent='Eddi erkennt Adressen, Objekt und Wohnungszuordnungen …';
+    try{await API.post('/eddi/teilungen/'+job+'/adressen/auswerten',{zustimmung:true});await poll();}catch(e){state.textContent=e.message;}finally{busy=false;}
+  }
+  return { button: choose, box, laden, auftrag:async text=>{if(!job||!/(adress)/i.test(text)||!/(anleg|übernehm|import)/i.test(text))return false;await adressenAuswerten();return true;} };
 }
