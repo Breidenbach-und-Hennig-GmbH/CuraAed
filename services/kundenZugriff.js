@@ -9,6 +9,10 @@ async function pruefen(db,id,{owner=null,now=Date.now()}={}){
  if(!k)fail('Kundenkonto nicht gefunden.',404);
  if(owner!==null)await require('./kundenFirmen').quelle(db,owner,k.quelle_id);
  if(k.status!=='vorbereitet'||!k.direkt_id||!k.email||!k.name)fail('Diese Kundenzuordnung muss zuerst geprüft werden.');
+ if(k.externe_id.startsWith('test:')){
+  if(k.personen!=='[]'||await db.get('SELECT 1 FROM kunden_konto_adressen WHERE konto_id=?',[id]))fail('Testkonten dürfen keine echten Adresszuordnungen enthalten.');
+  return{konto:k,rollen:[],testkonto:true,pruefwert:crypto.createHash('sha256').update(JSON.stringify([k.id,k.revision,k.email,k.quelle_id,k.direkt_id,k.firma_id,'test-ohne-objekte'])).digest('hex')};
+ }
  let personen;try{personen=JSON.parse(k.personen);}catch{fail('Die Personenbezüge sind ungültig.');}
  const numbers=personen.map(p=>p.hp_id);
  if(!numbers.length||numbers.length>200||numbers.some(n=>!Number.isSafeInteger(n)||n<1)||new Set(numbers).size!==numbers.length)fail('Die Personenbezüge sind nicht eindeutig.');
@@ -35,7 +39,7 @@ async function pruefen(db,id,{owner=null,now=Date.now()}={}){
  return {konto:k,rollen:roles,pruefwert:crypto.createHash('sha256').update(JSON.stringify(basis)).digest('hex')};
 }
 function oeffentlich(s){
- return {name:s.konto.name,email:s.konto.email,firma:{id:s.konto.firma_id,name:s.konto.firma_name},
+ return {name:s.konto.name,email:s.konto.email,testkonto:s.testkonto===true,firma:{id:s.konto.firma_id,name:s.konto.firma_name},
  objekte:[...new Map(s.rollen.map(r=>[r.objekt_id,{nummer:r.objekt_nummer,bezeichnung:r.objekt_name}])).values()],
  wohnungen:s.rollen.filter(r=>r.einheit_id!==null).map(r=>({objekt_nummer:r.objekt_nummer,nummer:r.einheit_nummer,bezeichnung:r.einheit_name,rolle:r.rolle}))};
 }
