@@ -1,10 +1,16 @@
 'use strict';
 function eddiAdressvorschlag(details,state,job,result){
+ if(result.ergebnis){
+  const r=result.ergebnis,text='Diese Adressliste wurde bereits übernommen. '+r.adressen_neu+' Adressen und '+r.wohnungen_neu+' Einheiten neu angelegt; '+r.adressen_vorhanden+' vorhandene Adressbezüge verwendet; '+r.zuordnungen+' Funktionen zugeordnet.';
+  const message=el('p',{role:'status','aria-live':'polite',text});
+  details.append(el('section',{class:'cu-eddi-adressen'},[el('h3',{text:'Adressliste · Übernahme abgeschlossen'}),message,...(r.hinweise||[]).map(text=>el('p',{text})),el('a',{href:'#/objekte/'+r.objekt_id,text:'Angelegtes Objekt öffnen'})]));
+  state.textContent=text;return{uebernehmen:async()=>{state.textContent=message.textContent=text;return text;}};
+ }
  const data=JSON.parse(JSON.stringify(result.daten)),form=formular([
   [{name:'objektnummer',label:'Objekt-Nr. (vorhanden oder neu)',value:data.objekt.nummer,required:true}],
   [{name:'bezeichnung',label:'Objektbezeichnung',value:data.objekt.bezeichnung,required:true},{name:'strasse',label:'Objektstraße',value:data.objekt.strasse,required:true}],
   [{name:'plz',label:'Objekt-PLZ',value:data.objekt.plz,required:true},{name:'ort',label:'Objekt-Ort',value:data.objekt.ort,required:true}]
- ]),rows=el('tbody'),fields=[],message=el('p',{role:'status','aria-live':'polite'}),preview=el('div'),choices={};let digest=null,busy=false,completed=result.ergebnis||null;
+ ]),rows=el('tbody'),fields=[],message=el('p',{role:'status','aria-live':'polite'}),preview=el('div'),choices={};let digest=null,busy=false,completed=null;
  const show=text=>{state.textContent=message.textContent=text;};
  const table=el('table',{'aria-label':'Erkannte Adressen'},[el('thead',{},[el('tr',{},['Name / Firma','Postanschrift','Kontakt','Wohnung','Funktion','Fundstelle'].map(text=>el('th',{text})))]),rows]);
  for(const [i,a]of data.adressen.entries()){
@@ -46,6 +52,5 @@ function eddiAdressvorschlag(details,state,job,result){
  form.form.addEventListener('submit',e=>e.preventDefault());
  const container=el('div',{class:'cu-eddi-adressen'},[el('h3',{text:'Adressliste · Objekt und Wohnungen zuordnen'}),el('p',{text:'Vorhandene Datensätze werden abgeglichen. Fehlende MEA verhindern diesen Import nicht; es werden keine MEA oder Stimmregeln erfunden.'}),form.form,el('div',{class:'cu-eddi-einheiten'},[table]),check,preview,message,take]);
  const invalidate=e=>{digest=null;take.disabled=true;if(!preview.contains(e.target))for(const key of Object.keys(choices))delete choices[key];};container.addEventListener('input',invalidate);container.addEventListener('change',invalidate);details.append(container);
- if(completed){show('Diese Adressliste wurde bereits übernommen.');check.disabled=take.disabled=true;preview.append(el('a',{href:'#/objekte/'+completed.objekt_id,text:'Angelegtes Objekt öffnen'}));}
  return{uebernehmen:speichern};
 }
