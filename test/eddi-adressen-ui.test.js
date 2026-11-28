@@ -12,6 +12,14 @@ test('Adressvorschau übernimmt nur nach aktueller Dublettenprüfung; Änderunge
  assert.equal(calls[2].body.geprueft,true);assert.equal(calls[2].body.pruefwert,'checked');assert.equal(root.querySelectorAll('input[aria-label="Miteigentumsanteil"]').length,0);
 });
 
+test('Erneutes Öffnen einer übernommenen Liste zeigt das Ergebnis statt veralteter editierbarer Auslesedaten',async t=>{
+ const dom=new JSDOM('<div id="root"></div>',{url:'https://curaaed.example',runScripts:'outside-only'});t.after(()=>dom.window.close());const w=dom.window;
+ for(const f of ['ui','kern','eddi-adressen'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),dom.getInternalVMContext());
+ w.API={post:()=>{throw Error('Abgeschlossener Import darf nicht erneut schreiben.');}};
+ const root=w.document.getElementById('root'),state=w.document.createElement('p'),control=w.eddiAdressvorschlag(root,state,'job',{daten:{objekt:{nummer:'alte Nummer'}},ergebnis:{objekt_id:261,adressen_neu:9,wohnungen_neu:14,adressen_vorhanden:7,zuordnungen:16,hinweise:[]}});
+ assert.equal(root.querySelectorAll('input,select,button').length,0);assert.equal(root.querySelector('a').getAttribute('href'),'#/objekte/261');assert.doesNotMatch(root.textContent,/alte Nummer/);assert.match(await control.uebernehmen(),/bereits übernommen/);assert.match(root.textContent,/16 Funktionen zugeordnet/);
+});
+
 test('Dubletten lassen sich direkt entscheiden; Auswahl und Datenänderung verlangen jeweils eine neue Vorschau',async t=>{
  const dom=new JSDOM('<div id="root"></div>',{url:'https://curaaed.example',runScripts:'outside-only'});t.after(()=>dom.window.close());const w=dom.window,calls=[];
  for(const f of ['ui','kern','eddi-adressen'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),dom.getInternalVMContext());
