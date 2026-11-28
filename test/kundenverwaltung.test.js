@@ -54,6 +54,14 @@ test('Kundenvorschau: gleiche E-Mail wird nicht zusammengeführt, fremde Quellen
   const nullPerson=await f.s.vorschau(1,'source',input([{...user(),persons:[null]}]));assert.equal(nullPerson.summen.pruefen,1);
 });
 
+test('Leerer HP-Kontoname wird ausschließlich aus den exakt zugeordneten Adressen ergänzt',async t=>{
+ const f=await fixture(t);
+ const p=await f.s.vorschau(1,'source',input([{...user(),name:''}]));
+ assert.equal(p.konten[0].name,'Test 1');assert.equal(p.konten[0].status,'vorbereitet');
+ const missing=await f.s.vorschau(1,'source',input([{...user(1,999),name:''}]));
+ assert.equal(missing.konten[0].status,'pruefen');assert.ok(missing.konten[0].hinweise.includes('Name fehlt'));
+});
+
 test('Firmenbestände bleiben trotz identischem Portal, Konto-ID und E-Mail getrennt; Quelle nicht umhängbar',async t=>{
  const f=await fixture(t),data=input([user()]);
  const a=await f.s.vorschau(1,'source',data),b=await f.s.vorschau(2,'foreign',data);

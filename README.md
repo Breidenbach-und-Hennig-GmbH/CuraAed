@@ -17,7 +17,7 @@ WEG and rental property management (German UI). It is a single Node.js/Express s
 
 ## Quick start (local)
 
-Requires Node.js 20 LTS. Ships with a `package-lock.json`.
+Requires Node.js 24 LTS. Ships with a `package-lock.json`.
 
 ```bash
 npm ci
