@@ -12,7 +12,7 @@
   const table=document.createElement('table'),head=document.createElement('thead'),hr=document.createElement('tr');
   for(const text of ['Objekt','Wohnung','Bezeichnung','Funktion']){const th=document.createElement('th');th.textContent=text;hr.append(th);}head.append(hr);table.append(head);
   const body=document.createElement('tbody');for(const w of data.wohnungen){const tr=document.createElement('tr');for(const text of [w.objekt_nummer,w.nummer,w.bezeichnung,w.rolle==='eigentuemer'?'Eigentümer':'Mieter']){const td=document.createElement('td');td.textContent=text||'—';tr.append(td);}body.append(tr);}table.append(body);el('wohnungen').append(table);
-  for(const o of data.objekte){const p=document.createElement('p');p.textContent='Objekt '+o.nummer+' · '+o.bezeichnung;el('wohnungen').append(p);}message('');
+  for(const o of data.objekte){const p=document.createElement('p');p.textContent='Objekt '+o.nummer+' · '+o.bezeichnung;el('wohnungen').append(p);}message(data.testkonto?'Testzugang: Es sind keine echten Objekte oder Wohnungen freigegeben.':'');
  }
  for(const [id,path] of [['login','anmelden'],['aktivieren','aktivieren']])el(id).addEventListener('submit',async e=>{
   e.preventDefault();const b=el(id).querySelector('button');b.disabled=true;

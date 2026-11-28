@@ -110,6 +110,12 @@ HP-Adressnummern müssen aus derselben Firmenquelle stammen; die E-Mail muss in 
 dieser Adressen hinterlegt sein. Gleiche E-Mails mit anderen Zuordnungen werden
 abgewiesen. Explizit angelegte `ca:`-Identitäten sind vom HP-Mobile-Reimport getrennt.
 Auch dieser Schritt vergibt keine Mitarbeiterrechte und erzeugt keinen Aktivierungslink.
+**Testkunde** bereitet alternativ eine firmengebundene Testidentität ohne echte Adress-,
+Objekt- oder Wohnungszuordnung vor. Sie kann die Kundenanmeldung ausprobieren, sieht
+aber keine fremden Bestandsdaten. Eine spätere Mitarbeiterfreigabe erfolgt separat in
+der Benutzerverwaltung mit eigener Identitätsprüfung; Kundenpasswörter und Sitzungen
+werden nicht zu Mitarbeiter-Anmeldungen aufgewertet. `test:`-Konten bleiben beim
+HP-Mobile-Reimport erhalten. Zusätzliche echte Adressbezüge sperren diesen Testzugang.
 
 Der vollständige Export wurde testweise zweimal in eine temporäre Speicher-Datenbank
 übernommen: zuerst 1.721 neue Einträge, danach 1.721 unveränderte Einträge, jeweils

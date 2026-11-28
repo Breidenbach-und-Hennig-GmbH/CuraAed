@@ -110,7 +110,7 @@ function baue(db) {
           for (const a of u.adressen) await tx.run('INSERT INTO kunden_konto_adressen(konto_id,adresse_id,hp_nummer) VALUES(?,?,?)', [id, a.adresse_id, a.hp_nummer]);
         }
         for (const old of await tx.all('SELECT id,externe_id,status FROM kunden_konten WHERE quelle_id=?', [sourceId])) {
-          if (!old.externe_id.startsWith('ca:') && !seen.has(old.externe_id) && old.status !== 'gesperrt') {
+          if (!/^(ca|test):/.test(old.externe_id) && !seen.has(old.externe_id) && old.status !== 'gesperrt') {
             await tx.run("UPDATE kunden_konten SET status='gesperrt',hinweise=?,fingerprint='',revision=revision+1,geaendert_am=CURRENT_TIMESTAMP WHERE id=?", [JSON.stringify(['Im vollständigen HP-Export nicht mehr als Kundenkonto enthalten']), old.id]);
             result.nicht_mehr_in_quelle++;
           }

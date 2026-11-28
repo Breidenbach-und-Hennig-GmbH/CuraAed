@@ -62,6 +62,23 @@ test('Aktivierung: Einmal-Link nur gehasht gespeichert, eigenes Passwort, eigene
  const login=await f.svc.anmelden(1,'KUNDE@example.test',password);assert.equal(login.daten.firma.id,1);
  await f.svc.abmelden(login.token);await assert.rejects(f.svc.sitzung(login.token),e=>e.status===401);
 });
+
+test('Testkunden dürfen sich getrennt anmelden, erhalten aber weder echte Zuordnungen noch Mitarbeiterrechte',async t=>{
+ const f=await fixture(t),anlage=require('../services/kundenAnlage');
+ const before=(await f.db.get('SELECT count(*) AS n FROM benutzer')).n;
+ const k=await anlage.testkonto(f.db,1,'source1','Testperson','testkunde@example.test');
+ assert.equal(k.testkonto,true);assert.deepEqual(k.objekte,[]);assert.deepEqual(k.wohnungen,[]);
+ assert.equal((await anlage.testkonto(f.db,1,'source1','Testperson','testkunde@example.test')).id,k.id);
+ await assert.rejects(()=>anlage.testkonto(f.db,2,'source1','Testperson','testkunde@example.test'),/nicht gefunden/);
+ await assert.rejects(()=>anlage.testkonto(f.db,1,'source1','Anderer Name','testkunde@example.test'),/anderen Kundenkonto/);
+ const l=await f.link(k.id),a=await f.svc.aktivieren(l.token,password,1);
+ assert.equal(a.daten.testkonto,true);assert.deepEqual((await f.svc.sitzung(a.token)).wohnungen,[]);
+ assert.equal((await f.db.get('SELECT count(*) AS n FROM benutzer')).n,before);
+ const data=exportData('portal1'),p=await registry.baue(f.db).vorschau(1,'source1',data);await registry.baue(f.db).uebernehmen(1,'source1',data,p.pruefwert);
+ assert.equal((await f.svc.sitzung(a.token)).testkonto,true);
+ await f.db.run('INSERT INTO kunden_konto_adressen(konto_id,adresse_id,hp_nummer) VALUES(?,1,500)',[k.id]);
+ await assert.rejects(()=>f.svc.sitzung(a.token),/Zuordnung/);
+});
 test('Einmalige Aktivierung bleibt auch bei zwei gleichzeitigen Anfragen einmalig',async t=>{
  const f=await fixture(t),l=await f.link();
  const results=await Promise.allSettled([f.svc.aktivieren(l.token,password),f.svc.aktivieren(l.token,password)]);

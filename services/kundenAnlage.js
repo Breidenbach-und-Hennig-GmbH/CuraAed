@@ -32,4 +32,16 @@ async function anlegen(db,owner,sourceId,hpNumbers,email){
   return{id,neu:true,...zugriff.oeffentlich(s),pruefwert:s.pruefwert};
  });
 }
-module.exports={anlegen};
+async function testkonto(db,owner,sourceId,name,email){
+ if(typeof name!=='string'||!name.trim()||name.length>500||typeof email!=='string'||email.length>320||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))fail('Bitte Name und E-Mail des Testkunden eingeben.',400);
+ name=name.trim();email=email.toLowerCase();
+ return db.transaktion(async tx=>{
+  const q=await firmen.quelle(tx,owner,sourceId);if(!q.direkt_id)fail('Die direkte Firmenquelle fehlt.');
+  const existing=await tx.all('SELECT k.id,k.externe_id,k.name,k.quelle_id FROM kunden_konten k JOIN kunden_firmen_quellen f ON f.quelle_id=k.quelle_id WHERE f.firma_id=? AND k.email=?',[q.firma_id,email]);
+  let id;
+  if(existing.length){if(existing.length!==1||!existing[0].externe_id.startsWith('test:')||existing[0].quelle_id!==sourceId||existing[0].name!==name)fail('Diese E-Mail gehört bereits zu einem anderen Kundenkonto.');id=existing[0].id;}
+  else id=(await tx.run("INSERT INTO kunden_konten(quelle_id,externe_id,name,email,status,hinweise,personen,fingerprint) VALUES(?,?,?,?,'vorbereitet',?,'[]',?)",[sourceId,'test:'+crypto.randomUUID(),name,email,JSON.stringify(['Testkonto ohne echte Objekt- oder Wohnungsfreigabe']),crypto.createHash('sha256').update(JSON.stringify([sourceId,name,email,'test'])).digest('hex')])).lastID;
+  const s=await zugriff.pruefen(tx,id,{owner});return{id,...zugriff.oeffentlich(s),pruefwert:s.pruefwert};
+ });
+}
+module.exports={anlegen,testkonto};
