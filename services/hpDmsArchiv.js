@@ -5,6 +5,14 @@ const crypto = require('node:crypto');
 const { HpMobileError } = require('./hausperfektMobile');
 const CATEGORY = "CASE WHEN lower(f.art) LIKE '%abrechnung%' THEN 'abrechnung' WHEN lower(f.art) LIKE '%rechnung%' THEN 'rechnung' WHEN lower(f.art) LIKE '%protokoll%' THEN 'protokoll' WHEN lower(f.art) LIKE '%vertrag%' THEN 'vertrag' WHEN lower(f.art) LIKE '%schriftverkehr%' OR lower(f.art) LIKE '%outlook%' THEN 'korrespondenz' WHEN lower(f.art) LIKE '%foto%' OR lower(f.art) LIKE '%bild%' THEN 'foto' ELSE 'sonstiges' END";
 const fail = (message, status = 409) => { throw new HpMobileError(message, status); };
+// A legacy import may still belong to the former Administrator identity. Only
+// administrators with explicit company membership may read that company's
+// bound source (including its direct-import sibling), never another company.
+const COMPANY_ADMIN = `EXISTS(SELECT 1 FROM kunden_firmen_quellen k
+ JOIN hp_dms_quellen customer ON customer.id=k.quelle_id AND customer.direkt_id=s.direkt_id
+ JOIN kunden_firmen_benutzer b ON b.firma_id=k.firma_id
+ JOIN benutzer u ON u.id=b.benutzer_id AND u.rolle='admin' AND u.aktiv=1
+ WHERE b.benutzer_id=? AND NOT EXISTS(SELECT 1 FROM kunden_firmen_quellen other WHERE other.quelle_id=s.id AND other.firma_id<>k.firma_id))`;
 
 // Sources intentionally do not reference the temporary OAuth connection. Removing
 // a connection must never remove migrated documents or their provenance.
@@ -19,7 +27,7 @@ function baueArchiv(db, directory, remote) {
     return db.get('SELECT * FROM hp_dms_quellen WHERE benutzer_id=? AND subdomain=?', [owner, c.subdomain]);
   }
   async function owned(owner, sourceId) {
-    const s = await db.get('SELECT * FROM hp_dms_quellen WHERE id=? AND benutzer_id=?', [sourceId, owner]);
+    const s = await db.get('SELECT s.* FROM hp_dms_quellen s WHERE s.id=? AND (s.benutzer_id=? OR '+COMPANY_ADMIN+')', [sourceId, owner, owner]);
     if (!s) fail('Archivbestand nicht gefunden.', 404);
     return s;
   }
@@ -101,7 +109,7 @@ function baueArchiv(db, directory, remote) {
   }
   async function archiveList(owner, q = {}) {
     // Filter by source-scoped ERP mappings in SQL, never names or local IDs.
-    let filter = '', args = [owner];
+    let filter = '', args = [owner,owner];
     if(q.kategorie){filter+=' AND ('+CATEGORY+')=?';args.push(q.kategorie);}
     const relation = (mapping, match, target, value) => {
       filter += ` AND EXISTS(SELECT 1 FROM hp_dms_bezuege b JOIN ${mapping} m ON m.verbindung_id=s.direkt_id AND ${match} WHERE b.quelle_id=f.quelle_id AND b.datei_id=f.datei_id AND ${target})`;
@@ -115,7 +123,7 @@ function baueArchiv(db, directory, remote) {
     }
     if (q.ohneZuordnung) filter += ' AND NOT EXISTS(SELECT 1 FROM hp_dms_bezuege b WHERE b.quelle_id=f.quelle_id AND b.datei_id=f.datei_id)';
     if (q.suche) { filter += ' AND (f.titel LIKE ? OR f.dateiname LIKE ? OR EXISTS(SELECT 1 FROM hp_dms_bezuege b WHERE b.quelle_id=f.quelle_id AND b.datei_id=f.datei_id AND (b.name LIKE ? OR b.hp_nummer LIKE ?)))'; args.push(...Array(4).fill('%' + String(q.suche).slice(0, 200) + '%')); }
-    const rows = await db.all(`SELECT f.*,s.subdomain,${CATEGORY} AS kategorie FROM hp_dms_dateien f JOIN hp_dms_quellen s ON s.id=f.quelle_id WHERE s.benutzer_id=?${filter} ORDER BY f.datum DESC,f.datei_id DESC LIMIT 501`, args);
+    const rows = await db.all(`SELECT f.*,s.subdomain,${CATEGORY} AS kategorie FROM hp_dms_dateien f JOIN hp_dms_quellen s ON s.id=f.quelle_id WHERE (s.benutzer_id=? OR ${COMPANY_ADMIN})${filter} ORDER BY f.datum DESC,f.datei_id DESC LIMIT 501`, args);
     const result = [];
     for (const r of rows.slice(0, 500)) result.push({ id: 'hp:' + r.quelle_id + ':' + r.datei_id, hp: { quelle: r.quelle_id, datei: r.datei_id, gesichert: !!r.speicher_name }, titel: r.titel, beschreibung: r.art + ' · ' + (r.speicher_name ? 'In CuraAed gespeichert' : 'Datei noch nicht übernommen'), original_name: r.dateiname, dokument_datum: r.datum, kategorie: r.kategorie, groesse: r.groesse, verknuepfungen: await links(r) });
     return { eintraege: result, mehr: rows.length > 500 };
