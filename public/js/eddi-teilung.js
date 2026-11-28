@@ -6,7 +6,7 @@ function eddiTeilung(root, modelStatus, consent) {
   const state = el('p', { role: 'status', 'aria-live': 'polite' }), details = el('div');
   const choose = el('button', { type: 'button', text: 'Dokument analysieren', onclick: () => file.click() });
   const prepared=el('input',{type:'file',accept:'.json,application/json',hidden:true,'aria-label':'Vorbereitete Teilungsdaten auswählen'});
-  let job, timer, revision = 0, busy = false;
+  let job, timer, revision = 0, busy = false, adressImport = null;
   const key = 'curaaed-teilung-' + S.benutzer.id;
   try { job = sessionStorage.getItem(key); } catch {}
   root.append(file,prepared);
@@ -22,7 +22,7 @@ function eddiTeilung(root, modelStatus, consent) {
     if (busy) { state.textContent = 'Bitte warten, bis die aktuelle PDF gelesen wurde.'; return; }
     box.hidden = false;
     if (f.size > 25 * 1024 * 1024 || !/\.pdf$/i.test(f.name)) { state.textContent = 'Bitte eine PDF bis 25 MB auswählen.'; return; }
-    details.replaceChildren(); clearTimeout(timer); revision++;
+    details.replaceChildren(); adressImport=null; clearTimeout(timer); revision++;
     busy = true; choose.disabled = true; state.textContent = 'PDF wird in CuraAed gespeichert und lokal gelesen …';
     try {
       const form = new FormData(); form.append('datei', f);
@@ -38,10 +38,10 @@ function eddiTeilung(root, modelStatus, consent) {
       const r = await API.get('/eddi/teilungen/' + job);
       if (!root.isConnected || version !== revision) return;
       state.textContent = r.dateiname + ' · ' + ({ lesen: 'Seite ' + r.fortschritt + ' von ' + (r.gesamt || '?') + ' wird gelesen', gelesen: 'Alle ' + r.gesamt + ' Seiten lokal gelesen', auswerten: 'Objekt, Einheiten und Stimmregeln werden ausgewertet', analysiert: 'Vorschlag fertig · bitte mit dem Original vergleichen', uebernommen: 'Objekt und Einheiten angelegt', fehler: r.meldung || 'Bearbeitung unterbrochen' }[r.status] || r.status);
-      details.replaceChildren();
+      details.replaceChildren(); adressImport=null;
       details.append(el('button', { type: 'button', text: 'Original-PDF anzeigen', onclick: () => dmsVorschau('/api/eddi/teilungen/' + job + '/datei', { titel: r.dateiname, original_name: r.dateiname }) }));
       if(r.gelesen&&!r.objekt_id){details.append(el('button',{type:'button',text:r.adressliste?'Adressliste erneut auswerten':'Als Adressliste auswerten',onclick:adressenAuswerten}));
-        if(r.adressliste){eddiAdressvorschlag(details,state,job,r.adressliste);return;}
+        if(r.adressliste){adressImport=eddiAdressvorschlag(details,state,job,r.adressliste);return;}
         if(r.dokumenttyp==='adressliste'){state.textContent='Adressliste erkannt. Bitte „Als Adressliste auswerten“ wählen. Adressen, Objekt und Wohnungen werden ohne MEA-Pflicht abgeglichen.';return;}}
       if (r.objekt_id) { details.append(el('a', { href: '#/objekte/' + r.objekt_id, text: 'Angelegtes Objekt öffnen' })); return; }
       if (['lesen', 'auswerten'].includes(r.status)) { timer = setTimeout(poll, 3000); return; }
@@ -98,5 +98,18 @@ function eddiTeilung(root, modelStatus, consent) {
     if(busy)return;busy=true;state.textContent='Eddi erkennt Adressen, Objekt und Wohnungszuordnungen …';
     try{await API.post('/eddi/teilungen/'+job+'/adressen/auswerten',{zustimmung:true});await poll();}catch(e){state.textContent=e.message;}finally{busy=false;}
   }
-  return { button: choose, box, laden, auftrag:async text=>{if(!job||!/(adress)/i.test(text)||!/(anleg|übernehm|import)/i.test(text))return false;await adressenAuswerten();return true;} };
+  return { button: choose, box, laden, auftrag:async text=>{
+    const t=String(text||'').normalize('NFKC').toLowerCase().replace(/ü/g,'ue').replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ß/g,'ss').replace(/^eddi[,!:]?\s*/, '').trim();
+    if(!job||/\b(nicht|keine?|abbrechen|stop)\b/.test(t)||/^(wie|warum|was|wo|wann|wieso|erklaer|zeige?)\b/.test(t)||/^(kann|darf|soll|muss) ich\b/.test(t))return false;
+    const action=/\bueber(?:nimm|nehmen|nehme)\b|\banlegen\b|\bimportier(?:e|en)?\b|\bleg(?:e)?\b.+\ban\b/.test(t);
+    const context=/adress|liste|dubletten|geprueft/.test(t)||t.split(/\s+/).length<=6&&!/rechnung|beleg|ticket|termin|mail|zahlung/.test(t);
+    if(action&&context){
+      if(/\b(nur|ohne|ausser|statt|spaeter|morgen|uebermorgen)\b/.test(t))return 'Es wurde nichts übernommen. Bitte den gewünschten Umfang zuerst in der Adressvorschau festlegen und anschließend „Übernimm die geprüfte Liste“ schreiben.';
+      if(busy)return 'Das Dokument wird gerade bearbeitet. Bitte kurz warten.';
+      if(!adressImport)await poll();
+      if(adressImport)return adressImport.uebernehmen();
+    }
+    if(!/adress/.test(t)||!/(anleg|uebernehm|uebernimm|import|auswert|analys)/.test(t))return false;
+    await adressenAuswerten();return state.textContent;
+  } };
 }

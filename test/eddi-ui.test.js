@@ -4,7 +4,7 @@ const tick = () => new Promise(r => setImmediate(r));
 function setup(t, role = 'mitarbeiter') {
   const dom = new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>', { runScripts: 'outside-only', url: 'https://curaaed.test/#/' });
   t.after(() => dom.window.close()); const w = dom.window;
-  for (const f of ['ui', 'kern', 'shell', 'eddi', 'eddi-teilung', 'eddi-modell']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js/' + f + '.js'), 'utf8'), dom.getInternalVMContext());
+  for (const f of ['ui', 'kern', 'shell', 'eddi', 'eddi-adressen', 'eddi-teilung', 'eddi-modell']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js/' + f + '.js'), 'utf8'), dom.getInternalVMContext());
   w.eval('S.benutzer={id:1,rolle:' + JSON.stringify(role) + ',name:"Test"}'); return w;
 }
 
@@ -60,4 +60,38 @@ test('Administratoren erhalten KI-Einrichtung, Mitarbeiter nicht; ohne Schlüsse
   assert.match(root.textContent, /noch nicht verbunden/); assert.ok([...root.querySelectorAll('button')].some(b => b.textContent === 'KI einrichten'));
   root.querySelector('input[type=text]').value = 'Erstelle ein Objekt';
   root.querySelector('form').dispatchEvent(new w.Event('submit', { cancelable: true })); await tick(); assert.equal(writes, 0);
+});
+
+async function adressAuftrag(t,duplicates=false){
+ const w=setup(t),calls=[];w.sessionStorage.setItem('curaaed-teilung-1','job');
+ const daten={objekt:{nummer:'868',bezeichnung:'Test',strasse:'Testweg 1',plz:'12345',ort:'Teststadt'},adressen:[{adresstyp:'person',vorname:'Anna',nachname:'Test',wohnung_nummer:'1',funktion:'eigentuemer'}]};
+ const result={objekt_id:17,adressen_neu:1,wohnungen_neu:1,adressen_vorhanden:0,zuordnungen:1,hinweise:[]};
+ w.API={get:async url=>url==='/eddi/status'?{bereit:false,sprachmodell:'OpenAI',anleitungen:0}:{dateiname:'Adressliste.pdf',status:'analysiert',gelesen:true,adressliste:{daten}},post:async(url,body)=>{
+  calls.push({url,body});
+  if(url.endsWith('/vorschau'))return{objekt:{nummer:body.objektnummer,neu:true},pruefwert:'proof',zeilen:[{index:0,aktion:duplicates?'Prüfen':'Neue Adresse',daten:body.daten.adressen[0],dubletten:duplicates?[{id:7,nummer:'10007',name:'Anna Test'}]:[],pruefen:duplicates}]};
+  if(url.endsWith('/uebernehmen'))return result;
+  throw Error('Unerwarteter Modellaufruf: '+url);
+ }};
+ const root=w.eddiLeiste();w.document.getElementById('hp-desktop').append(root);await new Promise(r=>w.setTimeout(r,0));await tick();
+ const input=root.querySelector('[aria-label="Auftrag an Eddi"]');
+ async function send(text){input.value=text;root.querySelector('form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await tick();await tick();}
+ return{w,root,calls,send};
+}
+
+test('Übernimm die geprüfte Liste führt die aktuelle Adressvorschau lokal aus, ohne erneute KI-Einwilligung oder doppelte Anlage',async t=>{
+ const f=await adressAuftrag(t);const nummer=f.root.querySelector('[name="objektnummer"]');nummer.value='18736';nummer.dispatchEvent(new f.w.Event('input',{bubbles:true}));
+ await f.send('Eddi, übernimm die geprüfte Liste');
+ assert.equal(f.calls.length,2);assert.match(f.calls[0].url,/vorschau$/);assert.match(f.calls[1].url,/uebernehmen$/);assert.equal(f.calls[1].body.objektnummer,'18736');assert.equal(f.calls[1].body.pruefwert,'proof');assert.equal(f.calls[1].body.geprueft,true);
+ assert.match(f.root.querySelector('[role="log"]').textContent,/1 Adressen und 1 Wohnungen neu angelegt/);
+ await f.send('Bitte übernehmen');assert.equal(f.calls.length,2);assert.match(f.root.querySelector('[role="log"]').textContent,/bereits übernommen/);
+});
+
+test('Übernehmen als Texteingabe zeigt offene Dubletten an und legt keine ungeprüften Datensätze an',async t=>{
+ const f=await adressAuftrag(t,true);await f.send('Übernimm die Adressliste');assert.equal(f.calls.length,1);assert.match(f.calls[0].url,/vorschau$/);assert.match(f.root.querySelector('[role="log"]').textContent,/Dubletten klären/);assert.equal(f.root.querySelector('[aria-label="Dublettenentscheidung · Zeile 1"]').value,'');
+});
+
+test('Verneinungen, Fragen, eingeschränkter Umfang und spätere Ausführung lösen keinen Adressimport aus',async t=>{
+ const f=await adressAuftrag(t);
+ for(const text of ['Noch nicht übernehmen','Wie kann ich die Liste übernehmen?','Kann ich die Liste übernehmen?','Übernimm nur die Adressen','Bitte übernimm die Liste morgen','Übernimm die Rechnung'])await f.send(text);
+ assert.equal(f.calls.length,0);
 });

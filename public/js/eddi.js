@@ -88,12 +88,13 @@ function eddiLeiste() {
   form.addEventListener('submit', async e => {
     e.preventDefault(); if (busy || !input.value.trim()) return;
     await open();
-    if (!model?.bereit) return;
-    if (!consent.checked) { state.textContent = 'Bitte zuerst die Verarbeitung durch das angezeigte Sprachmodell erlauben.'; consent.focus(); return; }
-    if(await te.auftrag(input.value.trim()))return;
     const question = input.value.trim(); busy = true; send.disabled = input.disabled = fresh.disabled = true;
-    transcript.append(row('Du', question)); state.textContent = 'Eddi bearbeitet deine Anfrage …';
     try {
+      const local=await te.auftrag(question);
+      if(local){transcript.append(row('Du',question),row('Eddi',local));state.textContent=local;input.value='';return;}
+      if (!model?.bereit) return;
+      if (!consent.checked) { state.textContent = 'Bitte zuerst die Verarbeitung durch das angezeigte Sprachmodell erlauben.'; consent.focus(); return; }
+      transcript.append(row('Du', question)); state.textContent = 'Eddi bearbeitet deine Anfrage …';
       const r = await API.post('/eddi/fragen', { text: question, chat_id: chat, zustimmung: true });
       if (!root.isConnected) return;
       chat = r.chat_id; try { sessionStorage.setItem(key, chat); } catch {}
