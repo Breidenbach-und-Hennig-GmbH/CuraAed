@@ -8,6 +8,13 @@ Metadaten, Originalnamen, Archivnummern, Dateilisten und alle vom Container geli
 
 Eine Quelle gehört einem CuraAed-Benutzer und HP-Subdomain. Sie kann genau einer eigenen direkten HP-Datenquelle zugeordnet werden. Diese fachliche Quellbindung wird bewusst ausgewählt; Namensgleichheit reicht nicht. Verknüpfungen erfolgen ausschließlich über HP-Adressnummer, Objekt-/Wohnungsnummer und die vorhandenen Quelltabellen. Lokale Archivlisten zeigen übernommene Dokumente derselben Person in den zugehörigen Adress-, Objekt- und Einheitenarchiven. Nicht importierte lokale Objekte erhalten keine geratenen Verknüpfungen. Die bisherigen persönlichen HP-Zugriffsrechte bleiben erhalten; Leser sehen nur die bisherige lokale Ablage.
 
+Aktive Administratoren mit ausdrücklicher Mitgliedschaft im gebundenen Firmenbestand
+können zusätzlich dessen übernommenes Archiv lesen, auch wenn es noch der alten
+Administrator-Kennung gehört. Das gilt auch für den direkten Import derselben
+bestätigten HP-Datenquelle. Eine anders gebundene Firma bleibt ausgeschlossen;
+Mitarbeiter ohne Administratorrolle und entfernte Mitglieder erhalten diesen
+zusätzlichen Zugriff nicht. Die Kundendokumentfreigabe bleibt davon getrennt.
+
 ## Übernahme
 
 Im DMS kann der gesamte Bestand oder eine aktuelle Titelsuche dauerhaft übernommen werden. Suchübernahmen erfassen nur Treffer der HP-Titelsuche und sind keine vollständigen Adressarchive. Der Gesamtdurchlauf liest nach aufsteigender Datei-ID, speichert Position und Seite je Quelle und arbeitet nach Schließen der Ansicht im Server weiter. Nach Serverneustart kann der gespeicherte Cursor per Fortsetzen wieder aufgenommen werden. Ein abgeschlossener Durchlauf kann erneut gestartet werden; bereits gesicherte unveränderte Dateien werden nicht dupliziert. Die HP-Seitenliste ist kein transaktionaler Snapshot: nachträgliche Löschungen oder Änderungen erfordern einen erneuten vollständigen Abgleich.
