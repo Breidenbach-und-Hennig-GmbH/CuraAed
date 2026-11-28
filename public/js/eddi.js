@@ -90,6 +90,7 @@ function eddiLeiste() {
     await open();
     if (!model?.bereit) return;
     if (!consent.checked) { state.textContent = 'Bitte zuerst die Verarbeitung durch das angezeigte Sprachmodell erlauben.'; consent.focus(); return; }
+    if(await te.auftrag(input.value.trim()))return;
     const question = input.value.trim(); busy = true; send.disabled = input.disabled = fresh.disabled = true;
     transcript.append(row('Du', question)); state.textContent = 'Eddi bearbeitet deine Anfrage …';
     try {

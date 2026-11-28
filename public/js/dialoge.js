@@ -538,6 +538,7 @@ async function archivBearbeiten(id, reload) {
     inhalt: form,
     footer: (close) => [
       el('a', { class: 'btn', href: `/api/archiv/${d.id}/download`, text: '⭳ Öffnen' }),
+      istAdmin()?el('button',{type:'button',text:'Kundenportal',onclick:()=>kundenDokumentFreigabe(d)}):null,
       el('button', { text: schreiben ? 'Abbrechen' : 'Schließen', onclick: close }),
       schreiben ? el('button', { class: 'btn-primary', text: 'Speichern', onclick: async () => {
         try {

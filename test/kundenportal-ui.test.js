@@ -28,3 +28,13 @@ test('Kundenportal: ohne Aktivierung eigene Sitzungsprüfung, Anmeldung mit Firm
  assert.equal(JSON.parse(f.calls[1].options.body).firma_id,1);assert.equal(f.calls[1].url,'/api/kundenportal/anmelden');
  assert.equal(d.getElementById('passwort').value,'');assert.equal(f.w.localStorage.length,0);assert.equal(f.w.sessionStorage.length,0);
 });
+
+test('Dokumentenliste verwendet nur geschützte Portal-Links, behandelt Titel als Text und sucht per Enter',async t=>{
+ const f=fixture(t,false),d=f.w.document;await tick();
+ f.w.fetch=async(url,options)=>{f.calls.push({url,options});return{ok:true,json:async()=>url.includes('/dokumente?')?{eintraege:[{id:'opaque-id',titel:'<img src=x onerror=alert(1)>',dateiname:'Brief.pdf',datum:'2026-11-28'}],mehr:false,nach:null}:{name:'Kunde',email:'kunde@example.test',firma:{name:'Firma'},objekte:[],wohnungen:[]}};};
+ d.getElementById('email').value='kunde@example.test';d.getElementById('passwort').value='Sicheres-Testpasswort';d.getElementById('login').dispatchEvent(new f.w.Event('submit',{cancelable:true}));await tick();await tick();
+ assert.match(d.getElementById('dokument-liste').textContent,/<img/);assert.equal(d.querySelectorAll('img').length,0);
+ assert.deepEqual([...d.getElementById('dokument-liste').querySelectorAll('a')].map(a=>a.getAttribute('href')),['/api/kundenportal/dokumente/opaque-id/datei?vorschau=1','/api/kundenportal/dokumente/opaque-id/datei']);
+ d.getElementById('dokument-begriff').value='Hausordnung';d.getElementById('dokument-suche').dispatchEvent(new f.w.Event('submit',{cancelable:true}));await tick();
+ assert.ok(f.calls.some(c=>c.url==='/api/kundenportal/dokumente?suche=Hausordnung&nach=0'));
+});

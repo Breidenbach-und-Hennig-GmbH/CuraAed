@@ -28,6 +28,22 @@ Quellen: https://github.com/nodejs/undici/issues/5360 und https://github.com/nod
 
 ## Einstieg über Dokumente
 
+### Adresslisten in Eddi
+
+PDF-Adresslisten erhalten einen eigenen Importablauf, auch wenn dieselbe Liste
+Objekt und Wohnungen beschreibt. **Als Adressliste auswerten** liest die vorhandene
+PDF, zeigt editierbare Kontakte, Wohnungsnummern und Personenfunktionen und bietet
+anschließend **Vorschau und Dubletten prüfen**. Erst die aktuelle Vorschau erlaubt
+die Übernahme. Objekt-/Wohnungsnummern werden abgeglichen; ein Objekt mit gleicher
+Anschrift wird wiederverwendet. Exakte bekannte Adressen werden übernommen,
+mögliche Dubletten sperren die Anlage. Wiederholung desselben Auftrags legt nichts
+doppelt an. Adressen, neue Wohnungen und ausdrücklich bestätigte Funktionen werden
+in einer Transaktion gespeichert. Fehlende MEA sind hier kein Anlagehindernis;
+es werden weder Anteile noch Stimmregeln erfunden. Eine unbekannte Personenfunktion
+bleibt ohne geratenen Eigentümer-/Mieterbezug und muss in der Vorschau geklärt werden.
+Der lokale HP-Neuanlageauftrag entspricht der normalen Adressanlage; der Import
+selbst führt keine direkte HP-Datenbankabfrage aus.
+
 Dokumente / Alt+S,D / F10 öffnet zuerst die Sachbearbeiter-Abfrage. Das Kürzel stammt aus dem eigenen CuraAed-Benutzerprofil; fehlt es, bleibt das Feld leer. Ein bis drei Großbuchstaben sind zulässig (bestehende zweistellige HP-Kürzel bleiben verwendbar). Leer zeigt sämtliche offenen CuraAed-Posteingänge. OK übernimmt die Auswahl, Abbrechen oder Schließen öffnet keine Dokumentliste.
 
 Der native Posteingang verwendet eine eigene Sachbearbeiter-Zuordnung und einen Bearbeitungsstand mit Versionsprüfung und Verlauf. Abschließen erhält die Archivdatei. Vorhandene HP-Posteingänge sind noch nicht übertragen und werden deshalb nicht anhand des Archivfelds poc vorgetäuscht. Die Archivübernahme ist separat unter #/dms-uebernahme und aus dem Posteingang erreichbar. Die laufende Übernahme bleibt ein serverseitiger Auftrag und wird von der neuen Einstiegsauswahl nicht gefiltert oder eingeschränkt.

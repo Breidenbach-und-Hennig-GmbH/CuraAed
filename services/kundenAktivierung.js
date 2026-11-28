@@ -58,7 +58,7 @@ function baue(db,{origin,now=Date.now}={}){
     return{token:await session(tx,s),daten:zugriff.oeffentlich(s)};
    });
   },
-  async sitzung(token){
+  async sitzung(token,arbeiten=null){
    if(!tokenValid(token))fail('Bitte im Kundenportal anmelden.',401);
    return db.transaktion(async tx=>{
    const row=await tx.get('SELECT * FROM kunden_sitzungen WHERE token_hash=?',[hash(token)]);
@@ -66,7 +66,7 @@ function baue(db,{origin,now=Date.now}={}){
    let s;try{s=await zugriff.pruefen(tx,row.konto_id,{now:now()});}catch(e){if(e instanceof ValidationError)fail('Ihre Zuordnung wurde geändert. Bitte wenden Sie sich an Ihre Verwaltung.',401);throw e;}
    const z=await tx.get('SELECT revision,scope_hash FROM kunden_zugaenge WHERE konto_id=?',[row.konto_id]);
    if(row.revision!==s.konto.revision||z?.revision!==s.konto.revision||z.scope_hash!==s.pruefwert)fail('Bitte den Kundenzugang erneut bestätigen lassen.',401);
-   return zugriff.oeffentlich(s);
+   return arbeiten?arbeiten(tx,s):zugriff.oeffentlich(s);
    });
   },
   async abmelden(token){if(tokenValid(token))await db.run('DELETE FROM kunden_sitzungen WHERE token_hash=?',[hash(token)]);return{ok:true};},
