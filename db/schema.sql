@@ -1158,3 +1158,34 @@ CREATE TABLE IF NOT EXISTS hp_vermoegensstaende (
  UNIQUE(objekt_id,jahr,hash),UNIQUE(objekt_id,jahr,version)
 );
 CREATE INDEX IF NOT EXISTS hp_vermoegen_jahr_objekt ON hp_vermoegensstaende(jahr,objekt_id,version DESC);
+
+-- Kundenidentitäten bleiben von Mitarbeiterkonten und deren Sitzungen getrennt.
+-- Diese erste Übernahmestufe erlaubt ausdrücklich noch keine Aktivierung.
+CREATE TABLE IF NOT EXISTS kunden_konten (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ quelle_id TEXT NOT NULL REFERENCES hp_dms_quellen(id) ON DELETE RESTRICT,
+ externe_id TEXT NOT NULL, name TEXT NOT NULL, email TEXT,
+ status TEXT NOT NULL CHECK(status IN ('vorbereitet','pruefen','gesperrt')),
+ hinweise TEXT NOT NULL, personen TEXT NOT NULL, fingerprint TEXT NOT NULL,
+ revision INTEGER NOT NULL DEFAULT 1,
+ erstellt_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ geaendert_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE(quelle_id,externe_id)
+);
+CREATE TABLE IF NOT EXISTS kunden_konto_adressen (
+ konto_id INTEGER NOT NULL REFERENCES kunden_konten(id) ON DELETE CASCADE,
+ adresse_id INTEGER NOT NULL REFERENCES adressen(id) ON DELETE RESTRICT,
+ hp_nummer INTEGER NOT NULL,
+ PRIMARY KEY(konto_id,hp_nummer)
+);
+CREATE INDEX IF NOT EXISTS kunden_quelle_status ON kunden_konten(quelle_id,status);
+CREATE TABLE IF NOT EXISTS kunden_firmen_benutzer (
+ firma_id INTEGER NOT NULL REFERENCES firmenbriefkoepfe(id) ON DELETE RESTRICT,
+ benutzer_id INTEGER NOT NULL REFERENCES benutzer(id) ON DELETE RESTRICT,
+ PRIMARY KEY(firma_id,benutzer_id)
+);
+CREATE TABLE IF NOT EXISTS kunden_firmen_quellen (
+ quelle_id TEXT PRIMARY KEY REFERENCES hp_dms_quellen(id) ON DELETE RESTRICT,
+ firma_id INTEGER NOT NULL REFERENCES firmenbriefkoepfe(id) ON DELETE RESTRICT,
+ portal TEXT NOT NULL, UNIQUE(firma_id,portal)
+);

@@ -12,7 +12,7 @@ function fixture(t, { configured = true, failLogin = false } = {}) {
   const w = dom.window, calls = [];
 
   w.API = {
-    get: async url => { calls.push({ method: 'GET', url }); if (url.endsWith('/status')) return { eingerichtet: configured }; if (url.endsWith('/verbindungen')) return { verbindungen: [{ id: 'own-connection', subdomain: 'kunde-a' }] }; return { data: [{ id: 17, hp_id: 100, name: '<img src=x onerror=alert(1)>' }] }; },
+    get: async url => { calls.push({ method: 'GET', url }); if (url.endsWith('/abloesung')) return { mobile_aktiv:false, summen:{erfasst:3,ohne_dateikopie:1},quellen:[{subdomain:'<img src=x onerror=alert(1)>',erfasst:3,als_gesichert_vermerkt:2,ohne_dateikopie:1,mit_fehlermeldung:0}],offene_auftraege:[],hinweis:'Dateiprüfung steht aus.' }; if (url.endsWith('/status')) return { eingerichtet: configured }; if (url.endsWith('/verbindungen')) return { verbindungen: [{ id: 'own-connection', subdomain: 'kunde-a' }] }; return { data: [{ id: 17, hp_id: 100, name: '<img src=x onerror=alert(1)>' }] }; },
     post: async (url, body) => { calls.push({ method: 'POST', url, body: { ...body } }); if (failLogin) throw new Error('Anmeldung abgelehnt'); return { id: 'own-connection' }; },
   };
   for (const file of ['ui', 'kern', 'shell', 'hp-direkt', 'hp-adressen', 'hp-objekte', 'hausperfekt']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js', file + '.js'), 'utf8'), dom.getInternalVMContext());
@@ -49,4 +49,13 @@ test('HP UI: Passwort wird nach fehlgeschlagener Anmeldung geleert; Übertragung
 test('HP UI: fehlende serverseitige Anmeldung deaktiviert das Verbindungsformular', async t => {
   const f = fixture(t, { configured: false }); await f.open();
   assert.equal(f.button('HP-Kundenkonto verbinden').disabled, true);
+});
+
+test('HP UI: Bestandsprüfung liest nur CuraAed und stellt Quellnamen als Text dar', async t => {
+  const f=fixture(t); await f.open(); const before=f.calls.length;
+  f.button('Bestand ohne HP-Zugriff prüfen').click(); await tick();
+  assert.deepEqual(f.calls.slice(before),[{method:'GET',url:'/hausperfekt/abloesung'}]);
+  assert.match(f.w.document.body.textContent,/ohne Dateikopie: 1/);
+  assert.match(f.w.document.body.textContent,/Vollständigkeit ist noch nicht bestätigt/);
+  assert.equal(f.w.document.querySelectorAll('img').length,0);
 });

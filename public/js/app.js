@@ -60,6 +60,7 @@ function route() {
   if (bereich === 'posteingang') return posteingangMaske(params);
   if (bereich === 'm365') return m365Maske();
   if (bereich === 'benutzer') return benutzerMaske();
+  if (bereich === 'kunden') return kundenMaske();
   if (bereich === 'plaud') return plaudRueckkehr(params);
   if (bereich === 'hausperfekt') return hausperfektMaske();
   return startMaske();

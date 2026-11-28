@@ -115,6 +115,9 @@ test('HP API: Login, Zustimmung und Origin erforderlich; Leser und fremde Verbin
   assert.equal((await fetch(base + '/api/hausperfekt/status')).status, 401);
   assert.equal((await fetch(base + '/api/hausperfekt/status', { headers: { Cookie: reader } })).status, 403);
   const employee=await login('mitarbeiter');
+  for (const session of [reader, employee]) assert.equal((await fetch(base+'/api/hausperfekt/abloesung',{headers:{Cookie:session}})).status,403);
+  const report = await fetch(base+'/api/hausperfekt/abloesung',{headers:{Cookie:cookie}});
+  assert.equal(report.status,200); assert.equal((await report.json()).vollstaendigkeit_bestaetigt,false);
   assert.equal((await fetch(base+'/api/hausperfekt/verbindungen',{headers:{Cookie:employee}})).status,403);
   assert.equal((await fetch(base+'/api/hausperfekt/verbinden',{method:'POST',headers:{Cookie:employee,Origin:APP,'Content-Type':'application/json'},body:'{}'})).status,403);
   const payload = { portalUrl: 'https://kunde-a.hausperfekt-mobile.de/', benutzername: 'alice', passwort: 'private-test-password', zustimmung: true };
