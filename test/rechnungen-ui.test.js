@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),{JSDOM}=require('jsdom');
 const tick=()=>new Promise(r=>setImmediate(r));
-function setup(t,get){const dom=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example/'});t.after(()=>dom.window.close());const w=dom.window;w.logout=()=>{};w.passwortDialog=()=>{};w.pfktCodesDialog=()=>{};w.API={get,qs:o=>'?'+new URLSearchParams(o)};for(const file of ['ui','kern','rechnungen','shell'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());w.eval('S.lauf=1;S.benutzer={rolle:"admin",name:"Test"};');return w;}
+function setup(t,get){const dom=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.example/'});t.after(()=>dom.window.close());const w=dom.window;w.logout=()=>{};w.passwortDialog=()=>{};w.pfktCodesDialog=()=>{};w.API={get,qs:o=>'?'+new URLSearchParams(o)};for(const file of ['adressdaten','ui','kern','rechnungen','shell'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+file+'.js'),'utf8'),dom.getInternalVMContext());w.eval('S.lauf=1;S.benutzer={rolle:"admin",name:"Test"};');return w;}
 const doc={id:3,titel:'Lieferantenrechnung',original_name:'rechnung.pdf',dokument_datum:'2026-11-07',verknuepfungen:[]};
 
 test('Rechnung aus HWA übernimmt Auftrag, Akte, Objekt und Lieferantenkonto; gespeicherte Werte bleiben erhalten',async t=>{

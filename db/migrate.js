@@ -85,6 +85,7 @@ async function migrieren(db, filePath) {
   `);
 
   // ---- 1b) Adressen: Geburtstag, LKto-Nr., Datenschutz -----------------
+  for(const f of require('../public/js/adressdaten').felder)if(!sAdressen.has(f.name))await db.run('ALTER TABLE adressen ADD COLUMN '+f.name+' TEXT');
   for (const spalte of ['geburtstag', 'lkto_nr', 'datenschutz_datum', 'ampel', 'ampel_notiz', 'ampel_datum', 'zusatz']) {
     if (!sAdressen.has(spalte)) await db.run(`ALTER TABLE adressen ADD COLUMN ${spalte} TEXT`);
   }

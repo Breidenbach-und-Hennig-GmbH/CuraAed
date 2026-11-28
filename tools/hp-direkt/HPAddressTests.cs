@@ -22,6 +22,10 @@ internal static class HPAddressTests
   Check(Convert.ToString(plan["stamm"][0]["AdrNr"])=="65952"&&Convert.ToString(plan["anlage"][0]["anVonSB"])=="FD");
   Check(plan["suche"].Count==1&&Convert.ToString(plan["suche"][0]["AdrNr"])=="65952"&&Convert.ToString(plan["suche"][0]["SearchField"])=="MÜLLERJÖRGJÖRGMÜLLER");
   Check(Convert.ToString(plan["stamm"][0]["SBegrAdr"])=="MÜLLER, JÖRG");
+  payload["stamm"]=new Dictionary<string,object>{{"SBegrAdr","EIGENER SUCHBEGRIFF"},{"Titel","Dr."},{"Name3","Dritte Zeile"},{"BriefAnZeil1","Sehr geehrter Herr Dr. Müller,"},{"GebDat1","722874"},{"SF10","010"}};
+  var extended=full.Expected(payload,reservation);Check(Convert.ToString(extended["stamm"][0]["Titel"])=="Dr."&&Convert.ToString(extended["stamm"][0]["SF10"])=="010"&&Convert.ToString(extended["stamm"][0]["SBegrAdr"])=="EIGENER SUCHBEGRIFF");Check(Convert.ToString(extended["suche"][0]["SearchField"]).StartsWith("EIGENERSUCHBEGRIFF"));
+  foreach(string bad in new[]{"AdrNr","Name1","Fremd"}){payload["stamm"]=new Dictionary<string,object>{{bad,"123"}};bool invalid=false;try{full.Expected(payload,reservation);}catch{invalid=true;}Check(invalid);}
+  payload["stamm"]=new Dictionary<string,object>{{"SF1","1234"}};bool tooLong=false;try{full.Expected(payload,reservation);}catch{tooLong=true;}Check(tooLong);payload.Remove("stamm");
   var legacy=full.Expected(payload,reservation,false);Check(Convert.ToString(legacy["stamm"][0]["SBegrAdr"])=="MÜLLER"&&Convert.ToString(legacy["suche"][0]["SearchField"])=="MÜLLERJÖRGMÜLLER");
   Check(HPAddressClient.SearchLabel(new Dictionary<string,object>{{"name1","Schrader"},{"vorname","Tobias"}})=="SCHRADER, TOBIAS");
   Check(HPAddressClient.SearchLabel(new Dictionary<string,object>{{"name1",new string('x',30)},{"vorname","Lang"}}).Length==30);

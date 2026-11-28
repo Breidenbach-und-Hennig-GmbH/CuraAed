@@ -15,7 +15,7 @@ function fixture(t, { configured = true, failLogin = false } = {}) {
     get: async url => { calls.push({ method: 'GET', url }); if (url.endsWith('/abloesung')) return { mobile_aktiv:false, summen:{erfasst:3,ohne_dateikopie:1},quellen:[{subdomain:'<img src=x onerror=alert(1)>',erfasst:3,als_gesichert_vermerkt:2,ohne_dateikopie:1,mit_fehlermeldung:0}],offene_auftraege:[],hinweis:'Dateiprüfung steht aus.' }; if (url.endsWith('/status')) return { eingerichtet: configured }; if (url.endsWith('/verbindungen')) return { verbindungen: [{ id: 'own-connection', subdomain: 'kunde-a' }] }; return { data: [{ id: 17, hp_id: 100, name: '<img src=x onerror=alert(1)>' }] }; },
     post: async (url, body) => { calls.push({ method: 'POST', url, body: { ...body } }); if (failLogin) throw new Error('Anmeldung abgelehnt'); return { id: 'own-connection' }; },
   };
-  for (const file of ['ui', 'kern', 'shell', 'hp-direkt', 'hp-adressen', 'hp-objekte', 'hausperfekt']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js', file + '.js'), 'utf8'), dom.getInternalVMContext());
+  for (const file of ['adressdaten','ui', 'kern', 'shell', 'hp-direkt', 'hp-adressen', 'hp-objekte', 'hausperfekt']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js', file + '.js'), 'utf8'), dom.getInternalVMContext());
   vm.runInContext('S.lauf=1;S.benutzer={id:1,rolle:"admin"};', dom.getInternalVMContext());
   return { w, calls, async open() { await w.hausperfektMaske(); await tick(); }, button: text => [...w.document.querySelectorAll('button')].find(b => b.textContent === text) };
 }

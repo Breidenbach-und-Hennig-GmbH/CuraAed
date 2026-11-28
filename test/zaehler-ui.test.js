@@ -4,7 +4,7 @@ const tick=()=>new Promise(r=>setImmediate(r));
 const button=(w,text)=>[...w.document.querySelectorAll('button')].find(b=>b.textContent===text);
 function setup(t,rolle='admin'){
  const d=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.test/#/zaehler/1'});t.after(()=>d.window.close());
- for(const f of ['ui','kern','dialoge','shell','masken','zaehler'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),d.getInternalVMContext());
+ for(const f of ['adressdaten','ui','kern','dialoge','shell','masken','zaehler'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),d.getInternalVMContext());
  d.window.eval('S.lauf=1;S.benutzer={id:1,rolle:'+JSON.stringify(rolle)+',name:"Testverwaltung"}');return d.window;
 }
 const o={id:1,nummer:'4236',bezeichnung:'Damiansweg 2'};

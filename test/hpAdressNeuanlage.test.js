@@ -1,7 +1,19 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),{openDatabase}=require('../db'),H=require('../services/hpAdressSync'),N=require('../services/hpAdressNeuanlage'),A=require('../services/adressen');
-async function setup(t){const db=await openDatabase(':memory:');t.after(()=>db.close());await db.run("INSERT INTO benutzer(id,benutzername,name,rolle,kuerzel,passwort_hash) VALUES(1,'admin','Admin','admin','FD','x')");const sync=H.service(db),grant=await sync.create(1,{name:'HP',datenbank:'HPTEST',zustimmung:true,vollstaendig:true,neuanlagen:true,dauerhaft:true}),svc=N.service(db),body={datenbank:'HPTEST'},create=(b={})=>db.transaktion(async tx=>{const data={nachname:'Test',vorname:'Neu',telefon:'0221-1',email:'test@example.test',...b};await require('../services/adressDubletten').neuanlagePruefen(tx,data);const prepared=await N.vorbereiten(tx,1,data),a=await A.anlegen(tx,data);await N.einreihen(tx,a.id,prepared);return N.metadata(tx,a);}),take=()=>svc.abholen(grant.id,grant.token,body);return{db,sync,grant,svc,create,take,body};}
+async function setup(t){const db=await openDatabase(':memory:');t.after(()=>db.close());await db.run("INSERT INTO benutzer(id,benutzername,name,rolle,kuerzel,passwort_hash) VALUES(1,'admin','Admin','admin','FD','x')");const sync=H.service(db),grant=await sync.create(1,{name:'HP',datenbank:'HPTEST',zustimmung:true,vollstaendig:true,neuanlagen:true,dauerhaft:true}),svc=N.service(db),body={datenbank:'HPTEST',stamm_version:1},create=(b={})=>db.transaktion(async tx=>{const data={nachname:'Test',vorname:'Neu',telefon:'0221-1',email:'test@example.test',...b};await require('../services/adressDubletten').neuanlagePruefen(tx,data);const prepared=await N.vorbereiten(tx,1,data),a=await A.anlegen(tx,data);await N.einreihen(tx,a.id,prepared);return N.metadata(tx,a);}),take=()=>svc.abholen(grant.id,grant.token,body);return{db,sync,grant,svc,create,take,body};}
 const reservation={nummer:100,datum:739936,uhrzeit:40000,protokoll:1000};
+
+test('Vollständige Neuanlage sperrt alte Connectoren und verlangt Rückprüfung aller Zusatzfelder',async t=>{
+ const f=await setup(t);await f.create({anrede:'Frau',titel:'Dr.',name3:'Dritte Zeile',geburtstag:'1980-02-29',sonderfunktion10:'010'});
+ assert.deepEqual(await f.svc.abholen(f.grant.id,f.grant.token,{datenbank:'HPTEST'}),{});assert.equal((await f.db.get('SELECT status FROM hp_adress_neuanlagen')).status,'wartend');
+ const j=(await f.take()).anlegen;assert.equal(j.daten.stamm.Name3,'Dritte Zeile');assert.equal(j.daten.stamm.Titel,'Dr.');assert.equal(j.daten.stamm.SF10,'010');
+ await f.svc.reservieren(f.grant.id,f.grant.token,{...f.body,id:j.id,reservierung:reservation});
+ const proof={...f.body,id:j.id,status:'erfolg',record:{...j.daten.record,nummer:100},vollstaendig_geprueft:true};await assert.rejects(f.svc.ergebnis(f.grant.id,f.grant.token,proof),/zusätzlichen/);
+ await assert.rejects(f.svc.ergebnis(f.grant.id,f.grant.token,{...proof,stamm_geprueft:true,stamm:{...j.daten.stamm,Name3:'Falsch'}}),/zusätzlichen/);
+ await f.svc.ergebnis(f.grant.id,f.grant.token,{...proof,stamm_geprueft:true,stamm:j.daten.stamm});assert.equal((await f.db.get('SELECT status FROM hp_adress_neuanlagen')).status,'synchron');
+});
+
+test('Geänderte Zusatzfelder verhindern eine veraltete Reservierung',async t=>{const f=await setup(t),a=await f.create(),j=(await f.take()).anlegen;await f.db.run("UPDATE adressen SET titel='Prof.' WHERE id=?",[a.id]);await assert.rejects(f.svc.reservieren(f.grant.id,f.grant.token,{...f.body,id:j.id,reservierung:reservation}),/geändert/);});
 
 test('HP-Neuanlage erhält begrenzte native Fehlernummer ohne Freitext und übernimmt keine unbestätigte HP-Nummer',async t=>{
  const f=await setup(t),a=await f.create(),j=(await f.take()).anlegen;
@@ -43,7 +55,7 @@ test('Reservierung bindet genau eine HP-Nummer; Import erzeugt keine zweite Cura
  assert.equal((await f.sync.compare(f.grant.id,f.grant.token,{...f.body,fingerprints:[]})).fortsetzen_ab,0);
  const record={...job.daten.record,nummer:100};await f.sync.scan(f.grant.id,f.grant.token,{...f.body,records:[record]});assert.equal((await f.db.get('SELECT COUNT(*) n FROM adressen')).n,1);assert.equal((await f.db.get('SELECT status FROM hp_adress_zuordnung')).status,'neuanlage');
  await assert.rejects(A.aktualisieren(f.db,a.id,{ort:'Während Anlage'}),e=>e.status===409);await assert.rejects(A.setzeArchiviert(f.db,a.id,true),e=>e.status===409);
- const result={...f.body,id:job.id,status:'erfolg',record,vollstaendig_geprueft:true};await assert.rejects(f.svc.ergebnis(f.grant.id,f.grant.token,{...result,vollstaendig_geprueft:false}),e=>e.status===409);await assert.rejects(f.svc.ergebnis(f.grant.id,f.grant.token,{...result,record:{...record,name1:'Fremd'}}),e=>e.status===409);
+ const result={...f.body,id:job.id,status:'erfolg',record,vollstaendig_geprueft:true,stamm:job.daten.stamm,stamm_geprueft:true};await assert.rejects(f.svc.ergebnis(f.grant.id,f.grant.token,{...result,vollstaendig_geprueft:false}),e=>e.status===409);await assert.rejects(f.svc.ergebnis(f.grant.id,f.grant.token,{...result,record:{...record,name1:'Fremd'}}),e=>e.status===409);
  await f.svc.ergebnis(f.grant.id,f.grant.token,result);await f.svc.ergebnis(f.grant.id,f.grant.token,result);const saved=await A.holen(f.db,a.id);assert.equal(saved.nummer,'HP-100');assert.equal(saved.hp_sync.status,'synchron');assert.equal(saved.hp_neuanlage.status,'synchron');
  const B=require('../services/hpAdressBereiche'),spec=B.spec.telefon,tel=Object.fromEntries(spec.fields.map(f=>[f.name,f.typ===0?'':'0']));Object.assign(tel,{AdrNr:'100',LfdNrIDXTel:'1',TelNr:'0221-1',TelTxt:'Telefon'});await B.service(f.db).speichern(f.grant.id,f.grant.token,{...f.body,nummer:100,bereich:'telefon',zeilen:[tel]});assert.equal((await f.db.get('SELECT COUNT(*) n FROM adress_telefone WHERE adresse_id=?',[a.id])).n,1);
 

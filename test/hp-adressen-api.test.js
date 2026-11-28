@@ -29,6 +29,6 @@ test('Adressabgleich-API: Mitarbeiter schreibt normale Maske, Freigabe nur Admin
  const newAddress={nachname:'Eigenständige HP-Neuanlage',vorname:'API'};const created=await post('/adressen',newAddress,staff);assert.equal(created.status,201);assert.equal((await created.json()).hp_neuanlage.status,'wartend');
  await db.run("UPDATE benutzer SET kuerzel='TK' WHERE benutzername='team'");
  assert.equal((await post('/hp-adressen/agent/'+creation.id+'/neuanlagen/abholen',{datenbank:'HPTEST'},staff)).status,401);
- const taken=await post('/hp-adressen/agent/'+creation.id+'/neuanlagen/abholen',{datenbank:'HPTEST'},'','',creation.token);assert.equal(taken.status,200);assert.equal((await taken.json()).anlegen.daten.sb,'CA');
+ const taken=await post('/hp-adressen/agent/'+creation.id+'/neuanlagen/abholen',{datenbank:'HPTEST',stamm_version:1},'','',creation.token);assert.equal(taken.status,200);assert.equal((await taken.json()).anlegen.daten.sb,'CA');
 
 });

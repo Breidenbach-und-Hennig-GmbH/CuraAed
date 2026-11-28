@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),{JSDOM}=require('jsdom');
 const tick=()=>new Promise(r=>setImmediate(r));
-function setup(t){const d=new JSDOM('<button id="zurueck">Ausgang</button><div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.test/'});t.after(()=>d.window.close());for(const f of ['ui','kern','shell','dialoge','masken','vorgaenge','hwa-status','handwerkerauftraege','hwa-erfassung'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),d.getInternalVMContext());const w=d.window;w.ui=w.eval("UI");w.eval('S.benutzer={id:1,rolle:"admin"};S.lauf=1');return w;}
+function setup(t){const d=new JSDOM('<button id="zurueck">Ausgang</button><div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://curaaed.test/'});t.after(()=>d.window.close());for(const f of ['adressdaten','ui','kern','shell','dialoge','masken','vorgaenge','hwa-status','handwerkerauftraege','hwa-erfassung'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),d.getInternalVMContext());const w=d.window;w.ui=w.eval("UI");w.eval('S.benutzer={id:1,rolle:"admin"};S.lauf=1');return w;}
 function key(w,k,opts={}){w.document.activeElement.dispatchEvent(new w.KeyboardEvent('keydown',{key:k,code:k.length===1?'Key'+k.toUpperCase():k,bubbles:true,cancelable:true,...opts}));}
 test('Dialog hält Tab und Rückwärts-Tab im obersten Fenster und stellt den Ausgangsfokus wieder her',t=>{
  const w=setup(t),start=w.document.getElementById('zurueck');start.focus();

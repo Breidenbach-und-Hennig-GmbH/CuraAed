@@ -2,8 +2,18 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),{JSDOM}=require('jsdom');
 const {openDatabase}=require('../db'),bedienung=require('../services/adressBedienung'),adressen=require('../services/adressen');
 const tick=()=>new Promise(r=>setImmediate(r));
-function setup(t){const d=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{url:'https://curaaed.test',runScripts:'outside-only'});t.after(()=>d.window.close());for(const f of ['ui','kern','shell','dialoge','masken'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),d.getInternalVMContext());const w=d.window;w.eval('S.benutzer={id:42,rolle:"admin"};S.lauf=1');return w;}
+function setup(t){const d=new JSDOM('<div id="hp-desktop"></div><div id="modal-container"></div><div id="toast-container"></div>',{url:'https://curaaed.test',runScripts:'outside-only'});t.after(()=>d.window.close());for(const f of ['adressdaten','ui','kern','shell','dialoge','masken'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),d.getInternalVMContext());const w=d.window;w.eval('S.benutzer={id:42,rolle:"admin"};S.lauf=1');return w;}
 function key(w,node,key,opts={}){return node.dispatchEvent(new w.KeyboardEvent('keydown',{key,code:key,bubbles:true,cancelable:true,...opts}));}
+
+test('Neue Adresse ergänzt Suchbegriff und Briefanrede direkt; eigene Angaben und weitere Stammdaten bleiben erhalten',async t=>{
+ const w=setup(t);w.adresseFormular();const input=(k,v)=>{const field=w.document.getElementById('f_'+k);field.value=v;field.dispatchEvent(new w.Event('input',{bubbles:true}));return field;};
+ input('anrede','Frau');input('vorname','Anna');input('nachname','Müller');input('titel','Dr.');
+ assert.equal(w.document.getElementById('f_suchbegriff').value,'MÜLLER, ANNA');assert.equal(w.document.getElementById('f_briefanrede1').value,'Sehr geehrte Frau Dr. Müller,');
+ input('suchbegriff','INDIVIDUELL');input('briefanrede1','Liebe Anna,');input('nachname','Schmidt');assert.equal(w.document.getElementById('f_suchbegriff').value,'INDIVIDUELL');assert.equal(w.document.getElementById('f_briefanrede1').value,'Liebe Anna,');
+ input('name3','Dritte Zeile');input('sonderfunktion10','010');input('geburtstag2','1980-02-29');assert.equal(w.document.getElementById('f_sonderfunktion10').maxLength,3);assert.equal(w.document.querySelectorAll('.cu-adress-dialog').length,1);
+ assert.match(w.document.querySelector('[aria-label="Vorschau für Anschrift und Briefanrede"]').textContent,/Dritte Zeile/);
+ let sent;w.API={post:async(p,b)=>{sent=b;return{id:1};},get:async()=>[]};w.neueAdresseMitPruefung=async b=>{sent=b;return{id:1};};w.document.querySelector('footer .btn-primary').click();await tick();assert.equal(sent.name3,'Dritte Zeile');assert.equal(sent.geburtstag2,'1980-02-29');assert.equal(sent.sonderfunktion10,'010');
+});
 test('Adressnavigation reicht über 500 Datensätze, sortiert Zahlen und trennt deaktivierte Adressen',async t=>{
  const db=await openDatabase(':memory:');t.after(()=>db.close());
  await db.transaktion(async tx=>{for(let i=1;i<=505;i++)await tx.run('INSERT INTO adressen(nummer,nachname,ort) VALUES(?,?,?)',[String(i),'Name '+i,'Ort']);});

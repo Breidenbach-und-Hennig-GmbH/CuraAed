@@ -22,7 +22,7 @@ function aufbau(t, { verbunden = true, notizen, get } = {}) {
     },
     post: async (url, body) => { anfragen.push({ methode: 'POST', url, body }); return { url: 'https://mcp.plaud.ai/authorize?state=test' }; },
   };
-  for (const name of ['ui', 'kern', 'dialoge', 'plaud']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js', name + '.js'), 'utf8'), dom.getInternalVMContext());
+  for (const name of ['adressdaten','ui', 'kern', 'dialoge', 'plaud']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js', name + '.js'), 'utf8'), dom.getInternalVMContext());
   const bemerkung = w.document.getElementById('bemerkung');
   const block = w.plaudBlock(bemerkung, () => '', null);
   w.document.body.append(block.block);

@@ -20,7 +20,7 @@ function aufbau(t, { eingerichtet = true, status, upload, kontakt } = {}) {
       return upload ? upload() : { zusammenfassung: 'Heizung prüfen', quelle: 'audio', abschrift: 'Die Heizung ist kalt.' };
     },
   };
-  for (const name of ['ui', 'kern', 'dialoge']) {
+  for (const name of ['adressdaten','ui', 'kern', 'dialoge']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js', name + '.js'), 'utf8'), dom.getInternalVMContext());
   }
   const bemerkung = w.document.querySelector('textarea');

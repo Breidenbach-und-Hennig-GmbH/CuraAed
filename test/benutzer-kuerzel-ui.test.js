@@ -5,7 +5,7 @@ const tick=()=>new Promise(r=>setImmediate(r));
 test('Benutzerformular: Kürzel groß, maximal 3, ungültige Eingaben sperren, Speichern über API',async t=>{
  const dom=new JSDOM('<div id="modal-container"></div><div id="toast-container"></div>',{runScripts:'outside-only',url:'https://example.test/'});t.after(()=>dom.window.close());
  const w=dom.window,calls=[]; w.API={put:async(url,body)=>calls.push({url,body})};
- for(const f of ['ui','kern','dialoge'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),dom.getInternalVMContext());
+ for(const f of ['adressdaten','ui','kern','dialoge'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/'+f+'.js'),'utf8'),dom.getInternalVMContext());
  vm.runInContext('L.benutzerRolle={mitarbeiter:"Mitarbeiter"}; neuLaden=()=>{};',dom.getInternalVMContext());
  w.benutzerFormular({id:7,name:'Test Person',rolle:'mitarbeiter',aktiv:1,kuerzel:'FD'});
  const input=w.document.getElementById('f_kuerzel');assert.equal(input.maxLength,3);assert.equal(input.value,'FD');

@@ -142,12 +142,17 @@ async function anredeAuswahl(input) {
 
 function adresseFormular(a) {
   const bearb = !!a;
+  const initial=Adressdaten.vorbereiten(a||{});
   const typInit = a?.adresstyp || 'person';
   const { form, werte, inputs } = formular([
     { grid: 2, felder: [
-      { name: 'nummer', label: bearb ? 'Adress-Nr.' : 'Adress-Nr. (leer = automatisch)', value: a?.nummer, placeholder: 'z. B. 10001' },
+      { name: 'nummer', label:'Adress-Nr.', value: a?.nummer, placeholder:bearb?'':'leer = automatisch' },
+      { name: 'suchbegriff', label:'Suchbegriff',value:initial.suchbegriff,placeholder:'Nachname, Vorname' },
+    ] },
+    { grid: 3, felder: [
       { name: 'adresstyp', label: 'Typ', type: 'select', options: opt(L.adresstyp), value: typInit },
-      { name: 'anrede', label: 'Anrede', type: 'text', value: a?.anrede, vorschlaege: ['Herr','Frau','Firma','Eheleute'] },
+      { name: 'anrede', label: 'Anrede', type: 'text', value: initial.anrede, vorschlaege: ['Herr','Frau','Firma','Eheleute'] },
+      { name: 'titel', label:'Titel',value:initial.titel },
     ] },
     { grid: 2, felder: [
       { name: 'vorname', label: 'Vorname', value: a?.vorname },
@@ -158,12 +163,15 @@ function adresseFormular(a) {
       { name: 'ansprechpartner', label: 'Ansprechpartner (Firma)', value: a?.ansprechpartner },
     ] },
     { felder: [{ name: 'zusatz', label: '2. Zeile / Zusatz (erscheint in der Anschrift)', value: a?.zusatz, placeholder: 'z. B. Gerd Rottländer, Außenstelle …, c/o …' }] },
+    { felder: [{name:'name3',label:'Name 3',value:initial.name3}] },
     { felder: [{ name: 'strasse', label: 'Straße & Hausnr.', value: a?.strasse }] },
     { grid: 2, felder: [
       { name: 'plz', label: 'PLZ', value: a?.plz },
       { name: 'ort', label: 'Ort', value: a?.ort },
       { name: 'land', label: 'Land (HP-Ländercode)', value: a?.land || 'DE' },
     ] },
+    { felder:[{name:'beruf',label:'Berufsbezeichnung',value:initial.beruf}] },
+    { felder:[{name:'briefanrede1',label:'Briefanrede 1',value:initial.briefanrede1},{name:'briefanrede2',label:'Briefanrede 2',value:initial.briefanrede2}] },
     // Telefon/E-Mail nur beim Anlegen – danach über die Listen in der Adressmaske
     ...(bearb ? [] : [{ grid: 3, felder: [
       { name: 'email', label: 'E-Mail', type: 'email', value: a?.email },
@@ -172,17 +180,28 @@ function adresseFormular(a) {
     ] }]),
     { grid: 3, felder: [
       { name: 'geburtstag', label: 'Geburtstag', type: 'date', value: a?.geburtstag },
+      { name: 'geburtstag2', label:'Geburtstag 2',type:'date',value:initial.geburtstag2 },
       { name: 'lkto_nr', label: 'LKto-Nr. (Personenkonto)', value: a?.lkto_nr },
     ] },
+    {grid:3,felder:[{name:'sterbedatum1',label:'Sterbedatum 1',type:'date',value:initial.sterbedatum1},{name:'sterbedatum2',label:'Sterbedatum 2',type:'date',value:initial.sterbedatum2},{name:'geburtsname',label:'Geburtsname',value:initial.geburtsname}]},
+    {grid:5,felder:Adressdaten.felder.filter(f=>f.name.startsWith('sonderfunktion')).map(f=>({name:f.name,label:'SF '+f.name.replace('sonderfunktion',''),value:initial[f.name]}))},
     { felder: [{ name: 'notizen', label: 'Notizen / Info', type: 'textarea', value: a?.notizen }] },
   ]);
   if (bearb) form.appendChild(el('p', { class: 'small muted', text: 'Telefonnummern, E-Mail-Adressen und Ansprechpartner pflegen Sie in der Adressmaske über die Pfeile ➠ bzw. die Knöpfe rechts.' }));
   if(a?.hp_sync){inputs.nummer.readOnly=true;if(istAdmin())form.append(el('p',{role:'status',text:hpAdressStatus(a)}));}
   form.classList.add('cu-adressformular');
+  for(const f of Adressdaten.felder)inputs[f.name].maxLength=f.max;
+  if(a?.hp_sync){for(const f of Adressdaten.felder)inputs[f.name].readOnly=true;form.append(el('p',{class:'small muted',text:'Die zusätzlichen Felder dieser bestehenden HP-Adresse werden aus HausPerfekt angezeigt. Für Änderungen an diesen Feldern verwenden Sie derzeit HausPerfekt.'}));}
+  Adressdaten.binden(inputs,initial);
+  const anschrift=el('div',{class:'cu-adress-vorschau',role:'status','aria-label':'Vorschau für Anschrift und Briefanrede'});
+  const vorschau=()=>{const d=Adressdaten.vorbereiten(werte());anschrift.replaceChildren(el('strong',{text:'Anschrift · Vorschau'}),...[[d.anrede,d.titel].filter(Boolean).join(' '),d.adresstyp==='firma'?d.firmenname:[d.vorname,d.nachname].filter(Boolean).join(' '),d.zusatz,d.name3,d.strasse,[d.plz,d.ort].filter(Boolean).join(' '),d.briefanrede1,d.briefanrede2].filter(Boolean).map(text=>el('div',{text})));};
+  form.addEventListener('input',vorschau);form.addEventListener('change',vorschau);form.append(anschrift);vorschau();
+  form.append(el('p',{class:'small muted',text:'Suchbegriff und Briefanrede werden aus den Namensangaben ergänzt und können angepasst werden. Unbekannte Daten bleiben offen.'}));
   inputs.anrede.closest('.field').append(el('button',{type:'button',class:'hp-mini',text:'…',title:'Anrede auswählen (F5 im Feld Anrede)','aria-label':'Anrede auswählen',onclick:()=>anredeAuswahl(inputs.anrede)}));
   const kopieren=()=>anschriftKopierenDialog(quelle=>{
     if(!form.isConnected)return;
     for(const key of ['strasse','plz','ort','land','zusatz'])inputs[key].value=quelle[key]||'';
+    inputs.strasse.dispatchEvent(new Event('input',{bubbles:true}));
     inputs.strasse.focus();
   },()=>form.isConnected);
   form.addEventListener('keydown',ev=>{if(ev.key==='F5'&&!ev.ctrlKey&&!ev.altKey&&!ev.shiftKey&&!ev.metaKey){
@@ -199,7 +218,7 @@ function adresseFormular(a) {
   inputs.adresstyp.addEventListener('change', anpassen);
   anpassen();
 
-  modal({
+  const dialog=modal({
     titel: bearb ? 'Adresse bearbeiten' : 'Neue Adresse',
     wide: true,
     inhalt: form,
@@ -216,6 +235,7 @@ function adresseFormular(a) {
       } }),
     ],
   });
+  dialog.box.classList.add('cu-adress-dialog');
   form.addEventListener('submit', (e) => e.preventDefault());
 }
 
