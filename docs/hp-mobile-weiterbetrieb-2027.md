@@ -104,6 +104,12 @@ Firmenkennung, Kontorevision, aktuelle Adress-/Wohnungszuordnung und Rollengült
 werden bei jedem Portalzugriff erneut geprüft; Änderungen entziehen den Zugriff.
 Das Portal zeigt derzeit nur die eigenen Objekt- und Wohnungszuordnungen.
 Dokumentabruf, Tickets und die übrigen Mobile-Funktionen sind damit noch nicht ersetzt.
+Über **Aus Adresse** kann ein Administrator einen separaten Kundenzugang vorbereiten,
+wenn ein Eigentümer zuvor nur als HP-Mobile-Teamkonto geführt wurde. Die ausgewählten
+HP-Adressnummern müssen aus derselben Firmenquelle stammen; die E-Mail muss in einer
+dieser Adressen hinterlegt sein. Gleiche E-Mails mit anderen Zuordnungen werden
+abgewiesen. Explizit angelegte `ca:`-Identitäten sind vom HP-Mobile-Reimport getrennt.
+Auch dieser Schritt vergibt keine Mitarbeiterrechte und erzeugt keinen Aktivierungslink.
 
 Der vollständige Export wurde testweise zweimal in eine temporäre Speicher-Datenbank
 übernommen: zuerst 1.721 neue Einträge, danach 1.721 unveränderte Einträge, jeweils

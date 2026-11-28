@@ -31,6 +31,21 @@ async function kundenMaske() {
         el('button',{type:'button',text:'Schließen',onclick:close})]});
     }catch(e){message.textContent=e.message;}
   }
+  function ausAdressen(){
+    if(!source.value)return;
+    const quelle=source.value, f=formular([
+      [{name:'nummern',label:'HP-Adressnummern',required:true,placeholder:'z. B. 52033; weitere Nummern mit Komma trennen'}],
+      [{name:'email',label:'Gespeicherte E-Mail-Adresse',type:'email',required:true}]
+    ]),info=el('p',{role:'status'});let busy=false;
+    f.form.addEventListener('submit',e=>e.preventDefault());
+    modal({titel:'Kundenzugang aus Adressen vorbereiten',inhalt:el('div',{},[
+      el('p',{text:'Nur die ausdrücklich ausgewählten Adressen dieser Firma werden geprüft. Die E-Mail muss dort gespeichert sein. Mitarbeiterrechte werden nicht übernommen; eine Einladung wird noch nicht versandt.'}),f.form,info]),footer:close=>[
+      el('button',{text:'Zuordnung prüfen',type:'button',onclick:async()=>{
+        if(busy||!f.form.reportValidity())return;busy=true;
+        try{const v=f.werte(),r=await API.post('/kunden/aus-adressen',{quelle,adressnummern:v.nummern.split(/[,;\s]+/).filter(Boolean).map(Number),email:v.email});close();await laden(1);await zugang(r);}
+        catch(e){info.textContent=e.message;}finally{busy=false;}
+      }}),el('button',{text:'Abbrechen',onclick:close})]});
+  }
   async function laden(page = 1) {
     if (!source.value) return;
     const n = ++request;
@@ -88,7 +103,7 @@ async function kundenMaske() {
         await API.post('/kunden/firma', { quelle: source.value, firma_id: Number(firma.value) });
         const q = quellen.find(q => q.id === source.value); q.firma_id = Number(firma.value); firma.disabled = true; pruefwert = null; await laden(1);
       } catch (e) { message.textContent = e.message; }
-    } }, { text: 'Exportdatei', onclick: () => file.click() }, { text: 'Vorschau', onclick: vorschau }, { text: 'Übernehmen', onclick: uebernehmen }, { text: 'Suche', onclick: () => laden(1) }, { text: 'HP-Verbindungen', onclick: () => geheZu('#/hausperfekt') }] })) return;
+    } }, {text:'Aus Adresse',onclick:ausAdressen}, { text: 'Exportdatei', onclick: () => file.click() }, { text: 'Vorschau', onclick: vorschau }, { text: 'Übernehmen', onclick: uebernehmen }, { text: 'Suche', onclick: () => laden(1) }, { text: 'HP-Verbindungen', onclick: () => geheZu('#/hausperfekt') }] })) return;
   content.append(el('section', { class: 'cu-karte', style: 'padding:8px;margin:8px' }, [
     el('label', {}, ['Firma ', firma]), ' ', el('label', {}, ['HP-Quelle ', source]), ' ', suche, file,
     el('p', { class: 'hint', text: 'Eigene Kundenkonten ohne Mitarbeiterrechte. Die Übernahme bereitet Zugänge vor. Prüfen Sie die Zuordnung über „Zugang“, bevor Sie einen Einmal-Link erstellen. Gleiche E-Mail-Adressen werden nicht automatisch zusammengeführt.' }),
