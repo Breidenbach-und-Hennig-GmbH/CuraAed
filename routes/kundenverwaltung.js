@@ -19,6 +19,7 @@ module.exports = function(db, publicUrl) {
   r.get('/', h(async(req,res) => res.json(await svc.liste(req.benutzer.id, req.query.quelle, { seite: Number(req.query.seite || 1), suche: req.query.suche || '' }))));
   r.post('/vorschau', h(async(req,res) => res.json(await svc.vorschau(req.benutzer.id, req.body.quelle, req.body.export))));
   r.post('/uebernehmen', h(async(req,res) => res.json(await svc.uebernehmen(req.benutzer.id, req.body.quelle, req.body.export, req.body.pruefwert))));
+  r.post('/aus-adressen',h(async(req,res)=>res.json(await require('../services/kundenAnlage').anlegen(db,req.benutzer.id,req.body.quelle,req.body.adressnummern,req.body.email))));
   r.get('/:id/zuordnung',h(async(req,res)=>res.json(await aktivierung.vorschau(req.benutzer.id,Number(req.params.id)))));
   r.post('/:id/aktivierung',h(async(req,res)=>res.json(await aktivierung.erstellen(req.benutzer.id,Number(req.params.id),req.body.pruefwert))));
   return r;

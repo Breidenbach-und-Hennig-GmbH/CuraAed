@@ -26,6 +26,27 @@ async function fixture(t){
  const link=async(id=kontoA,owner=1)=>{const p=await svc.vorschau(owner,id),r=await svc.erstellen(owner,id,p.pruefwert);return{...r,token:new URLSearchParams(new URL(r.link).hash.slice(1)).get('aktivieren')};};
  return{db,svc,kontoA,kontoB,link,advance:n=>{ms+=n;}};
 }
+test('Explizite Kundenanlage aus HP-Adressen: keine Teamrechte, keine Dubletten, Quelle und aktuelle Rollen geprüft',async t=>{
+ const f=await fixture(t),anlage=require('../services/kundenAnlage');
+ await f.db.run("UPDATE adressen SET email='kunde@example.test' WHERE id=1");
+ assert.equal((await anlage.anlegen(f.db,1,'source1',[500],'kunde@example.test')).id,f.kontoA);
+ await assert.rejects(()=>anlage.anlegen(f.db,2,'source1',[500],'kunde@example.test'),/nicht gefunden/);
+ await assert.rejects(()=>anlage.anlegen(f.db,1,'source1',[500],'fremd@example.test'),/keiner.*gespeichert/);
+ await assert.rejects(()=>anlage.anlegen(f.db,1,'source1',[500,500],'kunde@example.test'),/eindeutige/);
+ await f.db.run("INSERT INTO adressen(id,nummer,nachname,email) VALUES(3,'501','Manueller Kunde','manuell@example.test')");
+ await f.db.run("INSERT INTO hp_adress_zuordnung(verbindung_id,hp_nummer,adresse_id,basis,status) VALUES('direct1',501,3,'{}','synchron')");
+ const count=await f.db.get('SELECT count(*) AS n FROM kunden_konten');
+ await assert.rejects(()=>anlage.anlegen(f.db,1,'source1',[501],'manuell@example.test'),/Eigentümer/);
+ assert.equal((await f.db.get('SELECT count(*) AS n FROM kunden_konten')).n,count.n);
+ await f.db.run("INSERT INTO rollen_zuordnungen(adresse_id,einheit_id,rolle) VALUES(3,1,'eigentuemer')");
+ const k=await anlage.anlegen(f.db,1,'source1',[501],'manuell@example.test');assert.equal(k.neu,true);
+ assert.equal(k.wohnungen.length,1);assert.equal((await anlage.anlegen(f.db,1,'source1',[501],'manuell@example.test')).id,k.id);
+ assert.equal((await f.db.get('SELECT count(*) AS n FROM kunden_aktivierungen')).n,0);
+ const data=exportData('portal1'),p=await registry.baue(f.db).vorschau(1,'source1',data);
+ await registry.baue(f.db).uebernehmen(1,'source1',data,p.pruefwert);
+ assert.equal((await f.db.get('SELECT status FROM kunden_konten WHERE id=?',[k.id])).status,'vorbereitet');
+});
+
 test('Aktivierung: Einmal-Link nur gehasht gespeichert, eigenes Passwort, eigene Sitzungen und normale HP-Nummern',async t=>{
  const f=await fixture(t),l=await f.link();
  assert.equal(new URL(l.link).searchParams.get('token'),null);
