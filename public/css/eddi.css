@@ -16,6 +16,9 @@
 .cu-eddi-zustimmung{display:flex;align-items:center;gap:6px;margin-top:6px}
 .cu-eddi-zustimmung input{min-height:0}
 .cu-eddi-status{color:#665a75}
+.cu-eddi-dateihinweis{font-size:11px;color:#665a75}
+.cu-eddi-drop-aktiv{outline:2px dashed #245894;outline-offset:2px;background:#e8f0ff}
+.cu-eddi-drop-aktiv .cu-eddi-zeile{background:#e8f0ff}
 .cu-eddi-teilung{border-top:1px solid #ddd4e8;padding-top:6px;margin-top:8px}
 .cu-eddi-teilung[hidden]{display:none}
 .cu-eddi-teilung .cu-formular{max-width:1100px;margin:5px 0}

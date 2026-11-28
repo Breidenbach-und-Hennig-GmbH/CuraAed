@@ -93,14 +93,26 @@ Mehrdeutige oder fehlende Bezüge erhalten `pruefen`. Interne und technische Kon
 werden ausgeschlossen, gleiche E-Mails nicht zusammengeführt. Entfernte Quellkonten
 bleiben gesperrt erhalten. Eine inzwischen veränderte Vorschau wird verworfen.
 
-Auch `vorbereitet` schaltet keinerlei Anmeldung oder Dokumentzugriff frei. Diese
-erste Stufe besitzt ausdrücklich keine Aktivierungs-, Kundenlogin- oder Versandwege.
-Vor Aktivierung folgen gesonderte Kundensitzungen und eine durchgängige Rechteprüfung.
+Auch `vorbereitet` schaltet keinerlei Anmeldung oder Dokumentzugriff frei.
+Über **Zugang** wird zunächst die aktuelle Zuordnung geprüft. Nur eindeutig bestätigte
+Eigentümer-/Mieterfunktionen in aktiven Objekten derselben direkten Quelle berechtigen
+zur Erstellung eines Einmal-Links. Der Link gilt sieben Tage; ältere Links werden
+widerrufen. Er wird nicht automatisch verschickt. Kunden wählen ihr Passwort selbst.
+Aktivierungen und 24-Stunden-Kundensitzungen sind vollständig von Mitarbeiterkonten
+getrennt. Im Speicher liegen ausschließlich Hashes der Link- und Sitzungsgeheimnisse.
+Firmenkennung, Kontorevision, aktuelle Adress-/Wohnungszuordnung und Rollengültigkeit
+werden bei jedem Portalzugriff erneut geprüft; Änderungen entziehen den Zugriff.
+Das Portal zeigt derzeit nur die eigenen Objekt- und Wohnungszuordnungen.
+Dokumentabruf, Tickets und die übrigen Mobile-Funktionen sind damit noch nicht ersetzt.
 
 Der vollständige Export wurde testweise zweimal in eine temporäre Speicher-Datenbank
 übernommen: zuerst 1.721 neue Einträge, danach 1.721 unveränderte Einträge, jeweils
 null Freischaltungen. Das ist kein Abgleich gegen die aktuellen Produktivadressen.
-Es wurden keine Einladungen verschickt und keine produktiven Kundenkonten angelegt.
+Am 28.11.2026 wurden anschließend 1.721 produktive Vorbereitungseinträge angelegt.
+1.452 bestehen die erste Rollenprüfung, 269 bleiben zur Prüfung gesperrt. Die zusätzliche
+Aktivierungsprüfung verlangt auch aktive Verwaltung und dieselbe Objekt-/Wohnungsquelle;
+die 1.452 sind daher keine Zahl freigeschalteter Zugänge. Bei dieser Übernahme wurden
+keine Links erzeugt, keine Passwörter vergeben und keine Einladungen verschickt.
 
 Für die Übernahme:
 
@@ -110,8 +122,8 @@ Für die Übernahme:
    Namensgleichheit oder gleiche E-Mail alleine begründet keine Berechtigung.
 3. Aktuelle Eigentümer-/Mieterfunktionen und Gültigkeitszeiträume prüfen.
    Firmen, Eheleute, mehrere Personen pro Konto und ehemalige Bewohner gesondert behandeln.
-4. Eigene Kundenidentitäten und Berechtigungsprüfung implementieren, getrennt von
-   `benutzer` (Mitarbeiter) und ETV-Gastlinks. Fehlende oder mehrdeutige Zuordnungen sperren.
+4. Separate Kundenidentitäten und Berechtigungsprüfung sind vorhanden, getrennt von
+   `benutzer` (Mitarbeiter) und ETV-Gastlinks. Fehlende oder mehrdeutige Zuordnungen bleiben gesperrt.
 5. Neue einmalige, zeitlich begrenzte Aktivierungslinks; keine übernommenen
    Klartextpasswörter. Einladungen erst mit funktionsfähigem Kundenportal versenden.
 6. Objektfremde Dokumente, direkte Download-URLs, Besitzerwechsel und Entzug
@@ -128,6 +140,6 @@ Für die Übernahme:
 - Nach dem bisherigen Datenbankausfall keine neuen DB04-Prüfprogramme starten,
   bevor der betreffende Zugriff kontrolliert geklärt ist.
 
-Offen: vollständiger Produktivnachweis, produktive Kundenübernahme/Kundenportal,
+Offen: vollständiger Produktivnachweis, vollständiger Funktionsumfang des Kundenportals,
 Online-Belegprüfung, Übergabeprotokolle, durchgängiger ERP-Abgleich und automatischer
 HP-Abrechnungsadapter für den Vermögensstatus. Diese Datei behauptet keinen Abschluss.

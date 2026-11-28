@@ -1561,12 +1561,14 @@ async function kontenrahmenAnsicht(o, ziel, lauf, bjParam) {
     try { const g = await API.post(`/objekte/${o.id}/fibu/buchungsjahr`, {}); toast(`Buchungsjahr ${g.grundwerte.aktuelles_bj} angelegt`, 'success'); geheZu(`${basis}?fibu=1&bj=${g.grundwerte.aktuelles_bj}`); } catch (e) { fehler(e); bjSel.value = String(jahr); }
   });
   const suche = el('input', { type: 'search', class: 'cu-karten-suche', placeholder: 'Konto-Nr. oder Bezeichnung …', 'aria-label': 'Konto suchen' });
+  const nurBebucht = el('input', { type: 'checkbox', checked: 'checked', 'aria-label': 'Nur bebuchte Konten' });
   S.kontext.suchfeld = suche;
   const box = el('div', { class: 'cu-kontenrahmen' });
   let konten = [];
   const zeichnen = () => {
     const q = suche.value.trim().toLowerCase();
-    const liste = q ? konten.filter((k) => `${k.nummer} ${k.bezeichnung}`.toLowerCase().includes(q)) : konten;
+    const sichtbar = nurBebucht.checked ? konten.filter(k => Number(k.buchungen) > 0) : konten;
+    const liste = q ? sichtbar.filter((k) => `${k.nummer} ${k.bezeichnung}`.toLowerCase().includes(q)) : sichtbar;
     box.replaceChildren(raster([
       { label: 'Konto-Nr', class: 'nowrap', render: (k) => el('span', { class: 'cu-konto-nr' }, [el('strong', { text: String(k.nummer) }), el('span', { class: 'cu-konto-art cu-art-' + k.art, title: KONTOARTEN[k.art] || k.art, text: k.art })]) },
       { label: 'Bezeichnung', render: (k) => el('span', { class: k.aktiv ? '' : 'muted', text: k.bezeichnung + (k.aktiv ? '' : ' (inaktiv)') }) },
@@ -1575,14 +1577,15 @@ async function kontenrahmenAnsicht(o, ziel, lauf, bjParam) {
       { label: 'VS MI', class: 'nowrap', render: (k) => k.vs_mi || '' },
       { label: 'WP-Ansatz', class: 'zahl nowrap', render: (k) => (k.wp_ansatz == null ? '' : zahlDe(k.wp_ansatz, 2)) },
       { label: 'Saldo', class: 'zahl nowrap', render: (k) => (k.saldo == null ? el('span', { class: 'cu-kb', title: 'keine Buchungen', text: 'kB' }) : zahlDe(k.saldo, 2)) },
-    ], liste, { onOpen: schreiben ? (k) => sachkontoForm(o, k, jahr, laden) : null, leer: q ? 'Kein Konto gefunden.' : 'Noch keine Konten – „Standard-Kontenrahmen", „Kontenrahmen kopieren" oder „+ Konto".', klasse: 'cu-kontenrahmen-tabelle' }));
-    const wp = liste.reduce((sum, k) => sum + (k.wp_ansatz || 0), 0);
-    box.appendChild(el('div', { class: 'cu-summe', text: `${liste.length} Konten · WP-Ansätze ${jahr} gesamt: ${zahlDe(wp, 2)} €` }));
+    ], liste, { onOpen: schreiben ? (k) => sachkontoForm(o, k, jahr, laden) : null, leer: q ? 'Kein Konto gefunden.' : nurBebucht.checked && konten.length ? 'Keine bebuchten Konten in diesem Buchungsjahr. Für alle Konten den Filter ausschalten.' : 'Noch keine Konten – „Standard-Kontenrahmen", „Kontenrahmen kopieren" oder „+ Konto".', klasse: 'cu-kontenrahmen-tabelle' }));
+    const wp = konten.reduce((sum, k) => sum + (k.wp_ansatz || 0), 0);
+    box.appendChild(el('div', { class: 'cu-summe', text: `${liste.length} von ${konten.length} Konten · WP-Ansätze ${jahr} Gesamtbestand: ${zahlDe(wp, 2)} €` }));
   };
   async function laden() {
     try { konten = await API.get(`/objekte/${o.id}/sachkonten` + API.qs({ jahr })); if (lauf === S.lauf) zeichnen(); } catch (e) { fehler(e); }
   }
   suche.addEventListener('input', zeichnen);
+  nurBebucht.addEventListener('change', zeichnen);
   const knopf = (text, onclick, titel) => el('button', { type: 'button', class: 'hp-mini', title: titel || text, onclick }, [el('span', { text })]);
   const folgt = (text, was) => el('button', { type: 'button', class: 'hp-mini gesperrt', 'aria-disabled': 'true', title: `${was} – folgt mit der FIBU`, onclick: () => toast(`${text}: ${was} – folgt mit der FIBU.`) }, [el('span', { text })]);
   const g = fibu.grundwerte;
@@ -1590,6 +1593,7 @@ async function kontenrahmenAnsicht(o, ziel, lauf, bjParam) {
     el('div', { class: 'cu-karten-kopf' }, [
       el('h2', { class: 'cu-karten-titel' }, [icon('book', 'cu-akzent'), el('span', { text: 'Kontenrahmen Objekt' })]),
       bjSel,
+      el('label', { class: 'small nowrap' }, [nurBebucht, ' Nur bebuchte Konten']),
       el('span', { class: 'hp-spacer' }),
       el('div', { class: 'cu-suche-klein' }, [icon('search'), suche]),
       schreiben ? el('button', { type: 'button', class: 'btn-primary cu-knopf', onclick: () => sachkontoForm(o, null, jahr, laden) }, [icon('plus'), el('span', { text: 'Konto' })]) : null,

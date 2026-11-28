@@ -4,7 +4,7 @@ function eddiTeilung(root, modelStatus, consent) {
   const box = el('section', { class: 'cu-eddi-teilung', hidden: true, 'aria-label': 'Teilungserklärung prüfen' });
   const file = el('input', { type: 'file', accept: '.pdf,application/pdf', hidden: true, 'aria-label': 'Teilungserklärung auswählen' });
   const state = el('p', { role: 'status', 'aria-live': 'polite' }), details = el('div');
-  const choose = el('button', { type: 'button', text: 'Teilungserklärung lesen', onclick: () => file.click() });
+  const choose = el('button', { type: 'button', text: 'Dokument analysieren', onclick: () => file.click() });
   const prepared=el('input',{type:'file',accept:'.json,application/json',hidden:true,'aria-label':'Vorbereitete Teilungsdaten auswählen'});
   let job, timer, revision = 0, busy = false;
   const key = 'curaaed-teilung-' + S.benutzer.id;
@@ -16,10 +16,13 @@ function eddiTeilung(root, modelStatus, consent) {
     catch(e){state.textContent=e instanceof SyntaxError?'Die Vorbereitungsdatei ist keine lesbare JSON-Datei.':e.message;}
     finally{prepared.value='';}
   });
-  file.addEventListener('change', async () => {
-    const f = file.files?.[0]; if (!f || busy) return;
-    box.hidden = false; details.replaceChildren(); clearTimeout(timer); revision++;
+  file.addEventListener('change', () => laden(file.files?.[0]));
+  async function laden(f) {
+    if (!f) return;
+    if (busy) { state.textContent = 'Bitte warten, bis die aktuelle PDF gelesen wurde.'; return; }
+    box.hidden = false;
     if (f.size > 25 * 1024 * 1024 || !/\.pdf$/i.test(f.name)) { state.textContent = 'Bitte eine PDF bis 25 MB auswählen.'; return; }
+    details.replaceChildren(); clearTimeout(timer); revision++;
     busy = true; choose.disabled = true; state.textContent = 'PDF wird in CuraAed gespeichert und lokal gelesen …';
     try {
       const form = new FormData(); form.append('datei', f);
@@ -28,7 +31,7 @@ function eddiTeilung(root, modelStatus, consent) {
       await poll();
     } catch (e) { state.textContent = e.message; }
     finally { busy = false; choose.disabled = false; file.value = ''; }
-  });
+  }
   async function poll() {
     const version = revision;
     try {
@@ -84,7 +87,7 @@ function eddiTeilung(root, modelStatus, consent) {
       ...d.hinweise.map(text => el('p', { class: 'cu-eddi-warnung', text })), el('label', { class: 'cu-eddi-zustimmung' }, [checked, el('span', { text: 'Angaben mit dem vorliegenden Original verglichen; offene Punkte bleiben als Prüfhinweis erhalten.' })]), take);
     f.form.addEventListener('submit', e => e.preventDefault());
   }
-  box.append(state, details);
+  box.append(el('p', {text: 'Analysebereich: Teilungserklärung · Objekt, Wohnungen, MEA und Stimmregeln prüfen.'}), state, details);
   if (job) { box.hidden = false; setTimeout(() => { if (root.isConnected) poll(); }, 0); }
-  return { button: choose, box };
+  return { button: choose, box, laden };
 }

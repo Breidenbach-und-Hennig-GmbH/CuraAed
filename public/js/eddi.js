@@ -53,6 +53,33 @@ function eddiLeiste() {
   const close = el('button', { type: 'button', text: 'Zuklappen', onclick: () => { panel.hidden = true; send.focus(); } });
   const fresh = el('button', { type: 'button', text: 'Neues Gespräch', onclick: () => { if (busy) return; chat = null; consent.checked = false; transcript.replaceChildren(); suggestions.replaceChildren(); try { sessionStorage.removeItem(key); } catch {} state.textContent = 'Neues Gespräch.'; input.focus(); } });
   const te = eddiTeilung(root, async () => { await open(); return model; }, consent);
+  const dateiHinweis = el('span', { class: 'cu-eddi-dateihinweis', text: 'PDF hierher ziehen · bis 25 MB' });
+  const dateiWahl = el('button', { type: 'button', text: 'PDF hinzufügen', onclick: () => { open(); te.button.click(); } });
+  form.insertBefore(dateiWahl, send);
+  form.append(dateiHinweis);
+  let dragTiefe = 0;
+  const hatDateien = e => Array.from(e.dataTransfer?.types || []).includes('Files');
+  const dropEnde = () => { dragTiefe = 0; root.classList.remove('cu-eddi-drop-aktiv'); };
+  root.addEventListener('dragenter', e => {
+    if (!hatDateien(e)) return;
+    e.preventDefault(); dragTiefe++; root.classList.add('cu-eddi-drop-aktiv');
+  });
+  root.addEventListener('dragover', e => {
+    if (!hatDateien(e)) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+  });
+  root.addEventListener('dragleave', e => {
+    if (dragTiefe && --dragTiefe === 0) dropEnde();
+  });
+  root.addEventListener('drop', async e => {
+    if (!hatDateien(e) && !e.dataTransfer?.files?.length) return;
+    e.preventDefault(); e.stopPropagation(); dropEnde();
+    // Show feedback immediately; dropping does not start model processing.
+    const dateien = Array.from(e.dataTransfer?.files || []);
+    await open();
+    if (dateien.length !== 1) { state.textContent = 'Bitte genau eine PDF auf einmal hierher ziehen.'; return; }
+    te.laden(dateien[0]);
+  });
   panel.append(el('div', { class: 'cu-eddi-werkzeuge' }, [fresh, te.button, istAdmin() ? el('button', { type: 'button', text: 'KI einrichten', onclick: () => eddiModellDialog(() => { model=null;consent.checked=false;open(); }).catch(fehler) }) : null, istAdmin() ? el('button', { type: 'button', text: 'Anleitung hinterlegen', onclick: eddiAnleitungDialog }) : null, close]), transcript, suggestions,
     el('label', { class: 'cu-eddi-zustimmung' }, [consent, consentText]), state, te.box);
   root.append(form, panel);

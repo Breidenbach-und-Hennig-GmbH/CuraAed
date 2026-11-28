@@ -1160,7 +1160,7 @@ CREATE TABLE IF NOT EXISTS hp_vermoegensstaende (
 CREATE INDEX IF NOT EXISTS hp_vermoegen_jahr_objekt ON hp_vermoegensstaende(jahr,objekt_id,version DESC);
 
 -- Kundenidentitäten bleiben von Mitarbeiterkonten und deren Sitzungen getrennt.
--- Diese erste Übernahmestufe erlaubt ausdrücklich noch keine Aktivierung.
+-- Der Import allein aktiviert nichts; geprüfte Zugänge stehen in kunden_zugaenge.
 CREATE TABLE IF NOT EXISTS kunden_konten (
  id INTEGER PRIMARY KEY AUTOINCREMENT,
  quelle_id TEXT NOT NULL REFERENCES hp_dms_quellen(id) ON DELETE RESTRICT,
@@ -1188,4 +1188,19 @@ CREATE TABLE IF NOT EXISTS kunden_firmen_quellen (
  quelle_id TEXT PRIMARY KEY REFERENCES hp_dms_quellen(id) ON DELETE RESTRICT,
  firma_id INTEGER NOT NULL REFERENCES firmenbriefkoepfe(id) ON DELETE RESTRICT,
  portal TEXT NOT NULL, UNIQUE(firma_id,portal)
+);
+CREATE TABLE IF NOT EXISTS kunden_aktivierungen (
+ token_hash TEXT PRIMARY KEY,konto_id INTEGER NOT NULL REFERENCES kunden_konten(id) ON DELETE CASCADE,
+ revision INTEGER NOT NULL,scope_hash TEXT NOT NULL,ablauf_ms INTEGER NOT NULL,
+ erstellt_von INTEGER NOT NULL REFERENCES benutzer(id),erstellt_ms INTEGER NOT NULL,
+ widerrufen_ms INTEGER,verbraucht_ms INTEGER
+);
+CREATE INDEX IF NOT EXISTS kunden_aktivierung_konto ON kunden_aktivierungen(konto_id);
+CREATE TABLE IF NOT EXISTS kunden_zugaenge (
+ konto_id INTEGER PRIMARY KEY REFERENCES kunden_konten(id) ON DELETE CASCADE,
+ passwort_hash TEXT NOT NULL,revision INTEGER NOT NULL,scope_hash TEXT NOT NULL,aktiviert_ms INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS kunden_sitzungen (
+ token_hash TEXT PRIMARY KEY,konto_id INTEGER NOT NULL REFERENCES kunden_konten(id) ON DELETE CASCADE,
+ revision INTEGER NOT NULL,ablauf_ms INTEGER NOT NULL,erstellt_ms INTEGER NOT NULL
 );
