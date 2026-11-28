@@ -44,6 +44,7 @@ function baueHausperfektRouter(db, options = {}) {
     await sendFile(req,res);
   }));
   router.use(auth.erfordereAdmin);
+  router.get('/abloesung', h(async (req, res) => res.json(await require('../services/hpMobileAbloesung').bestandsbericht(db))));
   router.get('/status', (req, res) => res.json(service.status()));
   router.get('/verbindungen', h(async (req, res) => res.json({ verbindungen: await service.liste(req.benutzer.id) })));
   router.post('/verbinden', sameOrigin, h(async (req, res) => {

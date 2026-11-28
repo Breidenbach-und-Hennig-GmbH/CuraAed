@@ -8,6 +8,24 @@ async function hausperfektMaske() {
   const meldung = el('p', { role: 'status', 'aria-live': 'polite' });
   const verbindungen = el('div');
   const ergebnis = el('div');
+  const bestand = el('div', { role: 'status', 'aria-live': 'polite' });
+  const pruefen = el('button', { type: 'button', text: 'Bestand ohne HP-Zugriff prüfen', onclick: async () => {
+    pruefen.disabled = true;
+    try {
+      const r = await API.get('/hausperfekt/abloesung');
+      if (lauf !== S.lauf) return;
+      const body = el('tbody');
+      for (const q of r.quellen) body.append(el('tr', {}, [q.subdomain, q.erfasst, q.als_gesichert_vermerkt, q.ohne_dateikopie, q.mit_fehlermeldung].map(text => el('td', { text: String(text) }))));
+      bestand.replaceChildren(
+        el('p', { text: 'HP-Mobile-Zugriffe: ' + (r.mobile_aktiv ? 'aktiv' : 'abgeschaltet') + '. Erfasst: ' + r.summen.erfasst + ' Dokumente; ohne Dateikopie: ' + r.summen.ohne_dateikopie + '.' }),
+        el('table', {}, [el('thead', {}, [el('tr', {}, ['Archivquelle', 'Erfasst', 'Kopie vermerkt', 'Ohne Kopie', 'Fehlermeldung'].map(text => el('th', { text })))]), body]),
+        el('p', { class: 'hint', text: r.hinweis }),
+        el('p', { text: 'Nicht abgeschlossene Mobile-Archivaufträge: ' + r.offene_auftraege.length + '. Die Vollständigkeit ist noch nicht bestätigt.' })
+      );
+    } catch (e) { if (lauf === S.lauf) bestand.textContent = e.message; }
+    finally { pruefen.disabled = false; }
+  } });
+  desktop.append(el('section', { class: 'cu-karte', style: 'padding:8px;margin:8px' }, [el('h2', { text: 'Ablösung HP Mobile' }), pruefen, bestand]));
   const datenbereich = el('select', { 'aria-label': 'HP-Datenbereich' }, [
     ['persons', 'Personen'], ['buildings', 'Liegenschaften'], ['units', 'Einheiten'], ['addresses', 'Adressen'], ['syncs', 'HP-Aktualisierungen'],
   ].map(([value, text]) => el('option', { value, text })));
@@ -86,7 +104,7 @@ async function hausperfektMaske() {
     neu, verbindungen, el('label', {}, ['Datenbereich ', datenbereich]), meldung, ergebnis,
     el('div', { class: 'tel-plaud-knoepfe' }, [vorher, weiter]),
   ]));
-  try { const s = await API.get('/hausperfekt/status'); if (lauf !== S.lauf) return; neu.disabled = !s.eingerichtet; if (!s.eingerichtet) meldung.textContent = 'Die HP-Anmeldung ist auf dem CuraAed-Server noch nicht eingerichtet.'; await verbindungenLaden(); }
+  try { const s = await API.get('/hausperfekt/status'); if (lauf !== S.lauf) return; neu.disabled = !s.eingerichtet || s.mobile_aktiv === false; if (s.mobile_aktiv === false) meldung.textContent = 'HP Mobile ist abgeschaltet. Lokale Bestände und direkte HP-Importe bleiben verfügbar.'; else if (!s.eingerichtet) meldung.textContent = 'Die HP-Anmeldung ist auf dem CuraAed-Server noch nicht eingerichtet.'; await verbindungenLaden(); }
   catch (e) { if (lauf === S.lauf) meldung.textContent = e.message; }
   if (lauf === S.lauf) await hpDirektBereich(lauf, desktop);
   if (lauf === S.lauf) await hpAdressBereich(lauf, desktop);

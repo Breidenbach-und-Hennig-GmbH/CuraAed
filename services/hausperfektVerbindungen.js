@@ -2,7 +2,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { baueHpMobileClient, portalKennung, HpMobileError } = require('./hausperfektMobile');
+const { baueHpMobileClient, portalKennung, HpMobileError, pruefeMobileBetrieb } = require('./hausperfektMobile');
+const { mobileAktiv } = require('../lib/hpMobileBetrieb');
 const ORIGIN = 'https://api.hausperfekt-mobile.de';
 const dms = require('./hpDms');
 
@@ -39,6 +40,7 @@ function baueHpVerbindungen(db, options = {}) {
   }
   function configured() { return !!(oauth.clientId && oauth.clientSecret); }
   async function tokenRequest(subdomain, data) {
+    pruefeMobileBetrieb();
     if (!configured()) throw new HpMobileError('Die HP-Mobile-Anmeldung muss auf dem CuraAed-Server noch eingerichtet werden.', 503);
     let r;
     try {
@@ -66,6 +68,7 @@ function baueHpVerbindungen(db, options = {}) {
   async function withClient(owner, id, fn) {
     return lock(id, async () => {
       const row = await owned(owner, id);
+      pruefeMobileBetrieb();
       let tokens = decrypt(row.daten, [owner, row.id, row.subdomain].join(':'));
       async function refresh() {
         if (!tokens.refresh_token) throw new HpMobileError('Bitte HP-Mobile erneut verbinden.', 401);
@@ -80,7 +83,7 @@ function baueHpVerbindungen(db, options = {}) {
     });
   }
   return {
-    status: () => ({ eingerichtet: configured() }),
+    status: () => ({ eingerichtet: configured(), mobile_aktiv: mobileAktiv() }),
     async liste(owner) { return db.all('SELECT id, subdomain, erp, aktualisiert_am FROM hp_mobile_verbindungen WHERE benutzer_id=? ORDER BY subdomain', [owner]); },
     async verbinden(owner, { portalUrl, benutzername, passwort }) {
       const subdomain = portalKennung(portalUrl);

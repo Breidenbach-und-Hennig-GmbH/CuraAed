@@ -614,6 +614,7 @@ function MENUE() {
       ...(darfSchreiben()?[{text:'Mein Profil',aktion:()=>meinProfil().catch(fehler)}]:[]),
     {text:'Meine Microsoft-Anmeldung',aktion:()=>microsoftAnmeldeProfil()},
       { text: 'Benutzerverwaltung', nurAdmin: true, aktion: () => geheZu('#/benutzer') },
+      { text: 'Kundenverwaltung', nurAdmin: true, aktion: () => geheZu('#/kunden') },
       {text:'HP-Verbindungen',nurAdmin:true,aktion:()=>geheZu('#/hausperfekt')},
       {text:'HP-Aktenübernahme',nurAdmin:true,aktion:()=>geheZu('#/hp-akten')},
       {text:'Firma auswählen',aktion:()=>cockpitFirmaDialog().catch(fehler)},

@@ -6,6 +6,7 @@
 // credential storage must be provided by the integration layer before activation.
 const { isDeepStrictEqual } = require('node:util');
 const ORIGIN = 'https://api.hausperfekt-mobile.de';
+const { mobileAktiv } = require('../lib/hpMobileBetrieb');
 const READ_RESOURCES = new Set(['persons', 'addresses', 'buildings', 'units', 'documents', 'cis', 'syncs', 'records', 'tasks', 'craftsman_tasks', 'notes']);
 const PERSON_FIELDS = new Set(['salutation', 'title', 'firstname', 'lastname', 'birthdate', 'address', 'emails', 'phonenumbers', 'comment', 'confirm_data']);
 const ADDRESS_FIELDS = new Set(['street', 'zip', 'city', 'country']);
@@ -17,6 +18,10 @@ class HpMobileError extends Error {
     this.status = status;
     this.outcomeUnknown = outcomeUnknown;
   }
+}
+
+function pruefeMobileBetrieb() {
+  if (!mobileAktiv()) throw new HpMobileError('HP Mobile ist für den unabhängigen Betrieb abgeschaltet. Bereits gesicherte CuraAed-Daten und Archivdateien bleiben verfügbar.', 503);
 }
 
 function portalKennung(value) {
@@ -63,6 +68,7 @@ function baueHpMobileClient({ portalUrl, accessToken, fetchImpl = require('../li
   if (typeof accessToken !== 'string' || !accessToken || /[\r\n]/.test(accessToken)) throw new HpMobileError('Eine gültige HP-Anmeldung wird benötigt.', 401);
   let verification;
   async function request(method, path, data) {
+    pruefeMobileBetrieb();
     let response;
     try {
       response = await fetchImpl(ORIGIN + '/api/v1/' + path, {
@@ -128,6 +134,7 @@ function baueHpMobileClient({ portalUrl, accessToken, fetchImpl = require('../li
       return (await request('GET', 'documentcontainer/' + key)).data;
     },
     async dmsStream(id, maxBytes) {
+      pruefeMobileBetrieb();
       const key = positiveId(id); await verify();
       let response;
       try { response = await fetchImpl(ORIGIN + '/api/v1/documents/' + key + '/binary', {
@@ -140,6 +147,7 @@ function baueHpMobileClient({ portalUrl, accessToken, fetchImpl = require('../li
       return response.body;
     },
     async dmsDatei(id, maxBytes = 64 * 1024 * 1024) {
+      pruefeMobileBetrieb();
       const key = positiveId(id);
       await verify();
       let response;
@@ -191,4 +199,4 @@ function baueHpMobileClient({ portalUrl, accessToken, fetchImpl = require('../li
   });
 }
 
-module.exports = { HpMobileError, portalKennung, personenAenderung, baueHpMobileClient };
+module.exports = { HpMobileError, portalKennung, personenAenderung, baueHpMobileClient, pruefeMobileBetrieb };
