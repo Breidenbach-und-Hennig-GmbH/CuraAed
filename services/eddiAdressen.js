@@ -51,14 +51,25 @@ function baue(db,options={}){
   if(obj&&d.objekt.strasse&&norm(obj.strasse)!==norm(d.objekt.strasse))fail('Die Objekt-Nr. gehört zu einer anderen Straße. Bitte die Zuordnung prüfen.',409);
   if(!obj&&(!target||!d.objekt.bezeichnung||!d.objekt.strasse||!d.objekt.plz||!d.objekt.ort))fail('Für ein neues Objekt bitte Nummer, Bezeichnung und vollständige Anschrift ergänzen.');
   const units=obj?await tx.all('SELECT e.*,h.hp_whgnr FROM einheiten e LEFT JOIN hp_einheit_zuordnung h ON h.einheit_id=e.id WHERE e.objekt_id=?',[obj.id]):[];
+  const choices=body.dublettenwahl||{};if(!choices||typeof choices!=='object'||Array.isArray(choices)||Object.keys(choices).some(k=>!/^\d+$/.test(k)||Number(k)>=d.adressen.length))fail('Bitte die Dublettenentscheidung erneut prüfen.');
   const rows=[];const seen=new Map();
   for(const [index,a]of d.adressen.entries()){
    const dup=await D.pruefen(tx,a),identity=hash(keys.map(k=>a[k]));let vorhandene=null,pruefen=false;
    if(dup.treffer.length===1){const v=await tx.get('SELECT * FROM adressen WHERE id=?',[dup.treffer[0].id]);const full=x=>D.norm(x.adresstyp==='firma'?x.firmenname:[x.vorname,x.nachname].filter(Boolean).join(' '));if(!v.archiviert&&full(a)===full(v)&&a.strasse&&norm(a.strasse)===norm(v.strasse)&&a.plz===v.plz)vorhandene=v.id;else pruefen=true;}
    else if(dup.treffer.length)pruefen=true;
+   const choice=choices[index];let bestaetigteAdresse=null;
+   if(choice!==undefined&&choice!==''){
+    if(!dup.treffer.length)fail('Die möglichen Dubletten haben sich geändert. Bitte die Entscheidung erneut prüfen.',409);
+    if(choice==='neu'){vorhandene=null;pruefen=false;}
+    else{
+     if(typeof choice!=='string'||!/^\d+$/.test(choice)||!dup.treffer.some(v=>String(v.id)===choice))fail('Diese Adresse gehört nicht zu den gefundenen Dubletten. Bitte erneut prüfen.',409);
+     const v=await tx.get('SELECT * FROM adressen WHERE id=?',[Number(choice)]);if(!v||v.archiviert)fail('Die gewählte Adresse ist nicht mehr verfügbar.',409);
+     vorhandene=v.id;pruefen=false;bestaetigteAdresse=Object.fromEntries(['id','nummer',...keys].map(k=>[k,v[k]]));
+    }
+   }
    const match=units.filter(e=>!e.archiviert&&(String(e.hp_whgnr)===a.wohnung_nummer||e.nummer===a.wohnung_nummer||e.nummer===obj?.nummer+'-'+a.wohnung_nummer));
    if(match.length>1)fail('Wohnung '+a.wohnung_nummer+' ist nicht eindeutig.',409);
-   rows.push({index,daten:a,adresse_id:vorhandene,identitaet:identity,wiederholt:seen.has(identity)?seen.get(identity):null,einheit_id:match[0]?.id||null,dubletten:dup.treffer,pruefen,aktion:pruefen?'Prüfen':vorhandene?'Vorhandene Adresse':seen.has(identity)?'Wie Zeile '+(seen.get(identity)+1):'Neue Adresse'});seen.set(identity,index);
+   rows.push({index,daten:a,adresse_id:vorhandene,identitaet:identity,wiederholt:seen.has(identity)?seen.get(identity):null,einheit_id:match[0]?.id||null,dubletten:dup.treffer,dublettenwahl:choice||'',bestaetigteAdresse,pruefen,aktion:pruefen?'Prüfen':vorhandene?'Vorhandene Adresse':choice==='neu'?'Zusätzliche neue Adresse bestätigt':seen.has(identity)?'Wie Zeile '+(seen.get(identity)+1):'Neue Adresse'});seen.set(identity,index);
   }
   const p={daten:d,objektnummer:target,objekt:obj?{id:obj.id,nummer:obj.nummer,neu:false}:{nummer:target,neu:true},zeilen:rows};return{...p,pruefwert:hash([row.datei_hash,p,units.map(e=>[e.id,e.nummer,e.archiviert])])};
  }

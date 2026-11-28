@@ -24,3 +24,23 @@ test('Erkennung akzeptiert nur belegte Kontakte; eine nicht belegte Eigentümerf
  const d=data();d.adressen[0].funktion='eigentuemer';const p=[{seite:1,text:'Mieter Anna Mustermann anna@example.test'}];assert.equal(daten(d,p).adressen[0].funktion,'unklar');
  d.adressen[0].email='erfunden@example.test';assert.throws(()=>daten(d,p),/Fundstelle/);
 });
+
+test('Dublettenentscheidung verwendet nur angebotene aktive Adressen, schützt vor Änderungen und überschreibt keine Stammdaten',async t=>{
+ const f=await fixture(t),a=await require('../services/adressen').anlegen(f.db,{...row(),strasse:'Andere Straße 2'});await f.svc.analysieren(f.user,'job',true);
+ const body={dublettenwahl:{0:String(a.id),1:String(a.id)}};
+ await assert.rejects(f.svc.vorschau(f.user,'job',{dublettenwahl:{0:'999999'}}),/gehört nicht/);
+ let p=await f.svc.vorschau(f.user,'job',body);assert.equal(p.zeilen.some(z=>z.pruefen),false);
+ await f.db.run('UPDATE adressen SET telefon=? WHERE id=?',['12345',a.id]);
+ await assert.rejects(f.svc.uebernehmen(f.user,'job',{...body,pruefwert:p.pruefwert,geprueft:true}),/geändert/);
+ p=await f.svc.vorschau(f.user,'job',body);const result=await f.svc.uebernehmen(f.user,'job',{...body,pruefwert:p.pruefwert,geprueft:true});
+ assert.equal(result.adressen_neu,0);assert.equal(result.adressen_vorhanden,2);assert.equal(result.zuordnungen,2);
+ assert.equal((await f.db.get('SELECT strasse FROM adressen WHERE id=?',[a.id])).strasse,'Andere Straße 2');
+});
+
+test('Bewusst zusätzliche Adresse wird nach erneuter Vorschau einmal angelegt; archivierte Treffer sind keine auswählbaren Adressen',async t=>{
+ const f=await fixture(t),a=await require('../services/adressen').anlegen(f.db,{...row(),strasse:'Andere Straße 2'});await f.svc.analysieren(f.user,'job',true);
+ const body={dublettenwahl:{0:'neu',1:'neu'}},p=await f.svc.vorschau(f.user,'job',body);
+ const r=await f.svc.uebernehmen(f.user,'job',{...body,pruefwert:p.pruefwert,geprueft:true});assert.equal(r.adressen_neu,1);assert.equal((await f.db.get('SELECT count(*) AS n FROM adressen')).n,2);
+ await f.db.run('UPDATE adressen SET archiviert=1 WHERE id=?',[a.id]);
+ await assert.rejects(f.svc.vorschau(f.user,'job',{dublettenwahl:{0:String(a.id)}}),/nicht mehr verfügbar/);
+});
