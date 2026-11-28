@@ -1208,6 +1208,13 @@ CREATE TABLE IF NOT EXISTS eddi_adressimporte (
  job_id TEXT PRIMARY KEY REFERENCES eddi_teilungen(id) ON DELETE CASCADE,
  daten TEXT NOT NULL,ergebnis TEXT
 );
+CREATE TABLE IF NOT EXISTS eddi_freigaben (
+ benutzer_id INTEGER NOT NULL REFERENCES benutzer(id) ON DELETE CASCADE,
+ anbieter TEXT NOT NULL CHECK(anbieter='OpenAI'),
+ dauerhaft INTEGER NOT NULL CHECK(dauerhaft IN (0,1)),
+ geaendert_am TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(benutzer_id,anbieter)
+);
 CREATE TABLE IF NOT EXISTS kunden_dokumentfreigaben (
  id TEXT PRIMARY KEY,quelle_id TEXT NOT NULL REFERENCES kunden_firmen_quellen(quelle_id),
  dokument TEXT NOT NULL,zielgruppe TEXT NOT NULL CHECK(zielgruppe IN ('eigentuemer','mieter','beide')),

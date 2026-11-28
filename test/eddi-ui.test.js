@@ -95,3 +95,25 @@ test('Verneinungen, Fragen, eingeschränkter Umfang und spätere Ausführung lö
  for(const text of ['Noch nicht übernehmen','Wie kann ich die Liste übernehmen?','Kann ich die Liste übernehmen?','Übernimm nur die Adressen','Bitte übernimm die Liste morgen','Übernimm die Rechnung'])await f.send(text);
  assert.equal(f.calls.length,0);
 });
+
+test('Neue Adressliste versteht „leg … an“, behält den Auftrag bei fehlender Freigabe und startet danach nur Auswertung und Vorschau',async t=>{
+ const w=setup(t),calls=[],saved=[];w.sessionStorage.setItem('curaaed-teilung-1','neu');
+ const data={objekt:{nummer:'867',bezeichnung:'Neu',strasse:'Neuweg 1',plz:'12345',ort:'Stadt'},adressen:[{adresstyp:'person',nachname:'Test',funktion:'unklar'}]};let analysed=false;
+ w.API={get:async url=>url==='/eddi/status'?{bereit:true,sprachmodell:'OpenAI',freigabe:{anbieter:'OpenAI',dauerhaft:false},anleitungen:0}:{dateiname:'867 - Eigentümer Adressliste.pdf',status:'gelesen',gelesen:true,dokumenttyp:'adressliste',adressliste:analysed?{daten:data}:null},put:async(url,body)=>{saved.push({url,body});return body;},post:async(url,body)=>{calls.push({url,body});if(url.endsWith('/auswerten')){analysed=true;return data;}if(url.endsWith('/vorschau'))return{objekt:{nummer:'18745',neu:false},pruefwert:'proof',zeilen:[]};throw Error('Kein allgemeiner Chat oder ungeprüfter Import erlaubt.');}};
+ const root=w.eddiLeiste();w.document.getElementById('hp-desktop').append(root);await new Promise(r=>w.setTimeout(r,0));await tick();
+ const input=root.querySelector('[aria-label="Auftrag an Eddi"]'),consent=root.querySelector('[aria-label="Verarbeitung durch das Sprachmodell erlauben"]'),remember=root.querySelector('[aria-label="OpenAI-Freigabe für meine Kennung dauerhaft merken"]'),button=text=>[...root.querySelectorAll('button')].find(b=>b.textContent===text);
+ const text='leg die nächsten adressen für dieses objekt an. prüfe ob das objekt in HP schon existiert.';input.value=text;
+ const submit=async()=>{root.querySelector('form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await tick();await tick();};
+ await submit();assert.equal(calls.length,0);assert.equal(input.value,text);assert.equal(w.document.activeElement,consent);assert.equal(root.querySelector('.cu-eddi-starthilfe').hidden,false);assert.equal(button('Los').disabled,false);
+ consent.checked=true;consent.dispatchEvent(new w.Event('change',{bubbles:true}));remember.checked=true;remember.dispatchEvent(new w.Event('change',{bubbles:true}));await tick();assert.equal(saved[0].url,'/eddi/freigabe');assert.equal(saved[0].body.dauerhaft,true);
+ await submit();assert.equal(calls.length,2);assert.match(calls[0].url,/\/neu\/adressen\/auswerten$/);assert.match(calls[1].url,/vorschau$/);assert.equal(calls[0].body.zustimmung,true);assert.match(root.textContent,/Vorhandenes Objekt 18745/);assert.match(root.textContent,/867 - Eigentümer Adressliste.pdf/);
+ button('Neues Gespräch').click();assert.equal(consent.checked,true);
+ consent.checked=false;consent.dispatchEvent(new w.Event('change',{bubbles:true}));await tick();assert.equal(saved.at(-1).body.dauerhaft,false);assert.equal(remember.checked,false);
+});
+
+test('Gespeicherte Freigabe wird nur für denselben Anbieter geladen und auf neuen Gesprächen beibehalten',async t=>{
+ for(const provider of ['OpenAI','anderer Anbieter']){
+  const w=setup(t);w.API={get:async()=>({bereit:true,sprachmodell:provider,anleitungen:0,freigabe:{anbieter:'OpenAI',dauerhaft:true}})};const root=w.eddiLeiste();w.document.getElementById('hp-desktop').append(root);root.querySelector('[aria-label="Auftrag an Eddi"]').focus();await tick();
+  const consent=root.querySelector('[aria-label="Verarbeitung durch das Sprachmodell erlauben"]'),remember=root.querySelector('[aria-label="OpenAI-Freigabe für meine Kennung dauerhaft merken"]');assert.equal(consent.checked,provider==='OpenAI');assert.equal(remember.checked,provider==='OpenAI');
+ }
+});

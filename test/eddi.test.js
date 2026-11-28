@@ -74,3 +74,17 @@ test('API schützt Eddi vor Lesebenutzern und fremder Herkunft', async t => {
   assert.equal((await post({ origin: 'https://fremd.test' })).status, 403);
   assert.equal((await post({ origin: 'https://curaaed.test' })).status, 200);
 });
+
+test('Dauerhafte OpenAI-Freigabe gehört ausschließlich zur eigenen Kennung, ist widerrufbar und erweitert keine fremden Benutzer',async t=>{
+ const {db,a,make}=await setup(t);await make('zweiter','mitarbeiter');
+ const server=require('../lib/appFactory').baueApp(db,{hausperfekt:{publicUrl:'https://curaaed.test'},eddi:{complete:async()=>({content:'OK'})}}).listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>new Promise(r=>server.close(r)));
+ const base='http://127.0.0.1:'+server.address().port+'/api';
+ async function login(name){const r=await fetch(base+'/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({benutzername:name,passwort:'test12345'})});return r.headers.get('set-cookie').split(';')[0];}
+ const cookie=await login(a.benutzername),other=await login('zweiter');
+ const read=async key=>(await (await fetch(base+'/eddi/status',{headers:{cookie:key}})).json()).freigabe;
+ const save=(body,origin='https://curaaed.test')=>fetch(base+'/eddi/freigabe',{method:'PUT',headers:{cookie,'content-type':'application/json',origin},body:JSON.stringify(body)});
+ assert.equal((await read(cookie)).dauerhaft,false);assert.equal((await save({anbieter:'OpenAI',dauerhaft:true},'https://fremd.test')).status,403);
+ assert.equal((await save({anbieter:'OpenAI',dauerhaft:true,benutzer_id:999})).status,400);assert.equal((await save({anbieter:'anderer Anbieter',dauerhaft:true})).status,400);
+ assert.equal((await save({anbieter:'OpenAI',dauerhaft:true})).status,200);assert.equal((await read(cookie)).dauerhaft,true);assert.equal((await read(other)).dauerhaft,false);
+ assert.equal((await save({anbieter:'OpenAI',dauerhaft:false})).status,200);assert.equal((await read(cookie)).dauerhaft,false);
+});

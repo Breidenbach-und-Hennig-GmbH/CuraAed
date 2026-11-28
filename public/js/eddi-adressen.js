@@ -52,5 +52,5 @@ function eddiAdressvorschlag(details,state,job,result){
  form.form.addEventListener('submit',e=>e.preventDefault());
  const container=el('div',{class:'cu-eddi-adressen'},[el('h3',{text:'Adressliste · Objekt und Wohnungen zuordnen'}),el('p',{text:'Vorhandene Datensätze werden abgeglichen. Fehlende MEA verhindern diesen Import nicht; es werden keine MEA oder Stimmregeln erfunden.'}),form.form,el('div',{class:'cu-eddi-einheiten'},[table]),check,preview,message,take]);
  const invalidate=e=>{digest=null;take.disabled=true;if(!preview.contains(e.target))for(const key of Object.keys(choices))delete choices[key];};container.addEventListener('input',invalidate);container.addEventListener('change',invalidate);details.append(container);
- return{uebernehmen:speichern};
+ return{uebernehmen:speichern,pruefen};
 }

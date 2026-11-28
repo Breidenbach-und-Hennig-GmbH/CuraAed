@@ -20,7 +20,12 @@ internal static class HPAddressTests
   var reservation=new Dictionary<string,object>{{"nummer",65952},{"datum",739936},{"uhrzeit",40000},{"protokoll",93895L}};
   var plan=full.Expected(payload,reservation);Check(plan["stamm"].Count==1&&plan["telefon"].Count==2&&plan["email"].Count==1&&plan["protokoll"].Count==4);
   Check(Convert.ToString(plan["stamm"][0]["AdrNr"])=="65952"&&Convert.ToString(plan["anlage"][0]["anVonSB"])=="FD");
-  Check(plan["suche"].Count==1&&Convert.ToString(plan["suche"][0]["AdrNr"])=="65952"&&Convert.ToString(plan["suche"][0]["SearchField"])=="MÜLLERJÖRGMÜLLER");
+  Check(plan["suche"].Count==1&&Convert.ToString(plan["suche"][0]["AdrNr"])=="65952"&&Convert.ToString(plan["suche"][0]["SearchField"])=="MÜLLERJÖRGJÖRGMÜLLER");
+  Check(Convert.ToString(plan["stamm"][0]["SBegrAdr"])=="MÜLLER, JÖRG");
+  var legacy=full.Expected(payload,reservation,false);Check(Convert.ToString(legacy["stamm"][0]["SBegrAdr"])=="MÜLLER"&&Convert.ToString(legacy["suche"][0]["SearchField"])=="MÜLLERJÖRGMÜLLER");
+  Check(HPAddressClient.SearchLabel(new Dictionary<string,object>{{"name1","Schrader"},{"vorname","Tobias"}})=="SCHRADER, TOBIAS");
+  Check(HPAddressClient.SearchLabel(new Dictionary<string,object>{{"name1",new string('x',30)},{"vorname","Lang"}}).Length==30);
+  Check(HPAddressClient.SearchLabel(new Dictionary<string,object>{{"name1","Firma GmbH"},{"vorname",""}})=="FIRMA GMBH");
   Check(HPAddressClient.SearchText(new Dictionary<string,object>{{"SBegrAdr","Rupp, Mathias"},{"Vorname","Mathias"},{"Name1","Rupp"}})=="RUPPMATHIASMATHIASRUPP");
   Check(HPAddressClient.SearchText(new Dictionary<string,object>{{"SBegrAdr","CURAAED-TEST-NEU161126"},{"Name1","CURAAED-TEST-NEU161126"},{"Name2","Nur Schnittstellentest"}})=="CURAAEDTESTNEU161126CURAAEDTESTNEU161126NURSCHNITTSTELLENTEST");
   Check(HPAddressClient.SearchText(new Dictionary<string,object>{{"Name1",new string('X',300)}}).Length==255);
